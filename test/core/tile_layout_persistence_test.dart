@@ -97,6 +97,30 @@ void main() {
     expect(slots.where((slot) => slot != null), isNotEmpty);
   });
 
+  test('overlapping window prefs cannot wipe a concurrent add', () async {
+    final harness = await createHarness();
+    // Slow the first prefs write so add finishes building first but prefs
+    // was the race that emptied apps[] on Ally after add_exe PASS.
+    final add = harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final prefs = harness.controller.setWindowPrefs(
+      const WindowPrefs(fullscreen: true),
+    );
+    await Future.wait([add, prefs]);
+    final file = harness.paths.libraryJsonFile();
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
+    expect(harness.controller.apps, isNotEmpty);
+    expect(harness.controller.state.window.fullscreen, isTrue);
+  });
+
   test('library layout persists across repository instances', () async {
     final harness = await createHarness();
     await harness.controller.addRecord(

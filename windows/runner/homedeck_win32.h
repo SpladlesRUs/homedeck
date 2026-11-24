@@ -9,12 +9,16 @@
 
 #include "win32_window.h"
 
-// Native Win32 helpers for Ally Phase2: launch targets and toggle chrome
-// using the real runner HWND (Dart FFI FindWindow / ShellExecute did not
-// change chrome or spawn notepad on device at tip 2417533).
+// Native Win32 helpers for Ally Phase2.
+//
+// Ally's harness drives keys with WScript.Shell SendKeys after AppActivate —
+// those land on the Flutter view child, so FlutterWindow::MessageHandler never
+// sees WM_KEYDOWN. A low-level keyboard hook catches F11 / Enter while our
+// process is foreground and applies chrome / ShellExecute without Dart.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
+  ~HomedeckWin32();
 
   void Register(flutter::BinaryMessenger* messenger, Win32Window* window);
 
@@ -26,8 +30,20 @@ class HomedeckWin32 {
   // ShellExecuteW the path (.exe / .lnk / URI). Returns true on success.
   static bool Launch(const std::wstring& path, const std::wstring& args);
 
+  // Launch the path Dart last reported as focused (Enter / A).
+  bool LaunchFocused();
+
+  // Remember the focused tile launch target for the keyboard hook.
+  void SetFocusedLaunch(const std::wstring& path, const std::wstring& args);
+
  private:
   void NotifyFullscreen();
+  void InstallHook();
+  void RemoveHook();
+  bool IsOurForeground() const;
+
+  static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
+                                               LPARAM l_param);
 
   Win32Window* window_ = nullptr;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
@@ -35,6 +51,11 @@ class HomedeckWin32 {
   LONG_PTR restore_style_ = 0;
   RECT restore_rect_{};
   bool has_restore_ = false;
+  std::wstring focused_path_;
+  std::wstring focused_args_;
+  HHOOK keyboard_hook_ = nullptr;
+
+  static HomedeckWin32* instance_;
 };
 
 #endif  // RUNNER_HOMEDECK_WIN32_H_

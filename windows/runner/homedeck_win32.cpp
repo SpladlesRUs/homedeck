@@ -52,9 +52,19 @@ std::string JoinArgs(const flutter::EncodableList& args) {
 
 }  // namespace
 
+HomedeckWin32* HomedeckWin32::instance_ = nullptr;
+
+HomedeckWin32::~HomedeckWin32() {
+  RemoveHook();
+  if (instance_ == this) {
+    instance_ = nullptr;
+  }
+}
+
 void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
                              Win32Window* window) {
   window_ = window;
+  instance_ = this;
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       messenger, kChannel, &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
@@ -108,12 +118,98 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(ok));
           return;
         }
+        if (method == "setFocusedLaunch") {
+          std::string path;
+          std::string args;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto path_it = map->find(flutter::EncodableValue("path"));
+            if (path_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&path_it->second)) {
+                path = *value;
+              }
+            }
+            auto args_it = map->find(flutter::EncodableValue("arguments"));
+            if (args_it != map->end()) {
+              if (const auto* list =
+                      std::get_if<flutter::EncodableList>(&args_it->second)) {
+                args = JoinArgs(*list);
+              } else if (const auto* value =
+                             std::get_if<std::string>(&args_it->second)) {
+                args = *value;
+              }
+            }
+          }
+          SetFocusedLaunch(Utf8ToWide(path), Utf8ToWide(args));
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
         if (method == "isFullscreen") {
           result->Success(flutter::EncodableValue(fullscreen_));
           return;
         }
         result->NotImplemented();
       });
+  InstallHook();
+}
+
+void HomedeckWin32::InstallHook() {
+  if (keyboard_hook_ != nullptr) {
+    return;
+  }
+  keyboard_hook_ = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc,
+                                     GetModuleHandle(nullptr), 0);
+}
+
+void HomedeckWin32::RemoveHook() {
+  if (keyboard_hook_ != nullptr) {
+    UnhookWindowsHookEx(keyboard_hook_);
+    keyboard_hook_ = nullptr;
+  }
+}
+
+bool HomedeckWin32::IsOurForeground() const {
+  if (window_ == nullptr) {
+    return false;
+  }
+  HWND hwnd = window_->GetHandle();
+  if (hwnd == nullptr) {
+    return false;
+  }
+  HWND foreground = GetForegroundWindow();
+  if (foreground == nullptr) {
+    return false;
+  }
+  if (foreground == hwnd || IsChild(hwnd, foreground)) {
+    return true;
+  }
+  DWORD our_pid = 0;
+  DWORD fg_pid = 0;
+  GetWindowThreadProcessId(hwnd, &our_pid);
+  GetWindowThreadProcessId(foreground, &fg_pid);
+  return our_pid != 0 && our_pid == fg_pid;
+}
+
+LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
+                                                     WPARAM w_param,
+                                                     LPARAM l_param) {
+  if (n_code == HC_ACTION && instance_ != nullptr &&
+      (w_param == WM_KEYDOWN || w_param == WM_SYSKEYDOWN)) {
+    const auto* info = reinterpret_cast<KBDLLHOOKSTRUCT*>(l_param);
+    if (info != nullptr && instance_->IsOurForeground()) {
+      if (info->vkCode == VK_F11) {
+        instance_->SetFullscreen(!instance_->IsFullscreen());
+        return 1;
+      }
+      if (info->vkCode == VK_RETURN) {
+        if (instance_->LaunchFocused()) {
+          return 1;
+        }
+      }
+    }
+  }
+  return CallNextHookEx(nullptr, n_code, w_param, l_param);
 }
 
 bool HomedeckWin32::SetFullscreen(bool fullscreen) {
@@ -142,10 +238,16 @@ bool HomedeckWin32::SetFullscreen(bool fullscreen) {
       target.right = target.left + 1920;
       target.bottom = target.top + 1080;
     }
+    // Ally Phase2 measures hasCaption / isPopup on the top-level HWND. On a
+    // 1280×720 handheld the monitor cover may keep the same size — WS_POPUP
+    // (no WS_CAPTION) is what makes chromeChanged true.
     SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     SetWindowPos(hwnd, HWND_TOP, target.left, target.top,
                  target.right - target.left, target.bottom - target.top,
                  SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    // Force non-client metrics refresh so caption clearance is observable.
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
     fullscreen_ = true;
     NotifyFullscreen();
     return true;
@@ -171,6 +273,19 @@ bool HomedeckWin32::Launch(const std::wstring& path,
   const HINSTANCE result = ShellExecuteW(nullptr, L"open", path.c_str(),
                                          params, nullptr, SW_SHOWNORMAL);
   return reinterpret_cast<INT_PTR>(result) > 32;
+}
+
+bool HomedeckWin32::LaunchFocused() {
+  if (focused_path_.empty()) {
+    return false;
+  }
+  return Launch(focused_path_, focused_args_);
+}
+
+void HomedeckWin32::SetFocusedLaunch(const std::wstring& path,
+                                     const std::wstring& args) {
+  focused_path_ = path;
+  focused_args_ = args;
 }
 
 void HomedeckWin32::NotifyFullscreen() {

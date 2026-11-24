@@ -45,6 +45,11 @@ class LibraryController extends ChangeNotifier {
   HomeDeckState _state = const HomeDeckState();
   bool _loaded = false;
 
+  /// Serializes disk writes. Ally Phase2 at 4996779 saw `apps=[]` at close
+  /// after successful adds because overlapping `_commit`s built from a stale
+  /// empty `_state` (window/audio prefs) finished after the add write.
+  Future<void> _writeChain = Future<void>.value();
+
   bool get isLoaded => _loaded;
 
   HomeDeckState get state => _state;
@@ -132,17 +137,19 @@ class LibraryController extends ChangeNotifier {
       store: resolvedStore,
       targets: {target.platform: target},
     );
-    var nextHome = _state.home;
-    if (pinToHome) {
-      nextHome = nextHome.pinning(id, at: homeSlot);
-    }
-    await _commit(
-      _state.copyWith(
-        apps: List<AppRecord>.unmodifiable([..._state.apps, record]),
-        layout: _state.layout.placing(id),
-        home: nextHome,
-      ),
-    );
+    // Capture pin/home against the latest state inside the write queue so a
+    // concurrent window/audio prefs commit cannot overwrite the new tile.
+    await _commit((state) {
+      var home = state.home;
+      if (pinToHome) {
+        home = home.pinning(id, at: homeSlot);
+      }
+      return state.copyWith(
+        apps: List<AppRecord>.unmodifiable([...state.apps, record]),
+        layout: state.layout.placing(id),
+        home: home,
+      );
+    });
     return record;
   }
 
@@ -150,27 +157,29 @@ class LibraryController extends ChangeNotifier {
     if (byId(id) == null) {
       return;
     }
-    await _commit(_state.copyWith(home: _state.home.pinning(id, at: at)));
+    await _commit((state) => state.copyWith(home: state.home.pinning(id, at: at)));
   }
 
   Future<void> unpinFromHome(String id) async {
-    await _commit(_state.copyWith(home: _state.home.unpinning(id)));
+    await _commit((state) => state.copyWith(home: state.home.unpinning(id)));
   }
 
   Future<void> remove(String id) async {
     await _commit(
-      _state.copyWith(
+      (state) => state.copyWith(
         apps: List<AppRecord>.unmodifiable(
-          _state.apps.where((app) => app.id != id),
+          state.apps.where((app) => app.id != id),
         ),
-        layout: _state.layout.removing(id),
-        home: _state.home.unpinning(id),
+        layout: state.layout.removing(id),
+        home: state.home.unpinning(id),
       ),
     );
   }
 
   Future<void> reorder(int from, int to) async {
-    await _commit(_state.copyWith(layout: _state.layout.reordering(from, to)));
+    await _commit(
+      (state) => state.copyWith(layout: state.layout.reordering(from, to)),
+    );
   }
 
   Future<void> moveHomeSlot(
@@ -179,37 +188,49 @@ class LibraryController extends ChangeNotifier {
     int columns,
   ) async {
     await _commit(
-      _state.copyWith(home: _state.home.moving(from, direction, columns)),
+      (state) =>
+          state.copyWith(home: state.home.moving(from, direction, columns)),
     );
   }
 
   Future<void> swapHomeSlots(int from, int to) async {
-    await _commit(_state.copyWith(home: _state.home.swapping(from, to)));
+    await _commit(
+      (state) => state.copyWith(home: state.home.swapping(from, to)),
+    );
   }
 
   Future<void> toggleFavorite(String id) async {
-    final next = _state.apps
-        .map(
-          (app) => app.id == id ? app.copyWith(favorite: !app.favorite) : app,
-        )
-        .toList(growable: false);
-    await _commit(_state.copyWith(apps: List<AppRecord>.unmodifiable(next)));
+    await _commit((state) {
+      final next = state.apps
+          .map(
+            (app) => app.id == id ? app.copyWith(favorite: !app.favorite) : app,
+          )
+          .toList(growable: false);
+      return state.copyWith(apps: List<AppRecord>.unmodifiable(next));
+    });
   }
 
   Future<void> setWindowPrefs(WindowPrefs prefs) async {
-    await _commit(_state.copyWith(window: prefs));
+    await _commit((state) => state.copyWith(window: prefs));
   }
 
   Future<void> setAudioPrefs(AudioPrefs prefs) async {
-    await _commit(_state.copyWith(audio: prefs));
+    await _commit((state) => state.copyWith(audio: prefs));
   }
 
-  Future<void> _commit(HomeDeckState next) async {
-    // Persist before publishing state so a failed write cannot leave a
-    // tile on screen (and an icon in icons/) with no library.json.
-    await _preferences.save(next);
-    _state = next;
-    notifyListeners();
+  Future<void> _commit(HomeDeckState Function(HomeDeckState state) update) {
+    // Persist before publishing so a failed write cannot leave a tile on
+    // screen (and an icon in icons/) with no library.json. Apply [update] to
+    // the latest `_state` when this write's turn runs — never to a snapshot
+    // captured before an in-flight add.
+    final done = _writeChain.then((_) async {
+      final next = update(_state);
+      await _preferences.save(next);
+      _state = next;
+      notifyListeners();
+    });
+    _writeChain = done.catchError((_) {});
+    return done;
   }
 
   Future<LaunchOutcome> launch(String id) async {

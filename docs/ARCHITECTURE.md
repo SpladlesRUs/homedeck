@@ -49,6 +49,10 @@ launch). Steam library and ROM-folder auto-discovery are **not** implemented;
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
 re-reads to verify `apps.length` matches the in-memory state so an
 empty-file-only result cannot look like a successful add.
+`LibraryController` queues commits as functional updates so window/audio
+prefs cannot clobber a concurrent add. On Windows the runner
+`homedeck/win32` channel plus a low-level keyboard hook handle F11 chrome
+and Enter→focused launch for Ally's SendKeys harness.
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

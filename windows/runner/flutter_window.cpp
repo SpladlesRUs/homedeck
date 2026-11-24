@@ -52,9 +52,9 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
-  // Dart only used FindWindow / window_manager. Toggle via the real HWND and
-  // let Dart sync badge/prefs over the method channel event.
+  // Ally Phase2 primarily uses WScript.SendKeys (Flutter view child), which
+  // the WH_KEYBOARD_LL hook in HomedeckWin32 handles. Keep this top-level
+  // path for PostMessage / real keyboard focus on the frame window.
   if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
       wparam == VK_F11) {
     win32_.SetFullscreen(!win32_.IsFullscreen());

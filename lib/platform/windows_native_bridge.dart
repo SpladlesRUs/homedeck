@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 
 /// Method channel to the Windows runner (`homedeck/win32`).
 ///
-/// Ally Phase2 at 2417533 still failed Enter/F11 when Dart FFI used
-/// ShellExecuteW + FindWindow — the runner never changed chrome and notepad
-/// never spawned. The C++ side holds the real HWND and ShellExecute.
+/// Ally Phase2 at 4996779 still failed Enter/F11 because the harness uses
+/// `WScript.Shell.SendKeys` after AppActivate — keys hit the Flutter view
+/// child, not `FlutterWindow::MessageHandler`. The runner now installs a
+/// WH_KEYBOARD_LL hook for F11/Enter while HomeDeck is foreground, and Dart
+/// mirrors the focused launch path via [setFocusedLaunch].
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -80,6 +82,29 @@ class WindowsNativeBridge {
       return false;
     } on PlatformException {
       return false;
+    }
+  }
+
+  /// Tell the runner which path Enter should ShellExecute (keyboard hook).
+  static Future<void> setFocusedLaunch(
+    String? path, {
+    List<String> arguments = const [],
+  }) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    try {
+      await _channel.invokeMethod<void>(
+        'setFocusedLaunch',
+        <String, Object?>{
+          'path': path ?? '',
+          'arguments': arguments,
+        },
+      );
+    } on MissingPluginException {
+      // Tests / non-runner.
+    } on PlatformException {
+      // Ignore — Dart Enter path remains.
     }
   }
 }

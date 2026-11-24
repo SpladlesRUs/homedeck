@@ -13,6 +13,8 @@ import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/ui_clicks.dart';
 import 'package:homedeck/core/window_mode.dart';
+import 'package:homedeck/core/models/app_platform.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
@@ -128,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onLibrary() {
     if (mounted) {
       setState(() {});
+      _syncNativeFocusedLaunch();
     }
   }
 
@@ -665,6 +668,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _addOpen = true);
+    // Clear runner Enter target while the Add sheet owns Enter / Confirm.
+    _syncNativeFocusedLaunch();
   }
 
   void _requestRemove() {
@@ -871,6 +876,36 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _nodeFor(id).requestFocus();
+    _syncNativeFocusedLaunch();
+  }
+
+  /// Mirror the focused exe/lnk/URI into the runner so Ally SendKeys Enter
+  /// can ShellExecute without a Flutter KeyEvent (WH_KEYBOARD_LL path).
+  void _syncNativeFocusedLaunch() {
+    if (!Platform.isWindows) {
+      return;
+    }
+    if (_overlayOpen) {
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    final app = _focusedRecord;
+    if (app == null) {
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    final target =
+        app.targetFor(AppPlatform.windows) ?? app.targets[AppPlatform.windows];
+    if (target == null) {
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    unawaited(
+      WindowsNativeBridge.setFocusedLaunch(
+        target.value,
+        arguments: target.resolvedArguments,
+      ),
+    );
   }
 
   void _goToPage(int page, {int? row, bool fromRight = false}) {
@@ -1211,12 +1246,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       onClose: () => setState(() => _addOpen = false),
                       onAdded: (id) {
                         // Set focused id synchronously so Enter via
-                        // HardwareKeyboard launches even if FocusNode is not
-                        // attached yet (Ally: Enter sent, no notepad).
+                        // HardwareKeyboard / runner hook launches even if
+                        // FocusNode is not attached yet.
                         setState(() {
                           _addOpen = false;
                           _focusedId = id;
                         });
+                        _syncNativeFocusedLaunch();
                         // Focus after the sheet leaves the tree and the new
                         // Home pin is built; requestFocus on a detached node
                         // was leaving keyboard focus on Now Playing.
@@ -1230,6 +1266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               return;
                             }
                             _nodeFor(id).requestFocus();
+                            _syncNativeFocusedLaunch();
                           });
                         });
                       },

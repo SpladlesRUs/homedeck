@@ -85,13 +85,15 @@ application support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
 `PreferencesRepository` seeds `library.json` on first load and saves with a
 flushed direct write (temp copy + final overwrite + apps round-trip check)
-under `%AppData%\Horton Press\HomeDeck\`. `LibraryController` persists before
-notifying UI. Windows launches use the runner `homedeck/win32` MethodChannel
-(`ShellExecuteW` on the real process), then Dart FFI / CreateProcess /
-`cmd /c start`. F11 is handled in the runner (real HWND + MethodChannel);
-Dart FFI FindWindow remains a fallback because `window_manager` 0.7 often
-never binds the stock Flutter window and Ally 2417533 FindWindow did not
-change chrome on device.
+under `%AppData%\Horton Press\HomeDeck\`. `LibraryController` serializes
+commits as functional updates on the latest state so overlapping window/audio
+prefs cannot wipe a concurrent add (Ally 4996779: add PASS then `apps=[]` at
+close). Windows launches use the runner `homedeck/win32` MethodChannel
+(`ShellExecuteW`), then Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2
+drives keys with `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the
+runner also installs a `WH_KEYBOARD_LL` hook for F11 chrome and Enter→focused
+path while HomeDeck is foreground; Dart mirrors the focused launch target.
+Dart FFI FindWindow remains a fallback when the channel is missing.
 
 Keyboard:
 
