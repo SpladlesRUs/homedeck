@@ -1,4 +1,4 @@
-// ignore_for_file: camel_case_types, non_constant_identifier_names
+// ignore_for_file: camel_case_types, constant_identifier_names, non_constant_identifier_names, deprecated_member_use
 
 import 'dart:ffi';
 import 'dart:io';
@@ -294,7 +294,7 @@ class Win32IconExtractor implements WindowsIconExtractor {
         bmi,
         _DIB_RGB_COLORS,
         bitsOut,
-        nullptr,
+        0, // hSection
         0,
       );
       if (dib == 0 || bitsOut.value == nullptr) {
@@ -334,7 +334,7 @@ class Win32IconExtractor implements WindowsIconExtractor {
       if (drawn == 0) {
         return null;
       }
-      return _encodePng(rgba, size, size);
+      return await _encodePng(rgba, size, size);
     } finally {
       apis.deleteDC(hdcMem);
       apis.releaseDC(0, hdcScreen);
