@@ -138,7 +138,8 @@ void main() {
     expect(await adapter.launch(lnk), isA<LaunchSuccess>());
     expect(io.launches, hasLength(2));
     expect(io.launches[0].executable, exe.value);
-    expect(io.launches[0].shortcut, isFalse);
+    // Both .exe and .lnk go through shell `start` so GUI apps actually open.
+    expect(io.launches[0].shortcut, isTrue);
     expect(io.launches[1].shortcut, isTrue);
   });
 }

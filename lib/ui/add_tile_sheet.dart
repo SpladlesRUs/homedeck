@@ -227,6 +227,14 @@ class _AddTileSheetState extends State<AddTileSheet> {
             return null;
           },
         ),
+        // Home shortcuts map Enter / A to LaunchFocusedIntent, not
+        // ConfirmIntent. Handle both so Add · A / Enter actually saves.
+        LaunchFocusedIntent: CallbackAction<LaunchFocusedIntent>(
+          onInvoke: (_) {
+            _save();
+            return null;
+          },
+        ),
       },
       child: Focus(
         autofocus: true,

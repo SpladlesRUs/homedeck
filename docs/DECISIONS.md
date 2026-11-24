@@ -83,11 +83,17 @@ URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
 args). Then press Enter (or click) to launch. Layout is stored in the
 application support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
+`PreferencesRepository.save` writes atomically (temp + replace) and
+`LibraryController` persists before notifying UI so a failed write cannot
+leave a tile on screen without `library.json`. Windows launches always use
+`cmd /c start` (not bare `Process.start` detached) so GUI targets open from
+the Flutter runner. F11 uses `window_manager` fullscreen plus a frameless
+display-cover fallback so chrome/size change on handheld Windows.
 
 Keyboard:
 
 - Arrow keys move focus
-- Enter launches
+- Enter launches (Add sheet also handles Enter / A via `LaunchFocusedIntent`)
 - Delete / Backspace unpins from Home; in Library it asks to remove the game
 - Esc dismisses overlays
 - M enters rearrange mode (arrows swap tiles; drag also works)

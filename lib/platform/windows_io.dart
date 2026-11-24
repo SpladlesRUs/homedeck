@@ -44,7 +44,8 @@ class DartWindowsIo implements WindowsIo {
       // `start` treats the first quoted token as a window title. The empty
       // string occupies that slot so [executable] is the launch target.
       // Arguments stay a list — never concatenated — so spaces and Unicode
-      // in the .lnk path are preserved.
+      // in the path are preserved. WindowsAdapter always passes shortcut:
+      // true so GUI .exe launches work from a Flutter runner (Ally smoke).
       await Process.start(
         'cmd',
         ['/c', 'start', '', executable, ...arguments],
