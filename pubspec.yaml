@@ -42,6 +42,7 @@ dependencies:
   window_manager: ^0.7.1
   uuid: ^4.6.0
   ffi: ^2.1.4
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/homedeck-icon.png
+    - assets/audio/music/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

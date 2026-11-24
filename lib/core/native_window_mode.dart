@@ -8,6 +8,8 @@ class NativeWindowModeController extends WindowModeController {
 
   bool _fullscreen = false;
   bool _borderless = false;
+  ListenerId? _eventListener;
+  final _focusListeners = <ValueChanged<bool>>[];
 
   Window? get _window => WindowManager.instance.getCurrent();
 
@@ -27,6 +29,13 @@ class NativeWindowModeController extends WindowModeController {
     window.setSize(const Size(1280, 800).toNative(), false);
     window.minimumSize = const Size(960, 600).toNative();
     window.center();
+    _eventListener ??= window.addListener((event) {
+      if (event is WindowFocusedEvent) {
+        _emitFocus(true);
+      } else if (event is WindowBlurredEvent) {
+        _emitFocus(false);
+      }
+    });
   }
 
   @override
@@ -55,5 +64,21 @@ class NativeWindowModeController extends WindowModeController {
   @override
   Future<void> close() async {
     _window?.close();
+  }
+
+  @override
+  void addFocusListener(ValueChanged<bool> listener) {
+    _focusListeners.add(listener);
+  }
+
+  @override
+  void removeFocusListener(ValueChanged<bool> listener) {
+    _focusListeners.remove(listener);
+  }
+
+  void _emitFocus(bool focused) {
+    for (final listener in List<ValueChanged<bool>>.from(_focusListeners)) {
+      listener(focused);
+    }
   }
 }

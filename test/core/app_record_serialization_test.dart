@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/app_record.dart';
+import 'package:homedeck/core/models/audio_prefs.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/home_layout.dart';
@@ -62,6 +63,7 @@ void main() {
       ],
       layout: const TileLayout(orderedIds: ['a']),
       window: const WindowPrefs(fullscreen: true, borderless: true),
+      audio: const AudioPrefs(musicEnabled: false, musicVolume: 0.2),
     );
 
     expect(HomeDeckState.fromJson(state.toJson()), state);
@@ -91,19 +93,22 @@ void main() {
     expect(decoded.targets.values.single.romPath, contains('Star Pilot.z64'));
   });
 
-  test('HomeLayout keeps empty slots and round-trips separately from library', () {
-    const home = HomeLayout(slots: ['a', null, 'b', null]);
-    expect(home.unpinning('a').slots, [null, null, 'b', null]);
-    expect(home.pinning('c').slots, ['a', 'c', 'b', null]);
-    final state = HomeDeckState(
-      apps: [
-        const AppRecord(id: 'a', displayName: 'A', position: 0),
-        const AppRecord(id: 'b', displayName: 'B', position: 1),
-      ],
-      home: home,
-    );
-    expect(HomeDeckState.fromJson(state.toJson()).home, home);
-  });
+  test(
+    'HomeLayout keeps empty slots and round-trips separately from library',
+    () {
+      const home = HomeLayout(slots: ['a', null, 'b', null]);
+      expect(home.unpinning('a').slots, [null, null, 'b', null]);
+      expect(home.pinning('c').slots, ['a', 'c', 'b', null]);
+      final state = HomeDeckState(
+        apps: [
+          const AppRecord(id: 'a', displayName: 'A', position: 0),
+          const AppRecord(id: 'b', displayName: 'B', position: 1),
+        ],
+        home: home,
+      );
+      expect(HomeDeckState.fromJson(state.toJson()).home, home);
+    },
+  );
 
   test('legacy JSON without kind defaults to native', () {
     final decoded = AppRecord.fromJson({

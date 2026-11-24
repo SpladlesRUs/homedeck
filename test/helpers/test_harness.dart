@@ -8,6 +8,7 @@ import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
+import 'package:homedeck/core/menu_music.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
@@ -43,7 +44,8 @@ class MemoryWindowsIo implements WindowsIo {
   final Set<String> existing;
   final Set<String> readyVolumes;
   final Set<String> permissionDenied;
-  final launches = <({String executable, List<String> arguments, bool shortcut})>[];
+  final launches =
+      <({String executable, List<String> arguments, bool shortcut})>[];
 
   @override
   Future<bool> fileExists(String path) async => existing.contains(path);
@@ -86,6 +88,8 @@ class Harness {
     required this.windowMode,
     required this.gamepad,
     required this.deviceStatus,
+    required this.music,
+    required this.musicPlayer,
   });
 
   final Directory directory;
@@ -95,6 +99,8 @@ class Harness {
   final MemoryWindowModeController windowMode;
   final MemoryGamepadSource gamepad;
   final MemoryDeviceStatus deviceStatus;
+  final MenuMusicController music;
+  final SilentMenuMusicPlayer musicPlayer;
 }
 
 Future<Harness> createHarness({
@@ -113,6 +119,16 @@ Future<Harness> createHarness({
     seedDemo: seedDemo,
   );
   await controller.load();
+  final musicPlayer = SilentMenuMusicPlayer();
+  final music = MenuMusicController(
+    player: musicPlayer,
+    randomInt: (max) => 0,
+    prefs: controller.state.audio,
+    persist: controller.setAudioPrefs,
+    fadeIn: Duration.zero,
+    fadeOut: Duration.zero,
+  );
+  addTearDown(music.dispose);
   return Harness(
     directory: directory,
     paths: paths,
@@ -121,6 +137,8 @@ Future<Harness> createHarness({
     windowMode: MemoryWindowModeController(),
     gamepad: MemoryGamepadSource(),
     deviceStatus: MemoryDeviceStatus(batteryPercent: 100),
+    music: music,
+    musicPlayer: musicPlayer,
   );
 }
 
@@ -155,6 +173,7 @@ Future<void> pumpHomeDeck(WidgetTester tester, Harness harness) async {
       windowMode: harness.windowMode,
       gamepad: harness.gamepad,
       deviceStatus: harness.deviceStatus,
+      music: harness.music,
     ),
   );
   await tester.pump();
@@ -164,7 +183,8 @@ Future<void> pumpHomeDeck(WidgetTester tester, Harness harness) async {
 LaunchTarget windowsTarget(String value, {LaunchTargetKind? kind}) {
   return LaunchTarget(
     platform: AppPlatform.windows,
-    kind: kind ??
+    kind:
+        kind ??
         (p.windows.extension(value).toLowerCase() == '.lnk'
             ? LaunchTargetKind.windowsShortcut
             : LaunchTargetKind.windowsExecutable),

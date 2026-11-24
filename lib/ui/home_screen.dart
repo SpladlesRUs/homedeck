@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
+import 'package:homedeck/core/menu_music.dart';
 import 'package:homedeck/core/models/app_record.dart';
 import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
@@ -28,6 +29,7 @@ class HomeScreen extends StatefulWidget {
     required this.windowMode,
     this.gamepad,
     this.deviceStatus,
+    this.music,
   });
 
   /// Widget tests disable the clock so `pumpAndSettle` can finish.
@@ -40,6 +42,7 @@ class HomeScreen extends StatefulWidget {
   final WindowModeController windowMode;
   final GamepadSource? gamepad;
   final DeviceStatus? deviceStatus;
+  final MenuMusicController? music;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -75,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _library.addListener(_onLibrary);
     _window.addListener(_onLibrary);
+    widget.music?.addListener(_onLibrary);
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -95,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _status.stop();
     _library.removeListener(_onLibrary);
     _window.removeListener(_onLibrary);
+    widget.music?.removeListener(_onLibrary);
     for (final node in _focusNodes.values) {
       node.dispose();
     }
@@ -482,6 +487,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
+    if (outcome is LaunchSuccess) {
+      await widget.music?.duck();
+      return;
+    }
     if (outcome is LaunchFailure) {
       setState(() {
         _failure = outcome;
@@ -829,10 +838,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     SettingsStub(
                       windowMode: _window,
                       scale: metrics.scale,
+                      musicEnabled:
+                          widget.music?.musicEnabled ??
+                          _library.state.audio.musicEnabled,
+                      musicVolume:
+                          widget.music?.musicVolume ??
+                          _library.state.audio.musicVolume,
                       onClose: () => setState(() => _settingsOpen = false),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,
-                      onExit: () => _window.close(),
+                      onMusicEnabled: (enabled) {
+                        final music = widget.music;
+                        if (music != null) {
+                          music.setEnabled(enabled);
+                        } else {
+                          _library.setAudioPrefs(
+                            _library.state.audio.copyWith(
+                              musicEnabled: enabled,
+                            ),
+                          );
+                        }
+                      },
+                      onMusicVolume: (volume) {
+                        final music = widget.music;
+                        if (music != null) {
+                          music.setVolume(volume);
+                        } else {
+                          _library.setAudioPrefs(
+                            _library.state.audio.copyWith(musicVolume: volume),
+                          );
+                        }
+                      },
+                      onExit: () async {
+                        await widget.music?.fadeOutAndStop();
+                        await _window.close();
+                      },
                     ),
                   if (_detailsOpen)
                     _DetailsSheet(

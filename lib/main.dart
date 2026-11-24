@@ -1,12 +1,16 @@
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 import 'package:homedeck/app.dart';
 import 'package:homedeck/core/app_paths.dart';
 import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/library_controller.dart';
+import 'package:homedeck/core/menu_music.dart';
 import 'package:homedeck/core/preferences_repository.dart';
 import 'package:homedeck/core/native_window_mode.dart';
 import 'package:homedeck/platform/select_adapter.dart';
 import 'package:homedeck/platform/select_device.dart';
+import 'package:homedeck/platform/select_menu_music.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Off in release. Pass `--dart-define=HOMEDECK_SEED_DEMO=true` in debug/tests.
@@ -26,12 +30,19 @@ Future<void> main() async {
   );
   await controller.load();
   final windowMode = NativeWindowModeController();
+  final music = MenuMusicController(
+    player: selectMenuMusicPlayer(),
+    randomInt: Random().nextInt,
+    prefs: controller.state.audio,
+    persist: controller.setAudioPrefs,
+  );
   runApp(
     HomeDeckApp(
       controller: controller,
       windowMode: windowMode,
       gamepad: selectGamepadSource(),
       deviceStatus: selectDeviceStatus(),
+      music: music,
     ),
   );
 }

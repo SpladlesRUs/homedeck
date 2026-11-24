@@ -6,6 +6,7 @@ import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/library_groups.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/app_record.dart';
+import 'package:homedeck/core/models/audio_prefs.dart';
 import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/home_layout.dart';
@@ -197,6 +198,10 @@ class LibraryController extends ChangeNotifier {
 
   Future<void> setWindowPrefs(WindowPrefs prefs) async {
     await _commit(_state.copyWith(window: prefs));
+  }
+
+  Future<void> setAudioPrefs(AudioPrefs prefs) async {
+    await _commit(_state.copyWith(audio: prefs));
   }
 
   Future<void> _commit(HomeDeckState next) async {

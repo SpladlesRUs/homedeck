@@ -13,8 +13,9 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
 ```
 
 - **UI** (`lib/ui`) renders the living-room home screen. Widgets talk to
-  `LibraryController`, `WindowModeController`, `GamepadSource`, and
-  `DeviceStatus`. They never import a concrete platform adapter.
+  `LibraryController`, `WindowModeController`, `GamepadSource`,
+  `DeviceStatus`, and `MenuMusicController`. They never import a concrete
+  platform adapter.
 - **Core** (`lib/core`) owns the library model, JSON persistence under
   `path_provider`'s `getApplicationSupportDirectory()`, and the icon cache.
   HomeDeck-owned files are referenced with **relative** paths. User-selected
@@ -46,6 +47,11 @@ launch). Steam library and ROM-folder auto-discovery are **not** implemented;
 
 `PreferencesRepository` writes `library.json` in the application support
 directory. `IconCache` writes PNG tiles under `icons/` in that same tree.
+Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
+starts at a random index, then walks the playlist in order and wraps.
+`AudioPrefs` (on/off + volume) persist in `library.json`. Windows playback
+uses `audioplayers`; load failures are silent. Music ducks when a game
+launches or the window blurs, and fades back in on focus.
 
 All path joins go through `package:path` (`p.join`, `p.windows.*`). The code
 does not concatenate separators or hard-code home directories, usernames, or

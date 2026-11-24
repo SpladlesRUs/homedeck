@@ -1,4 +1,5 @@
 import 'package:homedeck/core/models/app_record.dart';
+import 'package:homedeck/core/models/audio_prefs.dart';
 import 'package:homedeck/core/models/home_layout.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
 
@@ -47,6 +48,7 @@ class HomeDeckState {
     this.layout = const TileLayout(),
     this.home = const HomeLayout(),
     this.window = const WindowPrefs(),
+    this.audio = const AudioPrefs(),
   });
 
   static const currentVersion = 1;
@@ -56,6 +58,7 @@ class HomeDeckState {
   final TileLayout layout;
   final HomeLayout home;
   final WindowPrefs window;
+  final AudioPrefs audio;
 
   List<AppRecord> get orderedApps {
     final byId = {for (final app in apps) app.id: app};
@@ -78,6 +81,7 @@ class HomeDeckState {
     TileLayout? layout,
     HomeLayout? home,
     WindowPrefs? window,
+    AudioPrefs? audio,
   }) {
     return HomeDeckState(
       version: version ?? this.version,
@@ -85,6 +89,7 @@ class HomeDeckState {
       layout: layout ?? this.layout,
       home: home ?? this.home,
       window: window ?? this.window,
+      audio: audio ?? this.audio,
     );
   }
 
@@ -94,6 +99,7 @@ class HomeDeckState {
     'layout': layout.toJson(),
     'home': home.toJson(),
     'window': window.toJson(),
+    'audio': audio.toJson(),
   };
 
   factory HomeDeckState.fromJson(Map<String, Object?> json) {
@@ -103,26 +109,30 @@ class HomeDeckState {
       for (final entry in rawApps) {
         if (entry is Map) {
           apps.add(
-            AppRecord.fromJson(entry.map((key, value) => MapEntry('$key', value))),
+            AppRecord.fromJson(
+              entry.map((key, value) => MapEntry('$key', value)),
+            ),
           );
         }
       }
     }
     final rawLayout = json['layout'];
     var layout = rawLayout is Map
-        ? TileLayout.fromJson(rawLayout.map((key, value) => MapEntry('$key', value)))
+        ? TileLayout.fromJson(
+            rawLayout.map((key, value) => MapEntry('$key', value)),
+          )
         : TileLayout(
             orderedIds: List<String>.unmodifiable(
-              apps.map((app) => app.id).toList()
-                ..sort((a, b) {
-                  final left = apps.firstWhere((app) => app.id == a).position;
-                  final right = apps.firstWhere((app) => app.id == b).position;
-                  return left.compareTo(right);
-                }),
+              apps.map((app) => app.id).toList()..sort((a, b) {
+                final left = apps.firstWhere((app) => app.id == a).position;
+                final right = apps.firstWhere((app) => app.id == b).position;
+                return left.compareTo(right);
+              }),
             ),
           );
     if (layout.orderedIds.isEmpty && apps.isNotEmpty) {
-      final sorted = [...apps]..sort((a, b) => a.position.compareTo(b.position));
+      final sorted = [...apps]
+        ..sort((a, b) => a.position.compareTo(b.position));
       layout = TileLayout(
         orderedIds: List<String>.unmodifiable(sorted.map((app) => app.id)),
       );
@@ -135,11 +145,10 @@ class HomeDeckState {
       );
     } else if (layout.orderedIds.isNotEmpty) {
       // Legacy library.json had a single packed layout that was Home.
-      home = HomeLayout(
-        slots: List<String?>.unmodifiable(layout.orderedIds),
-      );
+      home = HomeLayout(slots: List<String?>.unmodifiable(layout.orderedIds));
     }
     final rawWindow = json['window'];
+    final rawAudio = json['audio'];
     return HomeDeckState(
       version: json['version'] as int? ?? currentVersion,
       apps: List<AppRecord>.unmodifiable(apps),
@@ -150,6 +159,11 @@ class HomeDeckState {
               rawWindow.map((key, value) => MapEntry('$key', value)),
             )
           : const WindowPrefs(),
+      audio: rawAudio is Map
+          ? AudioPrefs.fromJson(
+              rawAudio.map((key, value) => MapEntry('$key', value)),
+            )
+          : const AudioPrefs(),
     );
   }
 
@@ -160,17 +174,13 @@ class HomeDeckState {
         other.layout == layout &&
         other.home == home &&
         other.window == window &&
+        other.audio == audio &&
         _appsEqual(other.apps, apps);
   }
 
   @override
-  int get hashCode => Object.hash(
-    version,
-    layout,
-    home,
-    window,
-    Object.hashAll(apps),
-  );
+  int get hashCode =>
+      Object.hash(version, layout, home, window, audio, Object.hashAll(apps));
 }
 
 bool _appsEqual(List<AppRecord> a, List<AppRecord> b) {

@@ -12,6 +12,10 @@ class SettingsStub extends StatelessWidget {
     required this.onClose,
     required this.onToggleFullscreen,
     required this.onToggleBorderless,
+    this.musicEnabled = true,
+    this.musicVolume = 0.35,
+    this.onMusicEnabled,
+    this.onMusicVolume,
     this.onExit,
   });
 
@@ -20,6 +24,10 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onToggleFullscreen;
   final VoidCallback onToggleBorderless;
+  final bool musicEnabled;
+  final double musicVolume;
+  final ValueChanged<bool>? onMusicEnabled;
+  final ValueChanged<double>? onMusicVolume;
   final VoidCallback? onExit;
 
   @override
@@ -49,124 +57,168 @@ class SettingsStub extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(32 * scale.clamp(0.8, 1.3)),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.86,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const HomeDeckMark(size: 56),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Settings',
-                            style: TextStyle(
-                              color: HomeDeckColors.ink,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 32 * scale,
-                            ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: onClose,
-                            icon: const Icon(Icons.close, color: HomeDeckColors.ink),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _ToggleRow(
-                        label: 'Fullscreen',
-                        hint: 'F11',
-                        value: windowMode.isFullscreen,
-                        onChanged: (_) => onToggleFullscreen(),
-                      ),
-                      _ToggleRow(
-                        label: 'Borderless',
-                        hint: 'Hide the window frame',
-                        value: windowMode.isBorderless,
-                        onChanged: (_) => onToggleBorderless(),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Milestone 1',
-                        style: TextStyle(
-                          color: HomeDeckColors.cyanDeep,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18 * scale,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Apps are added manually. Installed-app discovery is not enabled yet.',
-                        style: TextStyle(
-                          color: HomeDeckColors.ink,
-                          fontSize: 18,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'The library can hold games, emulators, and general applications. Scope is still an open product question.',
-                        style: TextStyle(
-                          color: HomeDeckColors.muted,
-                          fontSize: 16,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Center(
-                        child: Column(
-                          children: [
-                            const HomeDeckMark(size: 96),
-                            const SizedBox(height: 8),
-                            Text(
-                              'HomeDeck',
-                              style: TextStyle(
-                                color: HomeDeckColors.ink,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 22 * scale,
+                          Row(
+                            children: [
+                              const HomeDeckMark(size: 56),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Settings',
+                                style: TextStyle(
+                                  color: HomeDeckColors.ink,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 32 * scale,
+                                ),
                               ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: onClose,
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: HomeDeckColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          _ToggleRow(
+                            label: 'Fullscreen',
+                            hint: 'F11',
+                            value: windowMode.isFullscreen,
+                            onChanged: (_) => onToggleFullscreen(),
+                          ),
+                          _ToggleRow(
+                            label: 'Borderless',
+                            hint: 'Hide the window frame',
+                            value: windowMode.isBorderless,
+                            onChanged: (_) => onToggleBorderless(),
+                          ),
+                          _ToggleRow(
+                            key: const Key('settings-music-enabled'),
+                            label: 'Menu music',
+                            hint: 'Playlist of ten instrumentals',
+                            value: musicEnabled,
+                            onChanged: onMusicEnabled ?? (_) {},
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 4,
+                              right: 4,
+                              bottom: 8,
                             ),
-                            const Text(
-                              'Version 1.0.0',
-                              style: TextStyle(color: HomeDeckColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Wrap(
-                          spacing: 12,
-                          children: [
-                            if (onExit != null)
-                              TextButton(
-                                key: const Key('settings-exit'),
-                                onPressed: onExit,
-                                child: const Text(
-                                  'Exit  ·  Power',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Volume',
                                   style: TextStyle(
-                                    color: HomeDeckColors.danger,
+                                    color: HomeDeckColors.ink,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 18,
                                   ),
                                 ),
-                              ),
-                            TextButton(
-                              onPressed: onClose,
-                              child: const Text(
-                                'Close  ·  Esc',
-                                style: TextStyle(
-                                  color: HomeDeckColors.cyanDeep,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                                Slider(
+                                  key: const Key('settings-music-volume'),
+                                  value: musicVolume.clamp(0.0, 1.0),
+                                  onChanged: musicEnabled
+                                      ? onMusicVolume
+                                      : null,
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Milestone 1',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Apps are added manually. Installed-app discovery is not enabled yet.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question.',
+                            style: TextStyle(
+                              color: HomeDeckColors.muted,
+                              fontSize: 16,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Center(
+                            child: Column(
+                              children: [
+                                const HomeDeckMark(size: 96),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'HomeDeck',
+                                  style: TextStyle(
+                                    color: HomeDeckColors.ink,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 22 * scale,
+                                  ),
+                                ),
+                                const Text(
+                                  'Version 1.0.0',
+                                  style: TextStyle(color: HomeDeckColors.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Wrap(
+                              spacing: 12,
+                              children: [
+                                if (onExit != null)
+                                  TextButton(
+                                    key: const Key('settings-exit'),
+                                    onPressed: onExit,
+                                    child: const Text(
+                                      'Exit  ·  Power',
+                                      style: TextStyle(
+                                        color: HomeDeckColors.danger,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                TextButton(
+                                  onPressed: onClose,
+                                  child: const Text(
+                                    'Close  ·  Esc',
+                                    style: TextStyle(
+                                      color: HomeDeckColors.cyanDeep,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -180,6 +232,7 @@ class SettingsStub extends StatelessWidget {
 
 class _ToggleRow extends StatelessWidget {
   const _ToggleRow({
+    super.key,
     required this.label,
     required this.hint,
     required this.value,

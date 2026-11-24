@@ -36,7 +36,9 @@ flutter pub get
 flutter run -d windows
 ```
 
-`F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome.
+`F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome
+and menu-music on/off plus volume. Ten instrumental tracks start at a random
+song and loop as a playlist; music ducks while a launched game has focus.
 
 Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
 `steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`

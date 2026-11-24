@@ -101,6 +101,12 @@ Unpinning from Home never deletes the library entry. Demo tiles are seeded only
 with `--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults
 stay empty.
 
+Menu music is a ten-track instrumental playlist (Suno Pro, commercial use OK).
+On startup a random track starts, then the list plays in order and wraps.
+Default volume is modest (0.35) with a fade-in. Launching a game or losing
+window focus ducks/pauses; focus fades music back in; exit fades out. Settings
+has Music on/off and a volume slider. UI click SFX are not in this pass.
+
 Gamepad input on Windows polls XInput directly (D-pad, A, B, LB, RB, Start,
 Back) so buttons still work when Flutter does not deliver gamepad keys. Keyboard
 arrows / Enter / Esc remain wired through Shortcuts. Battery uses
