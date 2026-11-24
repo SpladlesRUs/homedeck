@@ -172,15 +172,13 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
-      final uri = target.kind == LaunchTargetKind.windowsUri ||
-          WindowsPaths.isLaunchUri(target.value);
-      final shortcut = !uri &&
-          (target.kind == LaunchTargetKind.windowsShortcut ||
-              WindowsPaths.isShortcut(target.value));
+      // Always shell-start on Windows. Direct Process.start(detached) often
+      // fails to show GUI targets (notepad harness on Ally) from a Flutter
+      // runner; `cmd /c start` is reliable for .exe, .lnk, and store URIs.
       await _io.startDetached(
         executable: target.value,
         arguments: target.resolvedArguments,
-        shortcut: shortcut || uri,
+        shortcut: true,
       );
       return const LaunchSuccess();
     } on FileSystemException catch (error) {
