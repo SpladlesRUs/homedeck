@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 /// Windows path helpers that never hard-code a drive, user, or separator.
 ///
-/// Uses a Windows [p.Context] so the same logic can be unit-tested on Linux.
+/// Uses a Windows [p.Context] so the same logic can be unit-tested on any host.
 class WindowsPaths {
   WindowsPaths._();
 
@@ -26,7 +26,7 @@ class WindowsPaths {
   static final _driveRoot = RegExp(r'^[A-Za-z]:[\\/]');
 
   /// True for a Windows drive (`X:\...`) or UNC share (`\\host\share\...`).
-  /// Does not treat POSIX paths as volumes, so the shared UI can run on Linux.
+  /// POSIX paths are not treated as volumes.
   static bool looksLikeVolumePath(String raw) {
     final normalized = normalize(raw);
     if (_driveRoot.hasMatch(normalized)) {

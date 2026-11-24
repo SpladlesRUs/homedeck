@@ -91,16 +91,3 @@ Keyboard:
 - Ctrl+, opens the settings stub
 
 The layout is designed for 1280×720, 1920×1080, and 3840×2160.
-
-## Linux desktop target (shared UI only)
-
-Linux is enabled so developers can run and screenshot the shared interface.
-It still uses `WindowsAdapter` contracts (manual `.exe`/`.lnk` add, generated
-icons, validation). It does not launch Linux applications.
-
-```bash
-flutter run -d linux --dart-define=HOMEDECK_SEED_DEMO=true
-```
-
-`HOMEDECK_SEED_DEMO` seeds colorful demo tiles for screenshots, including one
-unavailable target used to show launch-error feedback.

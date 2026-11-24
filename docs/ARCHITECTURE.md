@@ -66,8 +66,8 @@ install folders.
    traversal (already intent-based), and launch behavior on SteamOS. Do not
    assume a nested desktop session or a particular home path.
 
-The Linux Flutter target is enabled in this repository only so the **shared UI**
-can run in a Linux VM. Milestone 1 does **not** implement Linux launch.
+Milestone 1 ships the Windows Flutter target only. Linux launch and a Linux
+desktop runner are not in this tree.
 
 ## Window chrome
 

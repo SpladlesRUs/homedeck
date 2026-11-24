@@ -8,8 +8,6 @@ import 'package:homedeck/core/native_window_mode.dart';
 import 'package:homedeck/platform/select_adapter.dart';
 import 'package:path_provider/path_provider.dart';
 
-const seedDemo = bool.fromEnvironment('HOMEDECK_SEED_DEMO');
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final support = await getApplicationSupportDirectory();
@@ -20,7 +18,6 @@ Future<void> main() async {
     adapter: selectPlatformAdapter(),
     preferences: preferences,
     icons: icons,
-    seedDemo: seedDemo,
   );
   await controller.load();
   final windowMode = NativeWindowModeController();

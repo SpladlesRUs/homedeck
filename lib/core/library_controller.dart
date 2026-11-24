@@ -1,17 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
-import 'package:homedeck/core/generated_icon.dart';
 import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/app_record.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
-import 'package:homedeck/core/models/tile_layout.dart';
 import 'package:homedeck/core/preferences_repository.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 typedef IdFactory = String Function();
@@ -23,7 +20,6 @@ class LibraryController extends ChangeNotifier {
     required PreferencesRepository preferences,
     required IconCache icons,
     IdFactory? idFactory,
-    this.seedDemo = false,
   }) : _adapter = adapter,
        _preferences = preferences,
        _icons = icons,
@@ -33,7 +29,6 @@ class LibraryController extends ChangeNotifier {
   final PreferencesRepository _preferences;
   final IconCache _icons;
   final IdFactory _idFactory;
-  final bool seedDemo;
 
   HomeDeckState _state = const HomeDeckState();
   bool _loaded = false;
@@ -49,10 +44,6 @@ class LibraryController extends ChangeNotifier {
   Future<void> load() async {
     await _icons.ensureReady();
     _state = await _preferences.load();
-    if (seedDemo && _state.apps.isEmpty) {
-      _state = await _buildDemoState();
-      await _preferences.save(_state);
-    }
     _loaded = true;
     notifyListeners();
   }
@@ -179,78 +170,4 @@ class LibraryController extends ChangeNotifier {
   }
 
   File? iconFile(AppRecord app) => _icons.absoluteFile(app.iconRef);
-
-  Future<HomeDeckState> _buildDemoState() async {
-    const samples = <({String name, String file, bool missing})>[
-      (name: 'Arcade Cabinet', file: 'Arcade Cabinet.exe', missing: false),
-      (name: 'Star Pilot', file: 'Star Pilot.exe', missing: false),
-      (name: 'Photo Deck', file: 'フォトデッキ.exe', missing: false),
-      (name: 'Workshop', file: 'Workshop Tools.exe', missing: false),
-      (name: 'Missing Drive Game', file: 'Vanished.exe', missing: true),
-    ];
-    final records = <AppRecord>[];
-    final ids = <String>[];
-    for (var i = 0; i < samples.length; i++) {
-      final sample = samples[i];
-      final id = _idFactory();
-      ids.add(id);
-      final iconRef = await _icons.writePng(
-        id,
-        await generateInitialIcon(displayName: sample.name, key: id),
-      );
-      final targetPath = sample.missing
-          ? WindowsDemoPaths.missingVolumePath()
-          : await WindowsDemoPaths.materialize(
-              supportRoot: _icons.paths.supportRoot,
-              fileName: sample.file,
-            );
-      records.add(
-        AppRecord(
-          id: id,
-          displayName: sample.name,
-          iconRef: iconRef,
-          position: i,
-          favorite: i == 1,
-          category: i == 0 ? 'games' : null,
-          targets: {
-            AppPlatform.windows: LaunchTarget(
-              platform: AppPlatform.windows,
-              kind: LaunchTargetKind.windowsExecutable,
-              value: targetPath,
-            ),
-          },
-        ),
-      );
-    }
-    return HomeDeckState(
-      apps: List<AppRecord>.unmodifiable(records),
-      layout: TileLayout(orderedIds: List<String>.unmodifiable(ids)),
-    );
-  }
-}
-
-/// Demo-only helpers so the shared UI can be screenshotted on Linux.
-class WindowsDemoPaths {
-  static Future<String> materialize({
-    required String supportRoot,
-    required String fileName,
-  }) async {
-    final dir = Directory(p.join(supportRoot, 'demo_targets'));
-    await dir.create(recursive: true);
-    final file = File(p.join(dir.path, fileName));
-    if (!await file.exists()) {
-      await file.writeAsString('HomeDeck demo placeholder', flush: true);
-    }
-    return file.path;
-  }
-
-  /// A Windows UNC path that is not expected to exist on this device.
-  /// Uses a synthetic host name rather than a hard-coded drive letter.
-  static String missingVolumePath() {
-    return p.windows.join(
-      r'\\unavailable-volume\HomeDeck',
-      'Unavailable',
-      'Vanished.exe',
-    );
-  }
 }

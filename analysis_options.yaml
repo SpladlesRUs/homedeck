@@ -13,7 +13,6 @@ analyzer:
   exclude:
     - build/**
     - windows/**
-    - linux/**
 
 linter:
   rules:
