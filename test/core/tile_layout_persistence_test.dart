@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,44 @@ void main() {
     );
     expect(controller.apps, isEmpty);
     expect(File(p.join(blocker.path, 'HomeDeck', 'library.json')).existsSync(), isFalse);
+  });
+
+  test('load seeds library.json when missing', () async {
+    final harness = await createHarness();
+    final file = harness.paths.libraryJsonFile();
+    if (file.existsSync()) {
+      file.deleteSync();
+    }
+    final reloaded = LibraryController(
+      adapter: FakePlatformAdapter(),
+      preferences: PreferencesRepository(harness.paths),
+      icons: IconCache(harness.paths),
+    );
+    await reloaded.load();
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), greaterThan(0));
+    expect(reloaded.apps, isEmpty);
+  });
+
+  test('save round-trip keeps non-empty apps on disk', () async {
+    final harness = await createHarness();
+    await harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final file = harness.paths.libraryJsonFile();
+    expect(file.existsSync(), isTrue);
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    final apps = decoded['apps'] as List;
+    expect(apps, isNotEmpty);
+    final home = decoded['home'] as Map;
+    final slots = home['slots'] as List;
+    expect(slots.where((slot) => slot != null), isNotEmpty);
   });
 
   test('library layout persists across repository instances', () async {

@@ -25,6 +25,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  win32_.Register(flutter_controller_->engine()->messenger(), this);
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -51,6 +52,15 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
+  // Dart only used FindWindow / window_manager. Toggle via the real HWND and
+  // let Dart sync badge/prefs over the method channel event.
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
+      wparam == VK_F11) {
+    win32_.SetFullscreen(!win32_.IsFullscreen());
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
@@ -58,6 +68,19 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                                                       lparam);
     if (result) {
       return *result;
+    }
+  }
+
+  // Forward unhandled key messages to the Flutter view when the top-level
+  // window received them (Ally harness PostMessage) but focus is elsewhere.
+  if (message == WM_KEYDOWN || message == WM_KEYUP ||
+      message == WM_SYSKEYDOWN || message == WM_SYSKEYUP ||
+      message == WM_CHAR || message == WM_SYSCHAR) {
+    HWND child = flutter_controller_ && flutter_controller_->view()
+                     ? flutter_controller_->view()->GetNativeWindow()
+                     : nullptr;
+    if (child != nullptr && GetFocus() != child) {
+      return SendMessage(child, message, wparam, lparam);
     }
   }
 

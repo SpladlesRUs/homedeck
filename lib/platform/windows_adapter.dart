@@ -172,9 +172,9 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
-      // Always shell-start on Windows. Direct Process.start(detached) often
-      // fails to show GUI targets (notepad harness on Ally) from a Flutter
-      // runner; `cmd /c start` is reliable for .exe, .lnk, and store URIs.
+      // Runner MethodChannel ShellExecuteW first (via DartWindowsIo), then
+      // Dart FFI / CreateProcess / cmd-start. Ally 2417533 Dart-only
+      // ShellExecute never spawned notepad after Enter.
       await _io.startDetached(
         executable: target.value,
         arguments: target.resolvedArguments,

@@ -6,9 +6,10 @@
 
 #include <memory>
 
+#include "homedeck_win32.h"
 #include "win32_window.h"
 
-// A window that does nothing but host a Flutter view.
+// A window that hosts a Flutter view and HomeDeck Win32 channels.
 class FlutterWindow : public Win32Window {
  public:
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
@@ -28,6 +29,9 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Ally Phase2: launch + F11 chrome via real HWND (not FindWindow).
+  HomedeckWin32 win32_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
