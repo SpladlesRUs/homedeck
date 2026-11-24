@@ -63,11 +63,7 @@ class ArtBackdrop extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0x66000000),
-                Color(0x99000000),
-                Color(0xCC000000),
-              ],
+              colors: [Color(0x66000000), Color(0x99000000), Color(0xCC000000)],
             ),
           ),
         ),
@@ -405,9 +401,7 @@ class StatusCluster extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
           ),
-          child: ClipOval(
-            child: HomeDeckMark(size: 32 * metrics.scale),
-          ),
+          child: ClipOval(child: HomeDeckMark(size: 32 * metrics.scale)),
         ),
       ],
     );
@@ -420,11 +414,13 @@ class TabDock extends StatelessWidget {
     required this.metrics,
     required this.active,
     required this.onSelect,
+    this.onSearch,
   });
 
   final HomeDeckMetrics metrics;
   final HomeTab active;
   final ValueChanged<HomeTab> onSelect;
+  final VoidCallback? onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -482,6 +478,25 @@ class TabDock extends StatelessWidget {
             ),
           SizedBox(width: 10 * metrics.scale),
           const HintBadge(label: 'RB'),
+          if (onSearch != null) ...[
+            SizedBox(width: 10 * metrics.scale),
+            GestureDetector(
+              key: const Key('dock-search'),
+              onTap: onSearch,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.search_rounded,
+                    color: HomeDeckColors.muted,
+                    size: metrics.dockSize * 0.55,
+                  ),
+                  SizedBox(height: 4 * metrics.scale),
+                  const HintBadge(label: 'Y'),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

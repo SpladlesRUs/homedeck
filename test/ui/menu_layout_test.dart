@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import '../helpers/test_harness.dart';
 
 void main() {
-  testWidgets('1280x800 shows an 8x3 grid, glass panel, dock, and chrome', (
+  testWidgets('1280x800 shows paged Home, featured tile, dock, and chrome', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -20,9 +20,12 @@ void main() {
     final harness = await createHarnessForWidgets(tester);
     await pumpHomeDeck(tester, harness);
 
-    expect(find.byType(EmptySlot), findsNWidgets(24));
+    expect(find.byType(EmptySlot), findsNWidgets(15));
     expect(find.byKey(const ValueKey('tile-add')), findsNothing);
-    expect(find.text('Empty slot'), findsOneWidget);
+    expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
+    expect(find.byKey(const Key('home-peek-next')), findsOneWidget);
+    expect(find.byKey(const ValueKey('page-dot-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('page-dot-1')), findsOneWidget);
     expect(find.text('Arcade Cabinet'), findsNothing);
     expect(find.byType(GlassPanel), findsOneWidget);
     expect(find.byType(TabDock), findsOneWidget);
@@ -37,7 +40,7 @@ void main() {
     expect(find.text('(+) Menu'), findsOneWidget);
   });
 
-  testWidgets('demo seed fills the 8x3 grid only when enabled', (tester) async {
+  testWidgets('demo seed fills Home pins and Library folders', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -46,15 +49,23 @@ void main() {
     final harness = await createHarnessForWidgets(tester, seedDemo: true);
     await pumpHomeDeck(tester, harness);
 
-    expect(find.text('Arcade Cabinet'), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.text('Arcade Cabinet'),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(EmptySlot), findsWidgets);
     expect(harness.controller.apps, hasLength(24));
     expect(harness.controller.home.contains('app-24'), isTrue);
     expect(harness.controller.home.contains('app-4'), isFalse);
     await tester.tap(find.byKey(const Key('tab-allApps')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('tile-app-24')), findsOneWidget);
+    expect(find.byKey(const Key('library-folders')), findsOneWidget);
     expect(find.text('SNES'), findsOneWidget);
     expect(find.text('Nintendo 64'), findsOneWidget);
     await tester.tap(find.byKey(const Key('library-mode-store')));
@@ -65,7 +76,7 @@ void main() {
     expect(find.text('SNES'), findsOneWidget);
   });
 
-  testWidgets('arrow keys wrap to the next page after 24 tiles', (
+  testWidgets('arrow keys page past the edge onto a visible tile', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -82,14 +93,15 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tile-app-1')));
     await tester.pump();
-    for (var i = 0; i < 23; i++) {
+    for (var i = 0; i < 4; i++) {
       await sendArrow(tester, LogicalKeyboardKey.arrowRight);
     }
-    expect(focusOn(tester, const ValueKey('tile-app-24')), isTrue);
+    expect(focusOn(tester, const ValueKey('tile-app-5')), isTrue);
 
     await sendArrow(tester, LogicalKeyboardKey.arrowRight);
-    expect(focusOn(tester, const ValueKey('tile-app-25')), isTrue);
-    expect(find.byKey(const ValueKey('tile-app-25')), findsOneWidget);
+    expect(focusOn(tester, const ValueKey('tile-app-16')), isTrue);
+    expect(find.byKey(const ValueKey('tile-app-16')), findsOneWidget);
+    expect(find.byKey(const Key('home-peek-prev')), findsOneWidget);
   });
 
   testWidgets('gamepad D-pad, A, B, LB/RB drive the same intents', (
@@ -240,8 +252,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('tab-allApps')));
     await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-native')));
+    await tester.pump();
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
-    expect(find.text('Tile 1'), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
   });
 
   testWidgets('Library menu pins a game onto an empty Home slot', (
@@ -262,8 +276,10 @@ void main() {
     await pumpHomeDeck(tester, harness);
 
     expect(find.byKey(const ValueKey('tile-app-1')), findsNothing);
-    expect(find.byType(EmptySlot), findsNWidgets(24));
+    expect(find.byType(EmptySlot), findsNWidgets(15));
     await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-native')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('tile-app-1')));
     await tester.pump();
@@ -274,10 +290,12 @@ void main() {
     await tester.pump();
     expect(harness.controller.isOnHome('app-1'), isTrue);
 
+    harness.gamepad.emit(GamepadButton.b);
+    await tester.pump();
     await tester.tap(find.byKey(const Key('tab-home')));
     await tester.pump();
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
-    expect(find.byType(EmptySlot), findsNWidgets(23));
+    expect(find.byType(EmptySlot), findsNWidgets(14));
   });
 
   testWidgets('Home Move mode rearranges tiles and keeps empty slots', (
@@ -304,7 +322,7 @@ void main() {
     await tester.pump();
     expect(harness.controller.home[0], isNull);
     expect(harness.controller.home[1], 'app-1');
-    expect(find.byType(EmptySlot), findsNWidgets(23));
+    expect(find.byType(EmptySlot), findsNWidgets(14));
 
     harness.gamepad.emit(GamepadButton.a);
     await tester.pump();
@@ -322,5 +340,143 @@ void main() {
     harness.deviceStatus.batteryPercent = null;
     await pumpHomeDeck(tester, harness);
     expect(find.byKey(const Key('battery-percent')), findsNothing);
+  });
+
+  testWidgets('Library folders open to a 3-column interior with a hero', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump();
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tile-app-5')), findsOneWidget);
+    expect(find.byType(TabDock), findsNothing);
+
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
+
+    harness.gamepad.emit(GamepadButton.lb);
+    await tester.pump();
+    expect(find.byKey(const Key('library-folders')), findsOneWidget);
+  });
+
+  testWidgets('Y opens global search across the library', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    harness.gamepad.emit(GamepadButton.y);
+    await tester.pump();
+    expect(find.byKey(const Key('global-search')), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('search-field')), 'Star');
+    await tester.pump();
+    expect(find.text('Star Pilot'), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.b);
+    await tester.pump();
+    expect(find.byKey(const Key('global-search')), findsNothing);
+  });
+
+  testWidgets('title pill follows the focused folder and game', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.text('Music Box'),
+      ),
+      findsOneWidget,
+    );
+    harness.gamepad.emit(GamepadButton.b);
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.text('SNES'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Details can add and remove a Library game from Home', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await tester.runAsync(() async {
+      await harness.controller.addRecord(
+        displayName: 'Shelf only',
+        target: windowsTarget(p.join(harness.directory.path, 'Shelf only.exe')),
+      );
+    });
+    await pumpHomeDeck(tester, harness);
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-native')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    harness.gamepad.emit(GamepadButton.back);
+    await tester.pump();
+    expect(find.byKey(const Key('details-add-to-home')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('details-add-to-home')));
+    await tester.pump();
+    expect(harness.controller.isOnHome('app-1'), isTrue);
+  });
+
+  testWidgets('LB/RB never skip a dock tab', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.text('Games'), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.text('Achievements'), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.text('Friends'), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.byKey(const Key('library-folders')), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
   });
 }

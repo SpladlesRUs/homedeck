@@ -5,19 +5,24 @@ import 'package:flutter/services.dart';
 import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
+import 'package:homedeck/core/library_groups.dart';
 import 'package:homedeck/core/menu_music.dart';
 import 'package:homedeck/core/models/app_record.dart';
 import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
+import 'package:homedeck/core/ui_clicks.dart';
 import 'package:homedeck/core/window_mode.dart';
 import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
+import 'package:homedeck/ui/home_pager.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
 import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
+import 'package:homedeck/ui/now_playing_tile.dart';
+import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
 import 'package:homedeck/ui/tile_menu.dart';
 import 'package:material_ui/material_ui.dart';
@@ -57,16 +62,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _addOpen = false;
   bool _menuOpen = false;
   bool _chipsFocused = false;
+  bool _searchOpen = false;
+  bool _dockForced = false;
   LibraryGroupMode _libraryMode = LibraryGroupMode.console;
+  String? _folderTitle;
   LaunchFailure? _failure;
   String? _failureApp;
   String? _pendingRemoveId;
   int _page = 0;
+  int _extraHomePages = 0;
   HomeTab _tab = HomeTab.home;
   Timer? _clock;
   DateTime _now = HomeScreen.clock();
   DateTime _lastConfirm = DateTime.fromMillisecondsSinceEpoch(0);
   final _focusNodes = <String, FocusNode>{};
+  final _clicks = UiClickPlayer();
 
   LibraryController get _library => widget.controller;
   WindowModeController get _window => widget.windowMode;
@@ -89,6 +99,14 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _focusedId != null) {
+        return;
+      }
+      if (_tab == HomeTab.home) {
+        _focusId(nowPlayingId, click: false);
+      }
+    });
   }
 
   @override
@@ -100,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _library.removeListener(_onLibrary);
     _window.removeListener(_onLibrary);
     widget.music?.removeListener(_onLibrary);
+    unawaited(_clicks.dispose());
     for (final node in _focusNodes.values) {
       node.dispose();
     }
@@ -118,7 +137,17 @@ class _HomeScreenState extends State<HomeScreen> {
       _detailsOpen ||
       _addOpen ||
       _menuOpen ||
+      _searchOpen ||
       _pendingRemoveId != null;
+
+  bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
+
+  bool get _dockVisible => !_insideFolder || _dockForced;
+
+  void _click(UiClick kind) {
+    _clicks.enabled = _library.state.audio.uiClicksEnabled;
+    unawaited(_clicks.play(kind));
+  }
 
   Map<ShortcutActivator, Intent> get _shortcuts => {
     const SingleActivator(LogicalKeyboardKey.enter):
@@ -165,6 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
         const ToggleLibraryGroupIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonX):
         const ToggleLibraryGroupIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyY): const OpenSearchIntent(),
+    const SingleActivator(LogicalKeyboardKey.gameButtonY):
+        const OpenSearchIntent(),
     const SingleActivator(LogicalKeyboardKey.arrowLeft):
         const DirectionalFocusIntent(TraversalDirection.left),
     const SingleActivator(LogicalKeyboardKey.arrowRight):
@@ -257,6 +289,12 @@ class _HomeScreenState extends State<HomeScreen> {
           return null;
         },
       ),
+      OpenSearchIntent: CallbackAction<OpenSearchIntent>(
+        onInvoke: (_) {
+          _openSearch();
+          return null;
+        },
+      ),
       DismissOverlayIntent: CallbackAction<DismissOverlayIntent>(
         onInvoke: (_) {
           _dismiss();
@@ -266,7 +304,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ToggleFavoriteIntent: CallbackAction<ToggleFavoriteIntent>(
         onInvoke: (_) {
           final id = _focusedId;
-          if (id != null && id != addTileId) {
+          if (id != null &&
+              id != addTileId &&
+              !isEmptySlotId(id) &&
+              !isNowPlayingId(id) &&
+              !isFolderFocusId(id)) {
             _library.toggleFavorite(id);
           }
           return null;
@@ -330,9 +372,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _onDirection(TraversalDirection.down, metrics);
       case GamepadButton.x:
         _toggleLibraryGroup();
+      case GamepadButton.y:
+        _openSearch();
       case GamepadButton.lt:
       case GamepadButton.rt:
-      case GamepadButton.y:
         break;
     }
   }
@@ -343,7 +386,35 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final values = HomeTab.values;
     final next = (values.indexOf(_tab) + delta) % values.length;
-    setState(() => _tab = values[next < 0 ? values.length - 1 : next]);
+    _click(UiClick.page);
+    setState(() {
+      _tab = values[next < 0 ? values.length - 1 : next];
+      _dockForced = true;
+      _folderTitle = null;
+      _chipsFocused = false;
+    });
+    _focusFirstForTab();
+  }
+
+  void _focusFirstForTab() {
+    if (_tab == HomeTab.home) {
+      _focusId(nowPlayingId, click: false);
+      return;
+    }
+    if (_tab == HomeTab.allApps) {
+      final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+      final ids = _gridFocusableIds(metrics);
+      if (ids.isNotEmpty) {
+        _focusId(ids.first, click: false);
+      }
+    }
+  }
+
+  void _openSearch() {
+    if (_failure != null || _pendingRemoveId != null) {
+      return;
+    }
+    setState(() => _searchOpen = true);
   }
 
   Future<void> _toggleFullscreen() async {
@@ -385,6 +456,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _library.remove(id);
       return;
     }
+    if (_searchOpen) {
+      return;
+    }
     if (_menuOpen) {
       setState(() => _menuOpen = false);
       return;
@@ -408,11 +482,26 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (_focusedId == addTileId || isEmptySlotId(_focusedId ?? '')) {
+      _click(UiClick.select);
       _addApp();
+      return;
+    }
+    if (isNowPlayingId(_focusedId ?? '')) {
+      _click(UiClick.select);
+      unawaited(widget.music?.togglePause());
+      return;
+    }
+    if (isFolderFocusId(_focusedId ?? '')) {
+      final title = _folderTitleForFocus(_focusedId!);
+      if (title != null) {
+        _click(UiClick.select);
+        _openFolder(title);
+      }
       return;
     }
     final focused = _focusedRecord;
     if (focused != null) {
+      _click(UiClick.select);
       _launch(focused);
     }
   }
@@ -429,24 +518,39 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _pendingRemoveId = null);
       return;
     }
+    if (_searchOpen) {
+      _click(UiClick.back);
+      setState(() => _searchOpen = false);
+      return;
+    }
     if (_menuOpen) {
+      _click(UiClick.back);
       setState(() => _menuOpen = false);
       return;
     }
     if (_settingsOpen) {
+      _click(UiClick.back);
       setState(() => _settingsOpen = false);
       return;
     }
     if (_addOpen) {
+      _click(UiClick.back);
       setState(() => _addOpen = false);
       return;
     }
     if (_detailsOpen) {
+      _click(UiClick.back);
       setState(() => _detailsOpen = false);
       return;
     }
     if (_moveMode) {
+      _click(UiClick.back);
       setState(() => _moveMode = false);
+      return;
+    }
+    if (_insideFolder) {
+      _click(UiClick.back);
+      _closeFolder();
     }
   }
 
@@ -454,7 +558,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
-    if (_focusedRecord == null) {
+    if (_focusedRecord == null &&
+        !isNowPlayingId(_focusedId ?? '') &&
+        !isFolderFocusId(_focusedId ?? '') &&
+        !isEmptySlotId(_focusedId ?? '')) {
       return;
     }
     setState(() => _detailsOpen = true);
@@ -462,20 +569,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppRecord? get _focusedRecord {
     final id = _focusedId;
-    if (id == null || id == addTileId) {
+    if (id == null ||
+        id == addTileId ||
+        isEmptySlotId(id) ||
+        isNowPlayingId(id) ||
+        isFolderFocusId(id)) {
       return null;
     }
     return _library.byId(id);
   }
 
   String get _selectedTitle {
+    if (_searchOpen) {
+      return 'Search';
+    }
     if (_focusedId == addTileId) {
       return 'Add app';
     }
     if (isEmptySlotId(_focusedId ?? '')) {
       return 'Empty slot';
     }
-    return _focusedRecord?.displayName ?? 'HomeDeck';
+    if (isNowPlayingId(_focusedId ?? '')) {
+      return widget.music?.currentTitle ?? 'Now playing';
+    }
+    if (isFolderFocusId(_focusedId ?? '')) {
+      return _folderTitleForFocus(_focusedId!) ?? 'Folder';
+    }
+    if (_insideFolder && _focusedRecord == null) {
+      return _folderTitle ?? 'Library';
+    }
+    return _focusedRecord?.displayName ??
+        _folderTitle ??
+        (_tab == HomeTab.home ? 'Home' : 'HomeDeck');
   }
 
   Future<void> _launch(AppRecord app) async {
@@ -508,7 +633,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _requestRemove() {
     final id = _focusedId;
-    if (id == null || id == addTileId || isEmptySlotId(id)) {
+    if (id == null ||
+        id == addTileId ||
+        isEmptySlotId(id) ||
+        isNowPlayingId(id) ||
+        isFolderFocusId(id)) {
       return;
     }
     if (_tab == HomeTab.home) {
@@ -516,6 +645,55 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _pendingRemoveId = id);
+  }
+
+  void _openFolder(String title) {
+    final section = _sectionByTitle(title);
+    setState(() {
+      _folderTitle = title;
+      _dockForced = false;
+      _chipsFocused = false;
+      if (section != null && section.apps.isNotEmpty) {
+        _focusedId = section.apps.first.id;
+      }
+    });
+    final id = _focusedId;
+    if (id != null) {
+      _nodeFor(id).requestFocus();
+    }
+  }
+
+  void _closeFolder() {
+    final title = _folderTitle;
+    setState(() {
+      _folderTitle = null;
+      _dockForced = false;
+      if (title != null) {
+        _focusedId = folderFocusId(title);
+      }
+    });
+    final id = _focusedId;
+    if (id != null) {
+      _nodeFor(id).requestFocus();
+    }
+  }
+
+  LibrarySection? _sectionByTitle(String title) {
+    for (final section in _library.librarySections(_libraryMode)) {
+      if (section.title == title) {
+        return section;
+      }
+    }
+    return null;
+  }
+
+  String? _folderTitleForFocus(String id) {
+    for (final section in _library.librarySections(_libraryMode)) {
+      if (folderFocusId(section.title) == id) {
+        return section.title;
+      }
+    }
+    return null;
   }
 
   void _onReorderDrop(String draggedId, String ontoId) {
@@ -533,13 +711,20 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (_tab != HomeTab.allApps) {
-      setState(() => _tab = HomeTab.allApps);
+      setState(() {
+        _tab = HomeTab.allApps;
+        _folderTitle = null;
+      });
+      return;
+    }
+    if (_insideFolder) {
       return;
     }
     setState(() {
       _libraryMode = _libraryMode == LibraryGroupMode.console
           ? LibraryGroupMode.store
           : LibraryGroupMode.console;
+      _focusedId = null;
     });
   }
 
@@ -559,16 +744,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (from == null) {
       return;
     }
+    final cols = HomePager.columns(_page, metrics);
     final to = switch (direction) {
       TraversalDirection.left => from - 1,
       TraversalDirection.right => from + 1,
-      TraversalDirection.up => from - metrics.columns,
-      TraversalDirection.down => from + metrics.columns,
+      TraversalDirection.up => from - cols,
+      TraversalDirection.down => from + cols,
     };
     if (to < 0) {
       return;
     }
-    _library.moveHomeSlot(from, direction, metrics.columns);
+    _library.moveHomeSlot(from, direction, cols);
     final id = _library.home[to] ?? emptySlotId(to);
     _focusId(id);
   }
@@ -586,15 +772,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<String> _gridFocusableIds(HomeDeckMetrics metrics) {
     if (_tab == HomeTab.allApps) {
+      if (_insideFolder) {
+        final section = _sectionByTitle(_folderTitle!);
+        return [for (final app in section?.apps ?? const <AppRecord>[]) app.id];
+      }
       return [
         for (final section in _library.librarySections(_libraryMode))
-          ...section.apps.map((app) => app.id),
+          folderFocusId(section.title),
         addTileId,
       ];
     }
     final pages = _pageCount(metrics);
-    final slots = _library.homeSlots(minLength: pages * metrics.pageSize);
-    return [for (var i = 0; i < slots.length; i++) slots[i] ?? emptySlotId(i)];
+    final slots = _library.homeSlots(
+      minLength: HomePager.slotCount(pages, metrics),
+    );
+    return [
+      for (var page = 0; page < pages; page++)
+        ...HomePager.focusIdsForPage(
+          page: page,
+          slots: slots,
+          metrics: metrics,
+        ),
+    ];
+  }
+
+  List<String> _pageFocusIds(int page, HomeDeckMetrics metrics) {
+    final pages = _pageCount(metrics);
+    final slots = _library.homeSlots(
+      minLength: HomePager.slotCount(pages, metrics),
+    );
+    return HomePager.focusIdsForPage(
+      page: page,
+      slots: slots,
+      metrics: metrics,
+    );
   }
 
   FocusNode _nodeFor(String id) {
@@ -605,41 +816,60 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_tab == HomeTab.allApps) {
       return 1;
     }
-    final last = _library.home.lastOccupiedIndex;
-    final occupied = last < 0 ? 0 : last + 1;
-    return HomeGrid.pageCountFor(occupied, metrics.pageSize);
+    return HomePager.pageCount(
+      lastOccupiedIndex: _library.home.lastOccupiedIndex,
+      metrics: metrics,
+      extraPages: _extraHomePages,
+    );
   }
 
-  void _focusId(String id) {
+  void _focusId(String id, {bool click = true}) {
     final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
-    final ids = _gridFocusableIds(metrics);
-    final index = ids.indexOf(id);
+    if (click && id != _focusedId) {
+      _click(UiClick.move);
+    }
     setState(() {
       _focusedId = id;
-      if (index >= 0 && _tab == HomeTab.home) {
-        _page = index ~/ metrics.pageSize;
+      if (_tab == HomeTab.home) {
+        if (isNowPlayingId(id)) {
+          _page = 0;
+        } else {
+          final slot = isEmptySlotId(id)
+              ? emptySlotIndex(id)
+              : _library.home.indexOf(id);
+          if (slot != null) {
+            _page = HomePager.pageOfSlot(slot, metrics);
+          }
+        }
       }
     });
     _nodeFor(id).requestFocus();
   }
 
-  void _goToPage(int page) {
-    setState(() {
-      _page = page;
-      final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
-      final ids = _gridFocusableIds(metrics);
-      final start = page * metrics.pageSize;
-      if (start < ids.length) {
-        _focusedId = ids[start];
-      }
-    });
-    final id = _focusedId;
-    if (id != null) {
-      _nodeFor(id).requestFocus();
-    }
+  void _goToPage(int page, {int? row, bool fromRight = false}) {
+    final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+    final pages = _pageCount(metrics);
+    final next = page.clamp(0, pages - 1);
+    final slots = _library.homeSlots(
+      minLength: HomePager.slotCount(pages, metrics),
+    );
+    final id = HomePager.focusedIdAfterPageChange(
+      page: next,
+      slots: slots,
+      metrics: metrics,
+      row: row,
+      fromRight: fromRight,
+    );
+    _click(UiClick.page);
+    setState(() => _page = next);
+    _focusId(id, click: false);
   }
 
   void _moveSelection(TraversalDirection direction, HomeDeckMetrics metrics) {
+    if (_tab == HomeTab.home) {
+      _moveHome(direction, metrics);
+      return;
+    }
     if (_tab == HomeTab.allApps && _chipsFocused) {
       if (direction == TraversalDirection.left ||
           direction == TraversalDirection.right) {
@@ -661,7 +891,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index < 0) {
       index = 0;
     }
-    final columns = metrics.columns;
+    final columns = _insideFolder
+        ? metrics.insideFolderColumns
+        : metrics.libraryFolderColumns;
     final next = switch (direction) {
       TraversalDirection.left => index - 1,
       TraversalDirection.right => index + 1,
@@ -669,26 +901,97 @@ class _HomeScreenState extends State<HomeScreen> {
       TraversalDirection.down => index + columns,
     };
     if (next < 0) {
-      if (_tab == HomeTab.allApps && direction == TraversalDirection.up) {
+      if (_tab == HomeTab.allApps &&
+          !_insideFolder &&
+          direction == TraversalDirection.up) {
         setState(() => _chipsFocused = true);
         return;
       }
-      _focusId(ids.last);
       return;
     }
     if (next >= ids.length) {
-      _focusId(ids.first);
+      if (_insideFolder && direction == TraversalDirection.down) {
+        setState(() => _dockForced = true);
+      }
+      return;
+    }
+    if (_insideFolder &&
+        direction == TraversalDirection.down &&
+        next ~/ columns >= (ids.length / columns).ceil() - 1) {
+      setState(() => _dockForced = true);
+    }
+    _focusId(ids[next]);
+  }
+
+  void _moveHome(TraversalDirection direction, HomeDeckMetrics metrics) {
+    final pages = _pageCount(metrics);
+    final page = _page.clamp(0, pages - 1);
+    final ids = _pageFocusIds(page, metrics);
+    if (ids.isEmpty) {
+      return;
+    }
+    var index = ids.indexOf(_focusedId ?? ids.first);
+    if (index < 0) {
+      index = 0;
+    }
+    final cols = HomePager.columns(page, metrics);
+    if (page == 0) {
+      if (index == 0) {
+        if (direction == TraversalDirection.right) {
+          _focusId(ids[1]);
+        }
+        return;
+      }
+      final pin = index - 1;
+      final row = pin ~/ cols;
+      final col = pin % cols;
+      if (direction == TraversalDirection.left && col == 0) {
+        _focusId(nowPlayingId);
+        return;
+      }
+      if (direction == TraversalDirection.right && col == cols - 1) {
+        if (page < pages - 1) {
+          _goToPage(page + 1, row: row);
+        }
+        return;
+      }
+      final nextPin = switch (direction) {
+        TraversalDirection.left => pin - 1,
+        TraversalDirection.right => pin + 1,
+        TraversalDirection.up => pin - cols,
+        TraversalDirection.down => pin + cols,
+      };
+      if (nextPin < 0 || nextPin >= cols * metrics.rows) {
+        return;
+      }
+      _focusId(ids[nextPin + 1]);
+      return;
+    }
+    final row = index ~/ cols;
+    final col = index % cols;
+    if (direction == TraversalDirection.left && col == 0) {
+      _goToPage(page - 1, row: row, fromRight: true);
+      return;
+    }
+    if (direction == TraversalDirection.right && col == cols - 1) {
+      if (page < pages - 1) {
+        _goToPage(page + 1, row: row);
+      }
+      return;
+    }
+    final next = switch (direction) {
+      TraversalDirection.left => index - 1,
+      TraversalDirection.right => index + 1,
+      TraversalDirection.up => index - cols,
+      TraversalDirection.down => index + cols,
+    };
+    if (next < 0 || next >= ids.length) {
       return;
     }
     _focusId(ids[next]);
   }
 
   int _displayPage(HomeDeckMetrics metrics) {
-    final ids = _gridFocusableIds(metrics);
-    final index = ids.indexOf(_focusedId ?? '');
-    if (index >= 0) {
-      return index ~/ metrics.pageSize;
-    }
     return _page.clamp(0, _pageCount(metrics) - 1);
   }
 
@@ -731,24 +1034,41 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: 36 * metrics.scale,
+                            horizontal: _tab == HomeTab.home
+                                ? 12 * metrics.scale
+                                : 36 * metrics.scale,
                             vertical: 4 * metrics.scale,
                           ),
-                          child: GlassPanel(
-                            child: _tabBody(metrics, page, pages),
-                          ),
+                          child: _tab == HomeTab.home || _insideFolder
+                              ? _tabBody(metrics, page, pages)
+                              : GlassPanel(
+                                  child: _tabBody(metrics, page, pages),
+                                ),
                         ),
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: 8 * metrics.scale,
-                          bottom: 52 * metrics.scale,
-                        ),
-                        child: TabDock(
-                          metrics: metrics,
-                          active: _tab,
-                          onSelect: (tab) => setState(() => _tab = tab),
-                        ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 180),
+                        child: _dockVisible
+                            ? Padding(
+                                padding: EdgeInsets.only(
+                                  top: 8 * metrics.scale,
+                                  bottom: 52 * metrics.scale,
+                                ),
+                                child: TabDock(
+                                  metrics: metrics,
+                                  active: _tab,
+                                  onSelect: (tab) {
+                                    setState(() {
+                                      _tab = tab;
+                                      _folderTitle = null;
+                                      _dockForced = true;
+                                    });
+                                    _focusFirstForTab();
+                                  },
+                                  onSearch: _openSearch,
+                                ),
+                              )
+                            : SizedBox(height: 52 * metrics.scale),
                       ),
                     ],
                   ),
@@ -770,6 +1090,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_menuOpen)
                     TileMenu(
                       scale: metrics.scale,
+                      title: _tab == HomeTab.home
+                          ? 'Customize Home'
+                          : _selectedTitle,
                       app: focused,
                       onHome: _tab == HomeTab.home,
                       pinned: focused != null && _library.isOnHome(focused.id),
@@ -780,6 +1103,28 @@ class _HomeScreenState extends State<HomeScreen> {
                           _addOpen = true;
                         });
                       },
+                      onSearch: () {
+                        setState(() {
+                          _menuOpen = false;
+                          _searchOpen = true;
+                        });
+                      },
+                      onReorder: _tab != HomeTab.home
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _moveMode = true;
+                              });
+                            },
+                      onNewPage: _tab != HomeTab.home
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _extraHomePages += 1;
+                              });
+                            },
                       onSettings: () {
                         setState(() {
                           _menuOpen = false;
@@ -834,6 +1179,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         _focusId(id);
                       },
                     ),
+                  if (_searchOpen)
+                    GlobalSearchSheet(
+                      controller: _library,
+                      mode: _libraryMode,
+                      scale: metrics.scale,
+                      onClose: () => setState(() => _searchOpen = false),
+                      onOpenFolder: (title) {
+                        setState(() {
+                          _searchOpen = false;
+                          _tab = HomeTab.allApps;
+                        });
+                        _openFolder(title);
+                      },
+                      onOpenApp: (app) {
+                        setState(() => _searchOpen = false);
+                        _focusId(app.id, click: false);
+                        _launch(app);
+                      },
+                    ),
                   if (_settingsOpen)
                     SettingsStub(
                       windowMode: _window,
@@ -844,9 +1208,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       musicVolume:
                           widget.music?.musicVolume ??
                           _library.state.audio.musicVolume,
+                      uiClicksEnabled: _library.state.audio.uiClicksEnabled,
                       onClose: () => setState(() => _settingsOpen = false),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,
+                      onUiClicksEnabled: (enabled) {
+                        _library.setAudioPrefs(
+                          _library.state.audio.copyWith(
+                            uiClicksEnabled: enabled,
+                          ),
+                        );
+                      },
                       onMusicEnabled: (enabled) {
                         final music = widget.music;
                         if (music != null) {
@@ -886,6 +1258,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           : focused.targets.values.first.romPath,
                       scale: metrics.scale,
                       onClose: () => setState(() => _detailsOpen = false),
+                      onAddToHome:
+                          focused == null || _library.isOnHome(focused.id)
+                          ? null
+                          : () {
+                              _library.pinToHome(focused.id);
+                              setState(() => _detailsOpen = false);
+                            },
+                      onRemoveFromHome:
+                          focused == null || !_library.isOnHome(focused.id)
+                          ? null
+                          : () {
+                              _library.unpinFromHome(focused.id);
+                              setState(() => _detailsOpen = false);
+                            },
                       onRemove: focused == null
                           ? null
                           : () {
@@ -933,8 +1319,15 @@ class _HomeScreenState extends State<HomeScreen> {
           focusedId: _focusedId,
           hoveredId: _hoveredId,
           chipsFocused: _chipsFocused,
+          openFolderTitle: _folderTitle,
+          onOpenFolder: _openFolder,
+          onCloseFolder: _closeFolder,
           onFocus: (id) {
+            if (_insideFolder && isFolderFocusId(id)) {
+              return;
+            }
             if (_focusedId != id) {
+              _click(UiClick.move);
               setState(() {
                 _focusedId = id;
                 _chipsFocused = false;
@@ -948,12 +1341,9 @@ class _HomeScreenState extends State<HomeScreen> {
           focusNodeFor: _nodeFor,
         );
       case HomeTab.home:
-        final slots = _library.homeSlots(minLength: pages * metrics.pageSize);
-        final start = page * metrics.pageSize;
-        final pageSlots = [
-          for (var i = 0; i < metrics.pageSize; i++)
-            start + i < slots.length ? slots[start + i] : null,
-        ];
+        final slots = _library.homeSlots(
+          minLength: HomePager.slotCount(pages, metrics),
+        );
         return Column(
           children: [
             if (_moveMode)
@@ -970,23 +1360,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             Expanded(
-              child: HomeGrid(
+              child: HomePagedView(
                 controller: _library,
                 metrics: metrics,
-                slots: pageSlots,
-                pageStart: start,
+                slots: slots,
+                page: page,
+                pages: pages,
                 focusedId: _focusedId,
                 hoveredId: _hoveredId,
                 moveMode: _moveMode,
+                music: widget.music,
                 onFocus: (id) {
                   if (_focusedId != id) {
-                    setState(() => _focusedId = id);
+                    _focusId(id);
                   }
                 },
                 onHover: (id) => setState(() => _hoveredId = id),
                 onLaunch: _launch,
                 onEmptyActivate: (_) => _addApp(),
                 onReorderDrop: _onReorderDrop,
+                onPage: _goToPage,
                 focusNodeFor: _nodeFor,
               ),
             ),
@@ -1012,6 +1405,8 @@ class _DetailsSheet extends StatelessWidget {
     this.kindLabel,
     this.path,
     this.romPath,
+    this.onAddToHome,
+    this.onRemoveFromHome,
     this.onRemove,
   });
 
@@ -1021,6 +1416,8 @@ class _DetailsSheet extends StatelessWidget {
   final String? romPath;
   final double scale;
   final VoidCallback onClose;
+  final VoidCallback? onAddToHome;
+  final VoidCallback? onRemoveFromHome;
   final VoidCallback? onRemove;
 
   @override
@@ -1085,6 +1482,19 @@ class _DetailsSheet extends StatelessWidget {
                     ),
                   ],
                   SizedBox(height: 22 * scale),
+                  if (onAddToHome != null)
+                    TextButton(
+                      key: const Key('details-add-to-home'),
+                      onPressed: onAddToHome,
+                      child: const Text('Add to Home'),
+                    ),
+                  if (onRemoveFromHome != null)
+                    TextButton(
+                      key: const Key('details-remove-from-home'),
+                      onPressed: onRemoveFromHome,
+                      child: const Text('Remove from Home'),
+                    ),
+                  SizedBox(height: 8 * scale),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

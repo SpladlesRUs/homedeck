@@ -93,6 +93,28 @@ void main() {
     expect(player.pauseCount, greaterThan(0));
     music.dispose();
   });
+
+  test('skipNext and togglePause notify and change playback', () async {
+    final player = SilentMenuMusicPlayer();
+    final music = MenuMusicController(
+      player: player,
+      randomInt: (max) => 0,
+      fadeIn: Duration.zero,
+      fadeOut: Duration.zero,
+    );
+    await music.start();
+    expect(music.currentTitle, MenuPlaylist.titles.first);
+    expect(music.isPlaying, isTrue);
+    await music.togglePause();
+    expect(music.isPlaying, isFalse);
+    expect(player.pauseCount, 1);
+    await music.togglePause();
+    expect(music.isPlaying, isTrue);
+    await music.skipNext();
+    expect(music.currentIndex, 1);
+    expect(music.currentTitle, MenuPlaylist.titles[1]);
+    music.dispose();
+  });
 }
 
 class _ThrowingPlayer implements MenuMusicPlayer {

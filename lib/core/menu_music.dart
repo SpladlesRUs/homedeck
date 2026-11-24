@@ -112,6 +112,10 @@ class MenuMusicController extends ChangeNotifier {
 
   bool get isDucked => _ducked;
 
+  bool get isPlaying => _playing && !_ducked && _prefs.musicEnabled;
+
+  String get currentTitle => MenuPlaylist.titleAt(_index);
+
   Future<void> start() async {
     if (_disposed || _started) {
       return;
@@ -217,7 +221,36 @@ class MenuMusicController extends ChangeNotifier {
       return;
     }
     _index = MenuPlaylist.nextIndex(_index, tracks.length);
+    notifyListeners();
     await _playCurrent(fade: Duration.zero);
+  }
+
+  Future<void> skipNext() async {
+    if (_disposed || tracks.isEmpty) {
+      return;
+    }
+    _index = MenuPlaylist.nextIndex(_index, tracks.length);
+    notifyListeners();
+    await _playCurrent(fade: Duration.zero);
+  }
+
+  Future<void> togglePause() async {
+    if (_disposed || !_prefs.musicEnabled) {
+      return;
+    }
+    if (_playing && !_ducked) {
+      await _safe(() => _player.pause());
+      _playing = false;
+      notifyListeners();
+      return;
+    }
+    if (!_playing && !_started) {
+      await start();
+      return;
+    }
+    await _safe(() => _player.resume());
+    _playing = true;
+    notifyListeners();
   }
 
   Future<void> _playCurrent({required Duration fade}) async {

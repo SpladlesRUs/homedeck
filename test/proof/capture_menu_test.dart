@@ -34,7 +34,9 @@ void main() {
     expect((pill.center.dx - 640).abs(), lessThan(1.0));
   });
 
-  testWidgets('capture 1280x800 after screenshot with demo grid', (tester) async {
+  testWidgets('capture 1280x800 after screenshot with demo grid', (
+    tester,
+  ) async {
     if (Platform.environment['SAVE_PROOF'] != '1') {
       return;
     }
@@ -53,16 +55,27 @@ void main() {
     await _pumpApp(tester, harness);
     await _save(tester, p.join(outDir.path, 'after-1280x800.png'));
     await _save(tester, p.join(outDir.path, '01-home-grid-tiles.png'));
+    await _save(tester, p.join(outDir.path, '01-home-page1-featured.png'));
 
-    await sendArrow(tester, LogicalKeyboardKey.arrowRight);
+    await tester.tap(find.byKey(const ValueKey('page-dot-1')));
     await tester.pump(const Duration(milliseconds: 200));
+    await _save(tester, p.join(outDir.path, '02-home-page2-empty-peeks.png'));
     await _save(tester, p.join(outDir.path, '02-focus-state.png'));
 
     await tester.tap(find.byKey(const Key('tab-allApps')));
     await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.byKey(const ValueKey('tile-app-16')));
-    await tester.pump(const Duration(milliseconds: 200));
+    await _save(tester, p.join(outDir.path, '03-library-folders.png'));
     await _save(tester, p.join(outDir.path, '05-library.png'));
+
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await _save(tester, p.join(outDir.path, '04-folder-hero.png'));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyY);
+    await tester.pump(const Duration(milliseconds: 200));
+    await _save(tester, p.join(outDir.path, '08-global-search.png'));
   });
 
   testWidgets('capture launch error overlay', (tester) async {
@@ -122,9 +135,10 @@ Future<void> _pumpApp(WidgetTester tester, Harness harness) async {
       child: HomeDeckApp(
         controller: harness.controller,
         windowMode: harness.windowMode,
-        gamepad: harness.gamepad,
-        deviceStatus: harness.deviceStatus,
-      ),
+      gamepad: harness.gamepad,
+      deviceStatus: harness.deviceStatus,
+      music: harness.music,
+    ),
     ),
   );
   await tester.pump();

@@ -65,7 +65,11 @@ class AppTile extends StatelessWidget {
             const Positioned(
               top: 6,
               right: 6,
-              child: Icon(Icons.star_rounded, color: HomeDeckColors.gold, size: 16),
+              child: Icon(
+                Icons.star_rounded,
+                color: HomeDeckColors.gold,
+                size: 16,
+              ),
             ),
         ],
       ),
@@ -103,7 +107,8 @@ class AppTile extends StatelessWidget {
                   ),
                   childWhenDragging: Opacity(opacity: 0.35, child: visual),
                   child: DragTarget<String>(
-                    onWillAcceptWithDetails: (details) => details.data != app.id,
+                    onWillAcceptWithDetails: (details) =>
+                        details.data != app.id,
                     onAcceptWithDetails: (details) =>
                         onDroppedOn?.call(details.data),
                     builder: (context, _, _) => visual,
@@ -262,7 +267,7 @@ class EmptySlot extends StatelessWidget {
   }
 }
 
-class TileFace extends StatelessWidget {
+class TileFace extends StatefulWidget {
   const TileFace({
     super.key,
     required this.metrics,
@@ -277,41 +282,99 @@ class TileFace extends StatelessWidget {
   final Widget child;
 
   @override
+  State<TileFace> createState() => _TileFaceState();
+}
+
+class _TileFaceState extends State<TileFace>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin;
+
+  @override
+  void initState() {
+    super.initState();
+    _spin = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
+    if (widget.focused) {
+      _spin.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(TileFace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focused && !_spin.isAnimating) {
+      _spin.repeat();
+    } else if (!widget.focused && _spin.isAnimating) {
+      _spin.stop();
+      _spin.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final scale = focused ? 1.08 : (hovered ? 1.03 : 1.0);
-    final radius = 14 * metrics.scale;
+    final focused = widget.focused;
+    final scale = focused ? 1.08 : (widget.hovered ? 1.03 : 1.0);
+    final radius = 14 * widget.metrics.scale;
     return LayoutBuilder(
       builder: (context, constraints) {
         final side = math.min(constraints.maxWidth, constraints.maxHeight);
         return Center(
           child: AnimatedScale(
             scale: scale,
-            duration: const Duration(milliseconds: 120),
+            duration: const Duration(milliseconds: 140),
             curve: Curves.easeOut,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              width: side,
-              height: side,
-              padding: EdgeInsets.all(focused ? 3 : 0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(radius + 3),
-                border: Border.all(
-                  color: focused ? Colors.white : Colors.transparent,
-                  width: focused ? 3 : 0,
-                ),
-                boxShadow: focused
-                    ? [
-                        BoxShadow(
-                          color: HomeDeckColors.cyan.withValues(alpha: 0.7),
-                          blurRadius: 16,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : const [],
-              ),
+            child: AnimatedBuilder(
+              animation: _spin,
+              builder: (context, child) {
+                return Container(
+                  width: side,
+                  height: side,
+                  padding: EdgeInsets.all(focused ? 3.5 : 0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius + 4),
+                    gradient: focused
+                        ? SweepGradient(
+                            startAngle: _spin.value * 6.2832,
+                            colors: const [
+                              HomeDeckColors.cyan,
+                              HomeDeckColors.purple,
+                              HomeDeckColors.cyanDeep,
+                              HomeDeckColors.cyan,
+                            ],
+                          )
+                        : null,
+                    boxShadow: focused
+                        ? [
+                            BoxShadow(
+                              color: HomeDeckColors.cyan.withValues(
+                                alpha: 0.55,
+                              ),
+                              blurRadius: 16,
+                              spreadRadius: 1,
+                            ),
+                            BoxShadow(
+                              color: HomeDeckColors.purple.withValues(
+                                alpha: 0.35,
+                              ),
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : const [],
+                  ),
+                  child: child,
+                );
+              },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
-                child: child,
+                child: widget.child,
               ),
             ),
           ),

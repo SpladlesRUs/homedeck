@@ -63,7 +63,11 @@ void main() {
       ],
       layout: const TileLayout(orderedIds: ['a']),
       window: const WindowPrefs(fullscreen: true, borderless: true),
-      audio: const AudioPrefs(musicEnabled: false, musicVolume: 0.2),
+      audio: const AudioPrefs(
+        musicEnabled: false,
+        musicVolume: 0.2,
+        uiClicksEnabled: false,
+      ),
     );
 
     expect(HomeDeckState.fromJson(state.toJson()), state);

@@ -159,5 +159,10 @@ void main() {
       mode: LibraryGroupMode.console,
     );
     expect(sections.map((s) => s.title), ['SNES', 'Native']);
+    expect(ConsoleSystem.snes.slug, 'snes');
+    expect(ConsoleSystem.n64.slug, 'nintendo-64');
+    expect(ConsoleSystem.arcade.slug, 'arcade');
+    expect(slugForGroupTitle('SNES'), 'snes');
+    expect(folderFocusId('Nintendo 64'), '__homedeck_folder_nintendo-64');
   });
 }

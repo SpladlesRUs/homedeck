@@ -17,7 +17,7 @@ void main() {
     await pumpHomeDeck(tester, harness);
 
     expect(find.byType(HomeDeckMark), findsWidgets);
-    expect(find.text('Tile 1'), findsOneWidget);
+    expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-2')), findsOneWidget);
     expect(find.byType(EmptySlot), findsWidgets);

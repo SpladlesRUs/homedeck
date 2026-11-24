@@ -16,6 +16,7 @@ import 'package:homedeck/core/preferences_repository.dart';
 import 'package:homedeck/core/window_mode.dart';
 import 'package:homedeck/platform/windows_io.dart';
 import 'package:homedeck/ui/home_screen.dart';
+import 'package:homedeck/ui/library_view.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 
@@ -119,6 +120,9 @@ Future<Harness> createHarness({
     seedDemo: seedDemo,
   );
   await controller.load();
+  await controller.setAudioPrefs(
+    controller.state.audio.copyWith(uiClicksEnabled: false),
+  );
   final musicPlayer = SilentMenuMusicPlayer();
   final music = MenuMusicController(
     player: musicPlayer,
@@ -166,7 +170,11 @@ Future<void> addSampleAppsForWidgets(
 
 Future<void> pumpHomeDeck(WidgetTester tester, Harness harness) async {
   HomeScreen.tickClock = false;
-  addTearDown(() => HomeScreen.tickClock = true);
+  FolderHero.settle = Duration.zero;
+  addTearDown(() {
+    HomeScreen.tickClock = true;
+    FolderHero.settle = const Duration(milliseconds: 350);
+  });
   await tester.pumpWidget(
     HomeDeckApp(
       controller: harness.controller,

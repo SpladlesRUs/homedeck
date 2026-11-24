@@ -94,18 +94,23 @@ Keyboard:
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 
-Home is a desktop of pinned shortcuts (empty slots stay empty; rearrange with
-Menu > Move, then D-pad, A to drop). The Library tab lists every added game,
-grouped By console or By app (store). Gamepad X switches that grouping.
-Unpinning from Home never deletes the library entry. Demo tiles are seeded only
-with `--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults
-stay empty.
+Home is a WiiSU-style paged desktop of pinned shortcuts. Page 1 has a large
+now-playing widget plus a 5×3 pin grid; later pages are 7×3 with neighbor
+peeks. Empty slots stay empty; rearrange with Menu > Move, then D-pad, A to
+drop. The Library tab is a 5×3 grid of console or store folders (By console /
+By app). Opening a folder shows a 3-column game grid and a full-bleed hero
+that crossfades after 350 ms. Gamepad X switches grouping. Unpinning from Home
+never deletes the library entry. Demo tiles are seeded only with
+`--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults stay
+empty.
 
 Menu music is a ten-track instrumental playlist (Suno Pro, commercial use OK).
 On startup a random track starts, then the list plays in order and wraps.
 Default volume is modest (0.35) with a fade-in. Launching a game or losing
 window focus ducks/pauses; focus fades music back in; exit fades out. Settings
-has Music on/off and a volume slider. UI click SFX are not in this pass.
+has Music on/off, a volume slider, and a UI-clicks toggle. Clicks are short
+code-generated ticks (move/select/back/page), never Suno SFX. Y opens global
+search. B is Back only.
 
 Gamepad input on Windows polls XInput directly (D-pad, A, B, LB, RB, Start,
 Back) so buttons still work when Flutter does not deliver gamepad keys. Keyboard

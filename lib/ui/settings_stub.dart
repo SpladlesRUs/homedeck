@@ -14,8 +14,10 @@ class SettingsStub extends StatelessWidget {
     required this.onToggleBorderless,
     this.musicEnabled = true,
     this.musicVolume = 0.35,
+    this.uiClicksEnabled = true,
     this.onMusicEnabled,
     this.onMusicVolume,
+    this.onUiClicksEnabled,
     this.onExit,
   });
 
@@ -26,8 +28,10 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback onToggleBorderless;
   final bool musicEnabled;
   final double musicVolume;
+  final bool uiClicksEnabled;
   final ValueChanged<bool>? onMusicEnabled;
   final ValueChanged<double>? onMusicVolume;
+  final ValueChanged<bool>? onUiClicksEnabled;
   final VoidCallback? onExit;
 
   @override
@@ -107,6 +111,13 @@ class SettingsStub extends StatelessWidget {
                             hint: 'Playlist of ten instrumentals',
                             value: musicEnabled,
                             onChanged: onMusicEnabled ?? (_) {},
+                          ),
+                          _ToggleRow(
+                            key: const Key('settings-ui-clicks'),
+                            label: 'UI clicks',
+                            hint: 'Short ticks on move, select, back, and page',
+                            value: uiClicksEnabled,
+                            onChanged: onUiClicksEnabled ?? (_) {},
                           ),
                           Padding(
                             padding: const EdgeInsets.only(

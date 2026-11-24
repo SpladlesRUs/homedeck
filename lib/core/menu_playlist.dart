@@ -5,6 +5,27 @@ class MenuPlaylist {
 
   static const assetDirectory = 'assets/audio/music';
 
+  static const titles = <String>[
+    'Cozy Console Menu',
+    'Cozy Console Menu (take 2)',
+    'Cozy Rainy Afternoon',
+    'Cozy Rainy Afternoon (take 2)',
+    'Sunny Plaza Menu',
+    'Plaza Morning',
+    'Browsing Menu',
+    'Cozy Menu Groove',
+    'Menu of Tomorrow',
+    'Save Game',
+  ];
+
+  static String titleAt(int index) {
+    if (titles.isEmpty) {
+      return 'Menu music';
+    }
+    final i = index % titles.length;
+    return titles[i < 0 ? 0 : i];
+  }
+
   static const tracks = <String>[
     '$assetDirectory/menu-01.m4a',
     '$assetDirectory/menu-02.m4a',

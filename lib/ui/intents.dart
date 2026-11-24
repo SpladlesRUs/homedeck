@@ -66,3 +66,7 @@ class OpenDetailsIntent extends Intent {
 class ToggleLibraryGroupIntent extends Intent {
   const ToggleLibraryGroupIntent();
 }
+
+class OpenSearchIntent extends Intent {
+  const OpenSearchIntent();
+}

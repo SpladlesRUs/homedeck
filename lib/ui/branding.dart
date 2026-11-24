@@ -12,6 +12,7 @@ class HomeDeckColors {
   static const muted = Color(0xFFC5CDD8);
   static const cyan = Color(0xFF7AE7FF);
   static const cyanDeep = Color(0xFF2EC4FF);
+  static const purple = Color(0xFFB388FF);
   static const gold = Color(0xFFF5C542);
   static const goldBright = Color(0xFFFFE08A);
   static const cream = Color(0xFFF7F1E3);
@@ -54,6 +55,37 @@ class HomeDeckMetrics {
   final double padding;
 
   int get pageSize => columns * rows;
+
+  /// Pins beside the page-1 featured widget.
+  int get homePinColumns => 5;
+
+  int get homeLaterColumns => 7;
+
+  int get page1PinCount => homePinColumns * rows;
+
+  int get laterPageSize => homeLaterColumns * rows;
+
+  int get libraryFolderColumns => 5;
+
+  int get insideFolderColumns => 3;
+
+  int homePageStart(int page) {
+    if (page <= 0) {
+      return 0;
+    }
+    return page1PinCount + (page - 1) * laterPageSize;
+  }
+
+  int homePageSize(int page) => page <= 0 ? page1PinCount : laterPageSize;
+
+  int homeColumns(int page) => page <= 0 ? homePinColumns : homeLaterColumns;
+
+  int homeSlotCount(int pages) {
+    if (pages <= 1) {
+      return page1PinCount;
+    }
+    return page1PinCount + (pages - 1) * laterPageSize;
+  }
 
   double get titleSize => 18 * scale;
   double get tileNameSize => 13 * scale;

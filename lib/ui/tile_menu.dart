@@ -11,9 +11,13 @@ class TileMenu extends StatelessWidget {
     required this.onAddGame,
     required this.onSettings,
     required this.onExit,
+    this.title,
     this.app,
     this.onHome = false,
     this.pinned = false,
+    this.onSearch,
+    this.onReorder,
+    this.onNewPage,
     this.onAddToHome,
     this.onRemoveFromHome,
     this.onMove,
@@ -22,6 +26,7 @@ class TileMenu extends StatelessWidget {
   });
 
   final double scale;
+  final String? title;
   final AppRecord? app;
   final bool onHome;
   final bool pinned;
@@ -29,6 +34,9 @@ class TileMenu extends StatelessWidget {
   final VoidCallback onAddGame;
   final VoidCallback onSettings;
   final VoidCallback onExit;
+  final VoidCallback? onSearch;
+  final VoidCallback? onReorder;
+  final VoidCallback? onNewPage;
   final VoidCallback? onAddToHome;
   final VoidCallback? onRemoveFromHome;
   final VoidCallback? onMove;
@@ -68,7 +76,7 @@ class TileMenu extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        app?.displayName ?? 'Menu',
+                        title ?? app?.displayName ?? 'Menu',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -81,6 +89,24 @@ class TileMenu extends StatelessWidget {
                         label: 'Add game',
                         onTap: onAddGame,
                       ),
+                      if (onSearch != null)
+                        _row(
+                          key: const Key('menu-search'),
+                          label: 'Global Search',
+                          onTap: onSearch!,
+                        ),
+                      if (onReorder != null)
+                        _row(
+                          key: const Key('menu-reorder'),
+                          label: 'Reorder home',
+                          onTap: onReorder!,
+                        ),
+                      if (onNewPage != null)
+                        _row(
+                          key: const Key('menu-new-page'),
+                          label: 'New Collection',
+                          onTap: onNewPage!,
+                        ),
                       if (app != null && !pinned && onAddToHome != null)
                         _row(
                           key: const Key('menu-add-to-home'),

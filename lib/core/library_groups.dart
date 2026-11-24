@@ -46,3 +46,28 @@ List<LibrarySection> groupLibrary(
         ),
   ];
 }
+
+String slugForGroupTitle(String title) {
+  for (final console in ConsoleSystem.values) {
+    if (console.label == title) {
+      return console.slug;
+    }
+  }
+  for (final store in Storefront.values) {
+    if (store.label == title) {
+      return store.slug;
+    }
+  }
+  if (title == 'Native') {
+    return 'native';
+  }
+  if (title == 'Emulated') {
+    return 'emulated';
+  }
+  return title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+}
+
+String folderFocusId(String title) =>
+    '__homedeck_folder_${slugForGroupTitle(title)}';
+
+bool isFolderFocusId(String id) => id.startsWith('__homedeck_folder_');

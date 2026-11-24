@@ -17,9 +17,9 @@ Copyright (c) 2026 Horton Press. For permission requests, contact support@horton
 ## What is HomeDeck?
 
 HomeDeck is a console-style app launcher. Milestone 1 targets Windows: a
-colorful tile grid you can read from across the room, keyboard and mouse
-navigation, manual add of `.exe` / `.lnk` files, launch with clear errors, and
-a layout that is remembered after restart.
+WiiSU-style paged Home with a now-playing widget, platform-folder Library,
+keyboard / mouse / XInput navigation, manual add of `.exe` / `.lnk` files,
+launch with clear errors, and a layout that is remembered after restart.
 
 Branding is original. There are no Nintendo logos, names, or artwork.
 
@@ -36,9 +36,10 @@ flutter pub get
 flutter run -d windows
 ```
 
-`F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome
-and menu-music on/off plus volume. Ten instrumental tracks start at a random
-song and loop as a playlist; music ducks while a launched game has focus.
+`F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome,
+menu-music on/off plus volume, and UI clicks. Ten instrumental tracks start
+at a random song and loop as a playlist; music ducks while a launched game
+has focus. Press Y for global search. B is always Back.
 
 Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
 `steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`
@@ -58,8 +59,11 @@ Do not pass that define on a release build.
 Rendered at 1280×800:
 
 - [Before (empty dark home)](docs/proof/ui/before-1280x800.png)
-- [After (Home desktop of pinned shortcuts, empty slots kept)](docs/proof/ui/after-1280x800.png)
-- [Library grouped by console](docs/proof/ui/05-library.png)
+- [After (Home page 1, featured now-playing)](docs/proof/ui/01-home-page1-featured.png)
+- [Home page 2 with empty slots and peeks](docs/proof/ui/02-home-page2-empty-peeks.png)
+- [Library as platform folders](docs/proof/ui/03-library-folders.png)
+- [Inside a folder with hero backdrop](docs/proof/ui/04-folder-hero.png)
+- [Global search](docs/proof/ui/08-global-search.png)
 
 ## Open questions
 

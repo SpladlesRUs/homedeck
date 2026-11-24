@@ -28,6 +28,31 @@ enum ConsoleSystem {
 
   String get wireName => name;
 
+  /// Filename slug for a later original platform-icon PNG (not shipped yet).
+  String get slug => switch (this) {
+    ConsoleSystem.nes => 'nes',
+    ConsoleSystem.snes => 'snes',
+    ConsoleSystem.n64 => 'nintendo-64',
+    ConsoleSystem.gamecube => 'gamecube',
+    ConsoleSystem.wii => 'wii',
+    ConsoleSystem.wiiu => 'wii-u',
+    ConsoleSystem.gb => 'game-boy',
+    ConsoleSystem.gba => 'game-boy-advance',
+    ConsoleSystem.nds => 'nintendo-ds',
+    ConsoleSystem.n3ds => 'nintendo-3ds',
+    ConsoleSystem.ps1 => 'playstation',
+    ConsoleSystem.ps2 => 'playstation-2',
+    ConsoleSystem.ps3 => 'playstation-3',
+    ConsoleSystem.psp => 'psp',
+    ConsoleSystem.genesis => 'genesis',
+    ConsoleSystem.saturn => 'saturn',
+    ConsoleSystem.dreamcast => 'dreamcast',
+    ConsoleSystem.xbox => 'xbox',
+    ConsoleSystem.xbox360 => 'xbox-360',
+    ConsoleSystem.arcade => 'arcade',
+    ConsoleSystem.other => 'other',
+  };
+
   String get label => switch (this) {
     ConsoleSystem.nes => 'NES',
     ConsoleSystem.snes => 'SNES',
@@ -77,6 +102,8 @@ enum Storefront {
   other;
 
   String get wireName => name;
+
+  String get slug => name;
 
   String get label => switch (this) {
     Storefront.steam => 'Steam',
@@ -203,7 +230,11 @@ class SourceInference {
         '.3ds' || '.cia' => ConsoleSystem.n3ds,
         '.gen' || '.md' || '.smd' => ConsoleSystem.genesis,
         '.cdi' || '.gdi' => ConsoleSystem.dreamcast,
-        '.gcm' || '.ciso' || '.tgc' || '.wbfs' || '.wad' => ConsoleSystem.gamecube,
+        '.gcm' ||
+        '.ciso' ||
+        '.tgc' ||
+        '.wbfs' ||
+        '.wad' => ConsoleSystem.gamecube,
         _ => null,
       };
     }
@@ -262,7 +293,11 @@ class SourceInference {
     if (has('citra') || has('lime3ds') || has('3ds')) {
       return ConsoleSystem.n3ds;
     }
-    if (has('blastem') || has('gens') || has('fusion') || has('genesis') || has('megadrive')) {
+    if (has('blastem') ||
+        has('gens') ||
+        has('fusion') ||
+        has('genesis') ||
+        has('megadrive')) {
       return ConsoleSystem.genesis;
     }
     if (has('mednafen') && has('ss')) {
