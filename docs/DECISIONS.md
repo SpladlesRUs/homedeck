@@ -94,13 +94,18 @@ Keyboard:
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 
-Home is a WiiSU-style paged desktop of pinned shortcuts. Page 1 has a large
-now-playing widget plus a 5×3 pin grid; later pages are 7×3 with neighbor
-peeks. Empty slots stay empty; rearrange with Menu > Move, then D-pad, A to
-drop. The Library tab is a 5×3 grid of console or store folders (By console /
-By app). Opening a folder shows a 3-column game grid and a full-bleed hero
-that crossfades after 350 ms. Gamepad X switches grouping. Unpinning from Home
-never deletes the library entry. Demo tiles are seeded only with
+Home is a WiiSU-style paged desktop of pinned shortcuts only — no platform
+folders, no By console / By app chips. Page 1 has a large now-playing widget
+plus a 5×3 pin grid; later pages are 7×3 with neighbor peeks. Empty slots stay
+empty; rearrange with Menu > Move, then D-pad, A to drop. Library is its own
+full-screen dock tab (the grid icon), not a sheet over Home: a 5×3 grid of
+console or store folders (By console / By app). A opens a platform; B goes
+back to the platform grid and stays in Library. LB/RB switch tabs from any
+Library level. Opening a folder shows a 3-column game grid and a full-bleed
+hero that crossfades after 350 ms. Gamepad X switches grouping only while
+already on Library. The only link between the two is Add to Home / Remove
+from Home on a Library game. Unpinning from Home never deletes the library
+entry. Demo tiles are seeded only with
 `--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults stay
 empty.
 

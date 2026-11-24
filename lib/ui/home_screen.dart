@@ -600,7 +600,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return _focusedRecord?.displayName ??
         _folderTitle ??
-        (_tab == HomeTab.home ? 'Home' : 'HomeDeck');
+        (_tab == HomeTab.home
+            ? 'Home'
+            : _tab == HomeTab.allApps
+            ? 'Library'
+            : 'HomeDeck');
   }
 
   Future<void> _launch(AppRecord app) async {
@@ -707,17 +711,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleLibraryGroup() {
-    if (_overlayOpen) {
-      return;
-    }
-    if (_tab != HomeTab.allApps) {
-      setState(() {
-        _tab = HomeTab.allApps;
-        _folderTitle = null;
-      });
-      return;
-    }
-    if (_insideFolder) {
+    if (_overlayOpen || _tab != HomeTab.allApps || _insideFolder) {
       return;
     }
     setState(() {
@@ -726,6 +720,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : LibraryGroupMode.console;
       _focusedId = null;
     });
+    _focusFirstForTab();
   }
 
   void _onDirection(TraversalDirection direction, HomeDeckMetrics metrics) {
@@ -1018,12 +1013,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     duration: const Duration(milliseconds: 280),
                     child: ArtBackdrop(
                       key: ValueKey(
-                        _insideFolder ? 'folder-home' : (_focusedId ?? 'none'),
+                        _tab == HomeTab.allApps
+                            ? 'library-home'
+                            : (_focusedId ?? 'none'),
                       ),
-                      color: _insideFolder
+                      color: _tab == HomeTab.allApps
                           ? backdropColorFor(nowPlayingId)
                           : backdropColorFor(_focusedId ?? 'home'),
-                      imageFile: _insideFolder ? null : artFile,
+                      imageFile: _tab == HomeTab.allApps ? null : artFile,
                     ),
                   ),
                   Column(
@@ -1038,14 +1035,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: _tab == HomeTab.home
-                                ? 12 * metrics.scale
-                                : _insideFolder
-                                ? 0
+                            horizontal:
+                                _tab == HomeTab.home || _tab == HomeTab.allApps
+                                ? (_insideFolder ? 0 : 12 * metrics.scale)
                                 : 36 * metrics.scale,
                             vertical: 4 * metrics.scale,
                           ),
-                          child: _tab == HomeTab.home || _insideFolder
+                          child: _tab == HomeTab.home || _tab == HomeTab.allApps
                               ? _tabBody(metrics, page, pages)
                               : GlassPanel(
                                   child: _tabBody(metrics, page, pages),

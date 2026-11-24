@@ -434,9 +434,10 @@ class TabDock extends StatelessWidget {
       (HomeTab.games, Icons.sports_esports_rounded, 'Games'),
       (HomeTab.achievements, Icons.emoji_events_rounded, 'Achievements'),
       (HomeTab.friends, Icons.sentiment_satisfied_alt_rounded, 'Friends'),
-      (HomeTab.allApps, Icons.apps_rounded, 'All apps'),
+      (HomeTab.allApps, Icons.apps_rounded, 'Library'),
     ];
     return Container(
+      key: Key('dock-${active.name}'),
       padding: EdgeInsets.symmetric(
         horizontal: 14 * metrics.scale,
         vertical: 8 * metrics.scale,
@@ -454,30 +455,35 @@ class TabDock extends StatelessWidget {
           for (final item in items)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 8 * metrics.scale),
-              child: GestureDetector(
-                key: Key('tab-${item.$1.name}'),
-                onTap: () => onSelect(item.$1),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.$2,
-                      color: active == item.$1
-                          ? Colors.white
-                          : HomeDeckColors.muted,
-                      size: metrics.dockSize * 0.62,
-                    ),
-                    SizedBox(height: 4 * metrics.scale),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
-                      width: active == item.$1 ? 18 : 0,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: HomeDeckColors.cyan,
-                        borderRadius: BorderRadius.circular(2),
+              child: Semantics(
+                button: true,
+                selected: active == item.$1,
+                label: item.$3,
+                child: GestureDetector(
+                  key: Key('tab-${item.$1.name}'),
+                  onTap: () => onSelect(item.$1),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        item.$2,
+                        color: active == item.$1
+                            ? Colors.white
+                            : HomeDeckColors.muted,
+                        size: metrics.dockSize * 0.62,
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 4 * metrics.scale),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 140),
+                        width: active == item.$1 ? 18 : 0,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: HomeDeckColors.cyan,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

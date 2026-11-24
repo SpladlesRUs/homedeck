@@ -61,8 +61,8 @@ Rendered at 1280×800:
 - [Before (empty dark home)](docs/proof/ui/before-1280x800.png)
 - [After (Home page 1, featured now-playing)](docs/proof/ui/01-home-page1-featured.png)
 - [Home page 2 with empty slots and peeks](docs/proof/ui/02-home-page2-empty-peeks.png)
-- [Library as platform folders](docs/proof/ui/03-library-folders.png)
-- [Inside a folder with hero backdrop](docs/proof/ui/04-folder-hero.png)
+- [Library platform root (dock on Library)](docs/proof/ui/03-library-folders.png)
+- [Inside a Library platform](docs/proof/ui/04-folder-hero.png)
 - [Global search](docs/proof/ui/08-global-search.png)
 
 ## Open questions
