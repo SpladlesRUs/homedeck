@@ -37,32 +37,32 @@ class PreferencesRepository {
 
   /// Writes [state] via a temp file then replaces `library.json`.
   ///
-  /// Ally smoke at 27ba8ec saw `icons\` under AppData with no `library.json`
-  /// after a successful add. Icons are written before this save; a failed or
-  /// non-durable write left the PNG cache without the library file. We flush
-  /// the temp file and only then replace the destination so the final name
-  /// appears with complete JSON.
+  /// Uses synchronous IO so widget tests in the fake-async zone (and the
+  /// IconCache sync write path) can finish `_commit` without hanging. Ally
+  /// smoke at 27ba8ec saw `icons\` under AppData with no `library.json`
+  /// after a successful add — persist-before-notify in [LibraryController]
+  /// plus this atomic replace keeps the library file durable.
   Future<void> save(HomeDeckState state) async {
     final file = paths.libraryJsonFile();
     final dir = file.parent;
-    await dir.create(recursive: true);
+    dir.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
     final payload = encoder.convert(state.toJson());
     final temp = File(p.join(dir.path, 'library.json.tmp'));
-    await temp.writeAsString(payload, flush: true);
+    temp.writeAsStringSync(payload, flush: true);
     try {
-      if (await file.exists()) {
-        await file.delete();
+      if (file.existsSync()) {
+        file.deleteSync();
       }
-      await temp.rename(file.path);
+      temp.renameSync(file.path);
     } on FileSystemException {
       // Windows sometimes refuses rename-over; copy then remove temp.
-      await temp.copy(file.path);
-      if (await temp.exists()) {
-        await temp.delete();
+      temp.copySync(file.path);
+      if (temp.existsSync()) {
+        temp.deleteSync();
       }
     }
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       throw FileSystemException(
         'library.json was not present after save',
         file.path,
