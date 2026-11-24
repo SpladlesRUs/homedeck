@@ -210,7 +210,7 @@ bool EncodePngWic(const std::vector<uint8_t>& bgra, int size,
   }
 
   Microsoft::WRL::ComPtr<IWICBitmapFrameEncode> frame;
-  Microsoft::WRL::ComPtr<IPropertyBag> props;
+  Microsoft::WRL::ComPtr<IPropertyBag2> props;
   hr = encoder->CreateNewFrame(&frame, &props);
   if (FAILED(hr) || frame == nullptr) {
     return false;
@@ -331,11 +331,12 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
             }
             auto size_it = map->find(flutter::EncodableValue("size"));
             if (size_it != map->end()) {
-              if (const auto* value = std::get_if<int32_t>(&size_it->second)) {
-                size = *value;
-              } else if (const auto* value =
+              if (const auto* size32 =
+                      std::get_if<int32_t>(&size_it->second)) {
+                size = *size32;
+              } else if (const auto* size64 =
                              std::get_if<int64_t>(&size_it->second)) {
-                size = static_cast<int>(*value);
+                size = static_cast<int>(*size64);
               }
             }
           }
