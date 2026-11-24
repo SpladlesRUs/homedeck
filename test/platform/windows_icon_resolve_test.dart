@@ -190,4 +190,15 @@ void main() {
     expect(extractor.calls, [emulator]);
     expect(await cache.absoluteFile(ref)!.readAsBytes(), fakePng);
   });
+
+  test('IconCache.writePng flushes a durable non-empty file under icons/',
+      () async {
+    final ref = await cache.writePng('sync-icon', fakePng);
+    final file = File(p.join(tempDir.path, 'icons', 'sync-icon.png'));
+    expect(ref, p.posix.join('icons', 'sync-icon.png'));
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), fakePng.length);
+    expect(cache.absoluteFile(ref)!.path, file.path);
+    expect(cache.absoluteFile('icons/missing.png'), isNull);
+  });
 }

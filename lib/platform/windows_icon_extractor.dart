@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 
 import 'package:ffi/ffi.dart';
 import 'package:homedeck/core/windows_paths.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 
 /// Extracts a PNG tile from a Windows `.exe` or `.lnk` path.
 ///
@@ -17,10 +18,34 @@ abstract class WindowsIconExtractor {
   Future<Uint8List?> extractPng(String path);
 }
 
-/// Win32 Shell / GDI extractor: resolve `.lnk` → target, then pull the PE
-/// (or Shell-associated) icon and encode it as PNG.
+/// Prefers the Windows runner MethodChannel (WIC PNG), then Dart FFI.
+///
+/// Ally M2 smoke at 8715ce4 saw letter tiles and an empty `icons\` folder
+/// with Dart-only FFI extract — same class of device failure as Enter/F11
+/// before the runner bridge. Native extract is the primary path.
 class Win32IconExtractor implements WindowsIconExtractor {
-  Win32IconExtractor();
+  Win32IconExtractor({WindowsIconExtractor? dartFallback})
+    : _dartFallback = dartFallback ?? DartFfiIconExtractor();
+
+  final WindowsIconExtractor _dartFallback;
+
+  @override
+  Future<Uint8List?> extractPng(String path) async {
+    try {
+      final native = await WindowsNativeBridge.extractIconPng(path);
+      if (native != null && native.isNotEmpty) {
+        return native;
+      }
+    } catch (_) {
+      // Fall through to Dart FFI.
+    }
+    return _dartFallback.extractPng(path);
+  }
+}
+
+/// Dart FFI Shell / GDI extractor (secondary). Prefer [Win32IconExtractor].
+class DartFfiIconExtractor implements WindowsIconExtractor {
+  DartFfiIconExtractor();
 
   static const _iconSize = 256;
   static const _maxPath = 260;

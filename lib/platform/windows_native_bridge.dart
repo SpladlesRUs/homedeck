@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 
@@ -7,7 +8,8 @@ import 'package:flutter/services.dart';
 ///
 /// Ally Phase2 at 2417533 still failed Enter/F11 when Dart FFI used
 /// ShellExecuteW + FindWindow — the runner never changed chrome and notepad
-/// never spawned. The C++ side holds the real HWND and ShellExecute.
+/// never spawned. M2 at 8715ce4 left `icons\` empty with Dart FFI extract.
+/// The C++ side owns HWND, ShellExecute, and PE/.lnk → PNG extraction.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -80,6 +82,38 @@ class WindowsNativeBridge {
       return false;
     } on PlatformException {
       return false;
+    }
+  }
+
+  /// Extract a PE / `.lnk` icon as PNG bytes via the runner (WIC).
+  /// Returns null when unavailable, missing plugin, or extraction fails.
+  static Future<Uint8List?> extractIconPng(
+    String path, {
+    int size = 256,
+  }) async {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final result = await _channel.invokeMethod<dynamic>(
+        'extractIcon',
+        <String, Object?>{'path': trimmed, 'size': size},
+      );
+      if (result is Uint8List && result.isNotEmpty) {
+        return result;
+      }
+      if (result is List<int> && result.isNotEmpty) {
+        return Uint8List.fromList(result);
+      }
+      return null;
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
     }
   }
 }

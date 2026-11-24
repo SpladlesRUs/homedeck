@@ -24,12 +24,16 @@ README use the same PNG.
 
 ## Windows icon extraction
 
-`WindowsAdapter.resolveIcon` extracts icons on Windows via Win32 FFI
-(`PrivateExtractIconsW` / `ExtractIconExW` / `SHGetFileInfoW`, plus
-`IShellLinkW` to resolve `.lnk` target and optional `IconLocation`). The
-result is written as a PNG under the application support directory
-(`icons/<id>.png`, relative `iconRef`) — the same [IconCache] format as
+`WindowsAdapter.resolveIcon` extracts icons on Windows primarily through the
+runner MethodChannel (`homedeck/win32` → `extractIcon`): C++ resolves `.lnk`
+targets via `IShellLinkW`, pulls PE/Shell icons (`PrivateExtractIconsW` /
+`ExtractIconExW` / `SHGetFileInfoW`), and encodes PNG with WIC. A Dart FFI
+path remains as a secondary fallback. Bytes are written with sync IO into
+`icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
+
+Ally M2 smoke at 8715ce4 saw letter tiles and an empty `icons\` folder with
+Dart-only FFI extract; the runner path matches the Enter/F11 fix pattern.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
 or any Win32 failure), HomeDeck generates a colored tile with the app
@@ -54,7 +58,7 @@ Do not treat Deck as a separate app.
 | Windows `.exe` launch via `Process.start` (detached) | Implemented; **not verified on a real Windows PC in this environment** |
 | Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
 | Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
-| Windows PE / `.lnk` icon extraction | Implemented via Win32 FFI; generated tile fallback |
+| Windows PE / `.lnk` icon extraction | Runner MethodChannel + WIC (Dart FFI fallback); generated tile fallback |
 | Installed-app / Steam / ROM-folder scanner | Not implemented; `discover()` is the hook |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |

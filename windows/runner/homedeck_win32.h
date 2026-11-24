@@ -5,13 +5,15 @@
 #include <flutter/encodable_value.h>
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "win32_window.h"
 
-// Native Win32 helpers for Ally Phase2: launch targets and toggle chrome
-// using the real runner HWND (Dart FFI FindWindow / ShellExecute did not
-// change chrome or spawn notepad on device at tip 2417533).
+// Native Win32 helpers for Ally: launch, F11 chrome, and PE/.lnk icon
+// extraction. Dart-only FFI failed on device for launch/chrome (2417533)
+// and left icons\ empty for M2 extract (8715ce4) — runner owns HWND/GDI+.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -25,6 +27,10 @@ class HomedeckWin32 {
 
   // ShellExecuteW the path (.exe / .lnk / URI). Returns true on success.
   static bool Launch(const std::wstring& path, const std::wstring& args);
+
+  // Extract associated / PE icon as PNG bytes (empty optional on failure).
+  static std::optional<std::vector<uint8_t>> ExtractIconPng(
+      const std::wstring& path, int size);
 
  private:
   void NotifyFullscreen();

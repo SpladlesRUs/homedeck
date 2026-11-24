@@ -21,10 +21,10 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
   HomeDeck-owned files are referenced with **relative** paths. User-selected
   launch locations stay device-local.
 - **Platform** (`lib/platform`) discovers (later), resolves icons, validates
-  targets, and launches. On Windows, `Win32IconExtractor` pulls PE / `.lnk`
-  icons into `IconCache` (generated tiles on failure).
-  `selectPlatformAdapter()` is the single switch that returns the adapter for
-  this process.
+  targets, and launches. On Windows, the runner MethodChannel extracts PE /
+  `.lnk` icons (Dart FFI secondary) into `IconCache`; generated tiles on
+  failure. `selectPlatformAdapter()` is the single switch that returns the
+  adapter for this process.
 
 Navigation uses Flutter `Shortcuts`, `Actions`, and `FocusTraversal` intents
 (`LaunchFocusedIntent`, `DirectionalFocusIntent`, and friends) so a later
