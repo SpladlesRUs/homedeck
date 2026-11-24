@@ -37,6 +37,7 @@ class FolderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = colorForKey(slug);
     final asset = platformIconAsset(slug);
+    final captionSize = 12 * metrics.scale;
     return Focus(
       focusNode: focusNode,
       onFocusChange: (hasFocus) {
@@ -56,66 +57,81 @@ class FolderTile extends StatelessWidget {
           child: Semantics(
             label: title,
             button: true,
-            child: TileFace(
-              metrics: metrics,
-              focused: focused,
-              hovered: false,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [color, Color.lerp(color, Colors.black, 0.35)!],
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(10 * metrics.scale),
+                    child: TileFace(
+                      metrics: metrics,
+                      focused: focused,
+                      hovered: false,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  color,
+                                  Color.lerp(color, Colors.black, 0.35)!,
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (asset != null)
+                            Image.asset(asset, fit: BoxFit.cover)
+                          else
+                            Center(
+                              child: Text(
+                                title.isEmpty ? '?' : title[0].toUpperCase(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 32 * metrics.scale,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  if (asset != null)
-                    Image.asset(asset, fit: BoxFit.cover)
-                  else
-                    Center(
-                      child: Text(
-                        title.isEmpty ? '?' : title[0].toUpperCase(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 36 * metrics.scale,
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    bottom: 8,
+                ),
+                SizedBox(
+                  height: 36 * metrics.scale,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           title,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11 * metrics.scale,
+                            fontWeight: FontWeight.w700,
+                            fontSize: captionSize,
+                            height: 1.1,
                           ),
                         ),
                         Text(
                           '$count',
-                          textAlign: TextAlign.right,
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w700,
+                            color: HomeDeckColors.muted,
+                            fontWeight: FontWeight.w600,
                             fontSize: 11 * metrics.scale,
+                            height: 1.1,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

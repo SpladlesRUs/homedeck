@@ -53,28 +53,35 @@ void main() {
     final outDir = _outDir();
     final harness = await createHarnessForWidgets(tester, seedDemo: true);
     await _pumpApp(tester, harness);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await _save(tester, p.join(outDir.path, 'after-1280x800.png'));
     await _save(tester, p.join(outDir.path, '01-home-grid-tiles.png'));
     await _save(tester, p.join(outDir.path, '01-home-page1-featured.png'));
 
     await tester.tap(find.byKey(const ValueKey('page-dot-1')));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await _save(tester, p.join(outDir.path, '02-home-page2-empty-peeks.png'));
     await _save(tester, p.join(outDir.path, '02-focus-state.png'));
 
     await tester.tap(find.byKey(const Key('tab-allApps')));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await _save(tester, p.join(outDir.path, '03-library-folders.png'));
     await _save(tester, p.join(outDir.path, '05-library.png'));
 
     await tester.tap(find.byKey(const Key('folder-snes')));
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     await _save(tester, p.join(outDir.path, '04-folder-hero.png'));
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.sendKeyEvent(LogicalKeyboardKey.keyY);
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await _save(tester, p.join(outDir.path, '08-global-search.png'));
   });
 

@@ -19,51 +19,56 @@ class ArtBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget art;
+    final gradient = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color,
+            HomeDeckColors.canvasDeep,
+            Color.lerp(color, Colors.black, 0.45)!,
+          ],
+        ),
+      ),
+    );
+    Widget? photo;
     if (imageFile != null) {
-      art = Image.file(
+      photo = Image.file(
         imageFile!,
         fit: BoxFit.cover,
         gaplessPlayback: true,
-        errorBuilder: (_, _, _) => ColoredBox(color: color),
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
         frameBuilder: (context, child, frame, sync) {
           if (frame == null && !sync) {
-            return ColoredBox(color: color);
+            return const SizedBox.shrink();
           }
           return child;
         },
       );
     } else if (assetPath != null) {
-      art = Image.asset(assetPath!, fit: BoxFit.cover);
-    } else {
-      art = DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color,
-              HomeDeckColors.canvasDeep,
-              Color.lerp(color, Colors.black, 0.45)!,
-            ],
-          ),
-        ),
-      );
+      photo = Image.asset(assetPath!, fit: BoxFit.cover);
     }
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: HomeDeckColors.canvasDeep),
-        ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: 42, sigmaY: 42),
-          child: Transform.scale(scale: 1.18, child: art),
-        ),
+        const ColoredBox(color: HomeDeckColors.canvasDeep),
+        gradient,
+        if (photo != null)
+          Opacity(
+            opacity: 0.42,
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Transform.scale(scale: 1.08, child: photo),
+            ),
+          ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0x66000000), Color(0x99000000), Color(0xCC000000)],
+              colors: [Color(0x14000000), Color(0x42000000), Color(0x88000000)],
+              stops: [0.0, 0.5, 1.0],
             ),
           ),
         ),

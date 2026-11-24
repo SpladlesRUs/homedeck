@@ -1017,9 +1017,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 280),
                     child: ArtBackdrop(
-                      key: ValueKey(_focusedId ?? 'none'),
-                      color: backdropColorFor(_focusedId ?? 'home'),
-                      imageFile: artFile,
+                      key: ValueKey(
+                        _insideFolder ? 'folder-home' : (_focusedId ?? 'none'),
+                      ),
+                      color: _insideFolder
+                          ? backdropColorFor(nowPlayingId)
+                          : backdropColorFor(_focusedId ?? 'home'),
+                      imageFile: _insideFolder ? null : artFile,
                     ),
                   ),
                   Column(
@@ -1036,6 +1040,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: EdgeInsets.symmetric(
                             horizontal: _tab == HomeTab.home
                                 ? 12 * metrics.scale
+                                : _insideFolder
+                                ? 0
                                 : 36 * metrics.scale,
                             vertical: 4 * metrics.scale,
                           ),

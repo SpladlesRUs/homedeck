@@ -23,6 +23,8 @@ void main() {
     expect(find.byType(EmptySlot), findsNWidgets(15));
     expect(find.byKey(const ValueKey('tile-add')), findsNothing);
     expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
+    expect(find.text('HomeDeck Menu Music'), findsOneWidget);
+    expect(find.byKey(const Key('now-playing-index')), findsOneWidget);
     expect(find.byKey(const Key('home-peek-next')), findsOneWidget);
     expect(find.byKey(const ValueKey('page-dot-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('page-dot-1')), findsOneWidget);
@@ -360,6 +362,8 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('folder-interior')), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-5')), findsOneWidget);
+    expect(find.byKey(const Key('library-folder-back')), findsOneWidget);
+    expect(find.byKey(const Key('library-mode-console')), findsNothing);
     expect(find.byType(TabDock), findsNothing);
 
     harness.gamepad.emit(GamepadButton.rb);

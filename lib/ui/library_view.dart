@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:homedeck/core/generated_icon.dart';
 import 'package:homedeck/core/library_controller.dart';
 import 'package:homedeck/core/library_groups.dart';
 import 'package:homedeck/core/models/app_record.dart';
@@ -65,48 +65,43 @@ class LibraryView extends StatelessWidget {
         }
       }
     }
+    if (open != null) {
+      return FolderInterior(
+        section: open,
+        controller: controller,
+        metrics: metrics,
+        focusedId: focusedId,
+        hoveredId: hoveredId,
+        onFocus: onFocus,
+        onHover: onHover,
+        onLaunch: onLaunch,
+        onClose: onCloseFolder,
+        focusNodeFor: focusNodeFor,
+      );
+    }
     return Column(
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(
-            16 * metrics.scale,
+            20 * metrics.scale,
             10 * metrics.scale,
-            16 * metrics.scale,
+            20 * metrics.scale,
             4 * metrics.scale,
           ),
-          child: _GroupChips(
-            metrics: metrics,
-            mode: mode,
-            focused: chipsFocused,
-            folderOpen: open != null,
-            onMode: onMode,
-            onBack: onCloseFolder,
-          ),
+          child: _GroupChips(mode: mode, focused: chipsFocused, onMode: onMode),
         ),
         Expanded(
-          child: open != null
-              ? FolderInterior(
-                  section: open,
-                  controller: controller,
-                  metrics: metrics,
-                  focusedId: focusedId,
-                  hoveredId: hoveredId,
-                  onFocus: onFocus,
-                  onHover: onHover,
-                  onLaunch: onLaunch,
-                  focusNodeFor: focusNodeFor,
-                )
-              : _FolderGrid(
-                  sections: sections,
-                  metrics: metrics,
-                  focusedId: focusedId,
-                  hoveredId: hoveredId,
-                  onFocus: onFocus,
-                  onHover: onHover,
-                  onOpen: (title) => onOpenFolder?.call(title),
-                  onAdd: onAdd,
-                  focusNodeFor: focusNodeFor,
-                ),
+          child: _FolderGrid(
+            sections: sections,
+            metrics: metrics,
+            focusedId: focusedId,
+            hoveredId: hoveredId,
+            onFocus: onFocus,
+            onHover: onHover,
+            onOpen: (title) => onOpenFolder?.call(title),
+            onAdd: onAdd,
+            focusNodeFor: focusNodeFor,
+          ),
         ),
       ],
     );
@@ -115,47 +110,40 @@ class LibraryView extends StatelessWidget {
 
 class _GroupChips extends StatelessWidget {
   const _GroupChips({
-    required this.metrics,
     required this.mode,
     required this.focused,
-    required this.folderOpen,
     required this.onMode,
-    this.onBack,
   });
 
-  final HomeDeckMetrics metrics;
   final LibraryGroupMode mode;
   final bool focused;
-  final bool folderOpen;
   final ValueChanged<LibraryGroupMode> onMode;
-  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (folderOpen && onBack != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: TextButton(
-              key: const Key('library-folder-back'),
-              onPressed: onBack,
-              child: const Text('Folders  ·  B'),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: focused
+            ? Border.all(color: HomeDeckColors.cyan.withValues(alpha: 0.7))
+            : null,
+      ),
+      child: Row(
+        children: [
+          for (final value in LibraryGroupMode.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                key: Key('library-mode-${value.name}'),
+                label: Text(value.label),
+                selected: mode == value,
+                onSelected: (_) => onMode(value),
+              ),
             ),
-          ),
-        for (final value in LibraryGroupMode.values)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              key: Key('library-mode-${value.name}'),
-              label: Text(value.label),
-              selected: mode == value,
-              onSelected: folderOpen ? null : (_) => onMode(value),
-            ),
-          ),
-        const Spacer(),
-        const HintBadge(label: 'X'),
-      ],
+          const Spacer(),
+          const HintBadge(label: 'X'),
+        ],
+      ),
     );
   }
 }
@@ -186,7 +174,7 @@ class _FolderGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final columns = metrics.libraryFolderColumns;
-    final cells = <LibrarySection?>[...sections, null];
+    final rows = metrics.rows;
     if (sections.isEmpty) {
       return Center(
         child: Text(
@@ -198,34 +186,58 @@ class _FolderGrid extends StatelessWidget {
         ),
       );
     }
+    final cells = <LibrarySection?>[...sections, null];
     return Padding(
       key: const Key('library-folders'),
-      padding: EdgeInsets.all(16 * metrics.scale),
-      child: GridView.builder(
-        itemCount: cells.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          childAspectRatio: 1,
-          mainAxisSpacing: metrics.gap,
-          crossAxisSpacing: metrics.gap,
-        ),
-        itemBuilder: (context, index) => _cell(cells, index),
+      padding: EdgeInsets.fromLTRB(
+        20 * metrics.scale,
+        8 * metrics.scale,
+        20 * metrics.scale,
+        16 * metrics.scale,
+      ),
+      child: Column(
+        children: [
+          for (var row = 0; row < rows; row++) ...[
+            if (row > 0) SizedBox(height: metrics.gap),
+            Expanded(
+              child: Row(
+                children: [
+                  for (var col = 0; col < columns; col++) ...[
+                    if (col > 0) SizedBox(width: metrics.gap),
+                    Expanded(child: _cell(cells, row * columns + col)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _cell(List<LibrarySection?> cells, int index) {
+    if (index >= cells.length) {
+      return const SizedBox.expand();
+    }
     final section = cells[index];
     if (section == null) {
-      return AddTile(
-        key: const ValueKey('tile-add'),
-        metrics: metrics,
-        focused: focusedId == addTileId,
-        hovered: hoveredId == addTileId,
-        focusNode: focusNodeFor(addTileId),
-        onActivate: onAdd,
-        onFocus: () => onFocus(addTileId),
-        onHover: (hover) => onHover(hover ? addTileId : null),
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          10 * metrics.scale,
+          10 * metrics.scale,
+          10 * metrics.scale,
+          34 * metrics.scale,
+        ),
+        child: AddTile(
+          key: const ValueKey('tile-add'),
+          metrics: metrics,
+          focused: focusedId == addTileId,
+          hovered: hoveredId == addTileId,
+          focusNode: focusNodeFor(addTileId),
+          onActivate: onAdd,
+          onFocus: () => onFocus(addTileId),
+          onHover: (hover) => onHover(hover ? addTileId : null),
+        ),
       );
     }
     final id = folderFocusId(section.title);
@@ -256,6 +268,7 @@ class FolderInterior extends StatefulWidget {
     required this.onHover,
     required this.onLaunch,
     required this.focusNodeFor,
+    this.onClose,
   });
 
   final LibrarySection section;
@@ -267,6 +280,7 @@ class FolderInterior extends StatefulWidget {
   final ValueChanged<String?> onHover;
   final ValueChanged<AppRecord> onLaunch;
   final FocusNode Function(String id) focusNodeFor;
+  final VoidCallback? onClose;
 
   @override
   State<FolderInterior> createState() => _FolderInteriorState();
@@ -314,6 +328,7 @@ class _FolderInteriorState extends State<FolderInterior> {
   Widget build(BuildContext context) {
     final apps = widget.section.apps;
     final columns = widget.metrics.insideFolderColumns;
+    final rows = widget.metrics.rows;
     AppRecord? heroApp;
     for (final app in apps) {
       if (app.id == _heroId) {
@@ -322,44 +337,61 @@ class _FolderInteriorState extends State<FolderInterior> {
       }
     }
     heroApp ??= apps.isEmpty ? null : apps.first;
-    final File? art = heroApp == null
-        ? null
-        : widget.controller.iconFile(heroApp);
-    return Stack(
+    final color = backdropColorFor(heroApp?.id ?? widget.section.title);
+    return Row(
       key: const Key('folder-interior'),
-      fit: StackFit.expand,
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 420),
-          child: Transform.scale(
-            key: ValueKey(_heroId ?? 'none'),
-            scale: 1.06,
-            child: ArtBackdrop(
-              color: backdropColorFor(_heroId ?? widget.section.title),
-              imageFile: art,
+        Expanded(
+          flex: 45,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              24 * widget.metrics.scale,
+              8 * widget.metrics.scale,
+              8 * widget.metrics.scale,
+              16 * widget.metrics.scale,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _FolderBreadcrumb(
+                  title: widget.section.title,
+                  scale: widget.metrics.scale,
+                  onBack: widget.onClose,
+                ),
+                SizedBox(height: 10 * widget.metrics.scale),
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (var row = 0; row < rows; row++) ...[
+                        if (row > 0) SizedBox(height: widget.metrics.gap),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              for (var col = 0; col < columns; col++) ...[
+                                if (col > 0)
+                                  SizedBox(width: widget.metrics.gap),
+                                Expanded(
+                                  child: _tile(apps, row * columns + col),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: EdgeInsets.all(16 * widget.metrics.scale),
-                child: GridView.builder(
-                  itemCount: apps.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    childAspectRatio: 1,
-                    mainAxisSpacing: widget.metrics.gap,
-                    crossAxisSpacing: widget.metrics.gap,
-                  ),
-                  itemBuilder: (context, index) => _tile(apps, index),
-                ),
-              ),
-            ),
-            const Expanded(flex: 4, child: SizedBox.expand()),
-          ],
+        Expanded(
+          flex: 55,
+          child: _HeroPortrait(
+            metrics: widget.metrics,
+            app: heroApp,
+            color: color,
+          ),
         ),
       ],
     );
@@ -370,18 +402,150 @@ class _FolderInteriorState extends State<FolderInterior> {
       return const SizedBox.expand();
     }
     final app = apps[index];
-    return AppTile(
-      key: ValueKey('tile-${app.id}'),
-      app: app,
-      metrics: widget.metrics,
-      iconFile: widget.controller.iconFile(app),
-      focused: widget.focusedId == app.id,
-      hovered: widget.hoveredId == app.id,
-      moveMode: false,
-      focusNode: widget.focusNodeFor(app.id),
-      onActivate: () => widget.onLaunch(app),
-      onFocus: () => widget.onFocus(app.id),
-      onHover: (hover) => widget.onHover(hover ? app.id : null),
+    return Padding(
+      padding: EdgeInsets.all(6 * widget.metrics.scale),
+      child: AppTile(
+        key: ValueKey('tile-${app.id}'),
+        app: app,
+        metrics: widget.metrics,
+        iconFile: widget.controller.iconFile(app),
+        focused: widget.focusedId == app.id,
+        hovered: widget.hoveredId == app.id,
+        moveMode: false,
+        focusNode: widget.focusNodeFor(app.id),
+        onActivate: () => widget.onLaunch(app),
+        onFocus: () => widget.onFocus(app.id),
+        onHover: (hover) => widget.onHover(hover ? app.id : null),
+      ),
+    );
+  }
+}
+
+class _FolderBreadcrumb extends StatelessWidget {
+  const _FolderBreadcrumb({
+    required this.title,
+    required this.scale,
+    this.onBack,
+  });
+
+  final String title;
+  final double scale;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xCC0F1722),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        key: const Key('library-folder-back'),
+        onTap: onBack,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 14 * scale,
+            vertical: 7 * scale,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 18 * scale,
+              ),
+              SizedBox(width: 4 * scale),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13 * scale,
+                ),
+              ),
+              Text(
+                '  ·  B',
+                style: TextStyle(
+                  color: HomeDeckColors.muted,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12 * scale,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPortrait extends StatelessWidget {
+  const _HeroPortrait({required this.metrics, required this.color, this.app});
+
+  final HomeDeckMetrics metrics;
+  final AppRecord? app;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        8 * metrics.scale,
+        20 * metrics.scale,
+        32 * metrics.scale,
+        24 * metrics.scale,
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 420),
+        switchInCurve: Curves.easeOut,
+        child: Align(
+          key: ValueKey(app?.id ?? 'none'),
+          alignment: Alignment.center,
+          child: AspectRatio(
+            aspectRatio: 0.78,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [color, Color.lerp(color, Colors.black, 0.4)!],
+                      ),
+                    ),
+                  ),
+                  if (app != null)
+                    Center(
+                      child: Text(
+                        initialFor(app!.displayName),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 88 * metrics.scale,
+                          shadows: const [
+                            Shadow(color: Color(0x88000000), blurRadius: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0x73000000)],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
