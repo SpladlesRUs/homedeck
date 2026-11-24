@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:homedeck/ui/branding.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'helpers/test_harness.dart';
@@ -14,9 +15,10 @@ void main() {
     await addSampleAppsForWidgets(tester, harness, count: 2);
     await pumpHomeDeck(tester, harness);
 
-    expect(find.text('HomeDeck'), findsOneWidget);
+    expect(find.byType(HomeDeckMark), findsWidgets);
     expect(find.text('Tile 1'), findsOneWidget);
-    expect(find.text('Tile 2'), findsOneWidget);
-    expect(find.text('Add app'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tile-app-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tile-add')), findsOneWidget);
   });
 }

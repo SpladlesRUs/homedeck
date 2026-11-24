@@ -37,7 +37,7 @@ void main() {
 
     expect(second, findsOneWidget);
     expect(third, findsOneWidget);
-    expect(find.text('Add app'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tile-add')), findsOneWidget);
     expect(addTileId, isNotEmpty);
   });
 }

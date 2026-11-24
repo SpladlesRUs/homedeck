@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:homedeck/app.dart';
 import 'package:homedeck/core/app_paths.dart';
 import 'package:homedeck/core/icon_cache.dart';
+import 'package:homedeck/core/device_status.dart';
+import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
@@ -82,6 +84,8 @@ class Harness {
     required this.adapter,
     required this.controller,
     required this.windowMode,
+    required this.gamepad,
+    required this.deviceStatus,
   });
 
   final Directory directory;
@@ -89,6 +93,8 @@ class Harness {
   final FakePlatformAdapter adapter;
   final LibraryController controller;
   final MemoryWindowModeController windowMode;
+  final MemoryGamepadSource gamepad;
+  final MemoryDeviceStatus deviceStatus;
 }
 
 Future<Harness> createHarness({
@@ -113,6 +119,8 @@ Future<Harness> createHarness({
     adapter: fake,
     controller: controller,
     windowMode: MemoryWindowModeController(),
+    gamepad: MemoryGamepadSource(),
+    deviceStatus: MemoryDeviceStatus(batteryPercent: 100),
   );
 }
 
@@ -145,6 +153,8 @@ Future<void> pumpHomeDeck(WidgetTester tester, Harness harness) async {
     HomeDeckApp(
       controller: harness.controller,
       windowMode: harness.windowMode,
+      gamepad: harness.gamepad,
+      deviceStatus: harness.deviceStatus,
     ),
   );
   await tester.pump();
@@ -178,11 +188,11 @@ Future<void> addSampleApps(
 }
 
 bool focusOn(WidgetTester tester, Key key) {
-  final label = find.descendant(
+  final focus = find.descendant(
     of: find.byKey(key),
-    matching: find.byType(Text),
+    matching: find.byType(Focus),
   );
-  return Focus.of(tester.element(label.first)).hasFocus;
+  return tester.widget<Focus>(focus).focusNode?.hasFocus ?? false;
 }
 
 Future<void> _tryDeleteTemp(Directory directory) async {

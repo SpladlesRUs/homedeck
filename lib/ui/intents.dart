@@ -46,3 +46,19 @@ class ConfirmIntent extends Intent {
 class ToggleFavoriteIntent extends Intent {
   const ToggleFavoriteIntent();
 }
+
+class NextTabIntent extends Intent {
+  const NextTabIntent();
+}
+
+class PrevTabIntent extends Intent {
+  const PrevTabIntent();
+}
+
+class OpenMenuIntent extends Intent {
+  const OpenMenuIntent();
+}
+
+class OpenDetailsIntent extends Intent {
+  const OpenDetailsIntent();
+}

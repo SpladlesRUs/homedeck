@@ -200,6 +200,14 @@ class LibraryController extends ChangeNotifier {
       'Calculator',
       'Notes',
       'Star Chart',
+      'Harbor Watch',
+      'Comet Run',
+      'Paper Kite',
+      'Glacier',
+      'Drumline',
+      'Lanterns',
+      'Meadow',
+      'Copper Mine',
     ];
     final records = <AppRecord>[];
     final ids = <String>[];

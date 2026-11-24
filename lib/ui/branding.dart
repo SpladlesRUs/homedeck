@@ -1,25 +1,28 @@
 import 'package:material_ui/material_ui.dart';
 
-/// Original HomeDeck palette. Inspired by living-room consoles, not Nintendo.
+/// Original HomeDeck palette. Inspired by living-room handhelds, not Nintendo.
 class HomeDeckColors {
-  static const canvas = Color(0xFFF4F6F9);
-  static const canvasDeep = Color(0xFFD5DCE6);
-  static const pattern = Color(0xFFC9D1DC);
-  static const tileFrame = Color(0xFFFFFFFF);
-  static const tileEmpty = Color(0xFFE6EAEF);
-  static const tileEmptyEdge = Color(0xFFD0D6DE);
-  static const ink = Color(0xFF3B4354);
-  static const muted = Color(0xFF7B8494);
-  static const cyan = Color(0xFF2EC4FF);
-  static const cyanDeep = Color(0xFF1289D4);
+  static const canvas = Color(0xFF1B2433);
+  static const canvasDeep = Color(0xFF0E141E);
+  static const glass = Color(0x99101824);
+  static const glassEdge = Color(0x55FFFFFF);
+  static const tileEmpty = Color(0x33FFFFFF);
+  static const tileEmptyEdge = Color(0x22FFFFFF);
+  static const ink = Color(0xFFF4F7FB);
+  static const muted = Color(0xFFC5CDD8);
+  static const cyan = Color(0xFF7AE7FF);
+  static const cyanDeep = Color(0xFF2EC4FF);
   static const gold = Color(0xFFF5C542);
   static const goldBright = Color(0xFFFFE08A);
   static const cream = Color(0xFFF7F1E3);
   static const danger = Color(0xFFE24B4B);
-  static const dockFill = Color(0xFFFBFCFD);
+  static const dockFill = Color(0xCC15202E);
   static const voidNavy = Color(0xFF1C2436);
   static const deepIndigo = Color(0xFF2A3348);
+  static const pill = Color(0xCC0F1722);
 }
+
+enum HomeTab { home, games, achievements, friends, allApps }
 
 class HomeDeckMetrics {
   const HomeDeckMetrics({
@@ -32,20 +35,14 @@ class HomeDeckMetrics {
   });
 
   factory HomeDeckMetrics.of(Size size) {
-    final columns = size.width >= 2560
-        ? 7
-        : size.width >= 1760
-        ? 6
-        : 5;
-    final rows = size.height >= 1080 ? 4 : 3;
     final scale = (size.shortestSide / 800).clamp(0.72, 2.2);
     return HomeDeckMetrics(
       size: size,
       scale: scale,
-      columns: columns,
-      rows: rows,
-      gap: 14 * scale,
-      padding: 40 * scale,
+      columns: 8,
+      rows: 3,
+      gap: 8 * scale,
+      padding: 28 * scale,
     );
   }
 
@@ -58,16 +55,16 @@ class HomeDeckMetrics {
 
   int get pageSize => columns * rows;
 
-  double get titleSize => 22 * scale;
+  double get titleSize => 18 * scale;
   double get tileNameSize => 13 * scale;
   double get hintSize => 12 * scale;
-  double get dockSize => 58 * scale;
+  double get dockSize => 42 * scale;
 }
 
 ThemeData homeDeckTheme() {
-  const scheme = ColorScheme.light(
+  const scheme = ColorScheme.dark(
     primary: HomeDeckColors.cyan,
-    onPrimary: Colors.white,
+    onPrimary: Color(0xFF08202A),
     secondary: HomeDeckColors.cyanDeep,
     surface: HomeDeckColors.canvas,
     onSurface: HomeDeckColors.ink,
@@ -76,7 +73,8 @@ ThemeData homeDeckTheme() {
   return ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
-    scaffoldBackgroundColor: HomeDeckColors.canvas,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: HomeDeckColors.canvasDeep,
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
         color: HomeDeckColors.ink,

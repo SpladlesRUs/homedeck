@@ -5,19 +5,6 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:material_ui/material_ui.dart';
 
 const addTileId = '__homedeck_add__';
-const dockSettingsId = '__dock_settings__';
-const dockAddId = '__dock_add__';
-const dockFullscreenId = '__dock_fullscreen__';
-const dockLibraryId = '__dock_library__';
-const dockExitId = '__dock_exit__';
-
-const dockIds = [
-  dockSettingsId,
-  dockAddId,
-  dockFullscreenId,
-  dockLibraryId,
-  dockExitId,
-];
 
 class HomeGrid extends StatelessWidget {
   const HomeGrid({
@@ -34,6 +21,7 @@ class HomeGrid extends StatelessWidget {
     required this.onAdd,
     required this.onReorderDrop,
     required this.focusNodeFor,
+    this.hideEmpty = false,
   });
 
   final LibraryController controller;
@@ -42,6 +30,7 @@ class HomeGrid extends StatelessWidget {
   final String? focusedId;
   final String? hoveredId;
   final bool moveMode;
+  final bool hideEmpty;
   final ValueChanged<String> onFocus;
   final ValueChanged<String?> onHover;
   final ValueChanged<AppRecord> onLaunch;
@@ -62,12 +51,7 @@ class HomeGrid extends StatelessWidget {
     final pageSize = metrics.pageSize;
     final start = page * pageSize;
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        metrics.padding,
-        10 * metrics.scale,
-        metrics.padding,
-        8 * metrics.scale,
-      ),
+      padding: EdgeInsets.all(16 * metrics.scale),
       child: Column(
         children: [
           for (var row = 0; row < metrics.rows; row++) ...[
@@ -124,6 +108,9 @@ class HomeGrid extends StatelessWidget {
         onHover: (hover) => onHover(hover ? addTileId : null),
         onFocus: () => onFocus(addTileId),
       );
+    }
+    if (hideEmpty) {
+      return const SizedBox.expand();
     }
     return EmptySlot(
       key: ValueKey('empty-slot-$index'),

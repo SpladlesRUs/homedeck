@@ -78,7 +78,7 @@ void main() {
     expect(empty.controller.apps, isEmpty);
 
     final seeded = await createHarness(seedDemo: true);
-    expect(seeded.controller.apps, hasLength(16));
+    expect(seeded.controller.apps, hasLength(24));
     expect(seeded.controller.apps.first.displayName, 'Arcade Cabinet');
   });
 }

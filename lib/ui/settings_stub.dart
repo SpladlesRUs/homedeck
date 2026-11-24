@@ -12,6 +12,7 @@ class SettingsStub extends StatelessWidget {
     required this.onClose,
     required this.onToggleFullscreen,
     required this.onToggleBorderless,
+    this.onExit,
   });
 
   final WindowModeController windowMode;
@@ -19,6 +20,7 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onToggleFullscreen;
   final VoidCallback onToggleBorderless;
+  final VoidCallback? onExit;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +40,12 @@ class SettingsStub extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              child: Material(
+                color: Colors.white,
+                elevation: 8,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: HomeDeckColors.cyan, width: 3),
+                  side: const BorderSide(color: HomeDeckColors.cyan, width: 3),
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(32 * scale.clamp(0.8, 1.3)),
@@ -94,12 +97,20 @@ class SettingsStub extends StatelessWidget {
                       const SizedBox(height: 8),
                       const Text(
                         'Apps are added manually. Installed-app discovery is not enabled yet.',
-                        style: TextStyle(color: HomeDeckColors.ink, fontSize: 18, height: 1.35),
+                        style: TextStyle(
+                          color: HomeDeckColors.ink,
+                          fontSize: 18,
+                          height: 1.35,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         'The library can hold games, emulators, and general applications. Scope is still an open product question.',
-                        style: TextStyle(color: HomeDeckColors.muted, fontSize: 16, height: 1.35),
+                        style: TextStyle(
+                          color: HomeDeckColors.muted,
+                          fontSize: 16,
+                          height: 1.35,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Center(
@@ -125,16 +136,34 @@ class SettingsStub extends StatelessWidget {
                       const SizedBox(height: 24),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: onClose,
-                          child: const Text(
-                            'Close  ·  Esc',
-                            style: TextStyle(
-                              color: HomeDeckColors.cyanDeep,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
+                        child: Wrap(
+                          spacing: 12,
+                          children: [
+                            if (onExit != null)
+                              TextButton(
+                                key: const Key('settings-exit'),
+                                onPressed: onExit,
+                                child: const Text(
+                                  'Exit  ·  Power',
+                                  style: TextStyle(
+                                    color: HomeDeckColors.danger,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            TextButton(
+                              onPressed: onClose,
+                              child: const Text(
+                                'Close  ·  Esc',
+                                style: TextStyle(
+                                  color: HomeDeckColors.cyanDeep,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ],

@@ -90,8 +90,15 @@ Keyboard:
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 
-The home menu is a light 5×3 paged grid at 1280×800 (more columns/rows on
-larger windows): glossy rounded tiles, empty slots, page dots, edge tabs, a
-bottom dock, a profile badge, and the clock. Demo tiles are seeded only with
+The home menu follows iiSU / Wii U handheld flow at 1280×800: a blurred
+selected-tile backdrop, one dark glass panel with an 8×3 edge-to-edge tile
+grid, a profile cluster + title pill + status cluster, a 5-tab dock (Home and
+All apps work; Games / Achievements / Friends are placeholders), and A/B/−/+
+corner hints. Pages appear after 24 tiles. Demo tiles are seeded only with
 `--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults stay
 empty.
+
+Gamepad input on Windows polls XInput directly (D-pad, A, B, LB, RB, Start,
+Back) so buttons still work when Flutter does not deliver gamepad keys. Keyboard
+arrows / Enter / Esc remain wired through Shortcuts. Battery uses
+GetSystemPowerStatus and hides itself when there is no battery.

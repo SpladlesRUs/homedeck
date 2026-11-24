@@ -51,7 +51,7 @@ Do not pass that define on a release build.
 Rendered at 1280×800:
 
 - [Before (empty dark home)](docs/proof/ui/before-1280x800.png)
-- [After (paged light grid)](docs/proof/ui/after-1280x800.png)
+- [After (iiSU-style 8×3 handheld grid)](docs/proof/ui/after-1280x800.png)
 
 ## Open questions
 

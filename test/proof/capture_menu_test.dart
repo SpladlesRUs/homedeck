@@ -24,7 +24,11 @@ void main() {
     _setView(tester, size);
 
     HomeScreen.tickClock = false;
-    addTearDown(() => HomeScreen.tickClock = true);
+    HomeScreen.clock = () => DateTime(2026, 3, 15, 5, 22);
+    addTearDown(() {
+      HomeScreen.tickClock = true;
+      HomeScreen.clock = DateTime.now;
+    });
 
     final outDir = _outDir();
     final harness = await createHarnessForWidgets(tester, seedDemo: true);
@@ -94,6 +98,8 @@ Future<void> _pumpApp(WidgetTester tester, Harness harness) async {
       child: HomeDeckApp(
         controller: harness.controller,
         windowMode: harness.windowMode,
+        gamepad: harness.gamepad,
+        deviceStatus: harness.deviceStatus,
       ),
     ),
   );

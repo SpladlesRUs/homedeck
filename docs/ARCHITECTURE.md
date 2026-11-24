@@ -13,8 +13,8 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
 ```
 
 - **UI** (`lib/ui`) renders the living-room home screen. Widgets talk to
-  `LibraryController` and `WindowModeController`. They never import a concrete
-  platform adapter.
+  `LibraryController`, `WindowModeController`, `GamepadSource`, and
+  `DeviceStatus`. They never import a concrete platform adapter.
 - **Core** (`lib/core`) owns the library model, JSON persistence under
   `path_provider`'s `getApplicationSupportDirectory()`, and the icon cache.
   HomeDeck-owned files are referenced with **relative** paths. User-selected
@@ -74,3 +74,7 @@ desktop runner are not in this tree.
 Fullscreen and borderless toggling use `window_manager` (F11 and Settings).
 `NativeWindowModeController` wraps the plugin so widget tests can inject
 `MemoryWindowModeController`.
+
+Gamepad and battery follow the same split: `WindowsXInputGamepad` polls XInput
+on Windows; `WindowsBatteryStatus` reads `GetSystemPowerStatus`. Tests inject
+`MemoryGamepadSource` and `MemoryDeviceStatus`.

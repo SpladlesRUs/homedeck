@@ -1,3 +1,5 @@
+import 'package:homedeck/core/device_status.dart';
+import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
 import 'package:homedeck/core/window_mode.dart';
 import 'package:homedeck/ui/branding.dart';
@@ -9,10 +11,14 @@ class HomeDeckApp extends StatefulWidget {
     super.key,
     required this.controller,
     required this.windowMode,
+    this.gamepad,
+    this.deviceStatus,
   });
 
   final LibraryController controller;
   final WindowModeController windowMode;
+  final GamepadSource? gamepad;
+  final DeviceStatus? deviceStatus;
 
   @override
   State<HomeDeckApp> createState() => _HomeDeckAppState();
@@ -40,6 +46,8 @@ class _HomeDeckAppState extends State<HomeDeckApp> {
       home: HomeScreen(
         controller: widget.controller,
         windowMode: widget.windowMode,
+        gamepad: widget.gamepad,
+        deviceStatus: widget.deviceStatus,
       ),
     );
   }
