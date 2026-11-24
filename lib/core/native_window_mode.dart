@@ -81,18 +81,16 @@ class NativeWindowModeController extends WindowModeController {
       _restorePosition ??= window.position.toOffset();
       // Ally smoke at 27ba8ec: F11 left 1280×720 with chromeChanged=false when
       // only `isFullScreen` was toggled. Drive a visible change: native
-      // fullscreen + frameless + cover the primary display.
+      // fullscreen + frameless + maximize (covers the display on Windows /
+      // handhelds even when isFullScreen is a no-op).
       window.isFullScreen = true;
       window.setFrameless(true);
-      final display = DisplayManager.instance.getPrimary();
-      if (display != null) {
-        window.position = display.position;
-        window.setSize(display.size, false);
-      } else {
-        window.maximize();
-      }
+      window.maximize();
     } else {
       window.isFullScreen = false;
+      if (window.isMaximized) {
+        window.unmaximize();
+      }
       if (borderless) {
         window.setFrameless(true);
       } else {
