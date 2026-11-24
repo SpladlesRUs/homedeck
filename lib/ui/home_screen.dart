@@ -1178,7 +1178,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onClose: () => setState(() => _addOpen = false),
                       onAdded: (id) {
                         setState(() => _addOpen = false);
-                        _focusId(id);
+                        // Focus after the sheet leaves the tree and the new
+                        // Home pin is built; requestFocus on a detached node
+                        // was leaving Enter on Now Playing instead of launch.
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) {
+                            return;
+                          }
+                          _focusId(id);
+                        });
                       },
                     ),
                   if (_searchOpen)

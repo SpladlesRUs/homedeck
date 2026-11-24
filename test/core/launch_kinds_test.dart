@@ -74,7 +74,7 @@ void main() {
     expect(io.launches, hasLength(1));
     expect(io.launches.single.executable, emulator);
     expect(io.launches.single.arguments, ['-L', 'cores/n64.dll', rom]);
-    expect(io.launches.single.shortcut, isFalse);
+    expect(io.launches.single.shortcut, isTrue);
   });
 
   test('missing ROM uses the same overlay failure kind as a missing exe', () async {

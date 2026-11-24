@@ -205,9 +205,11 @@ class LibraryController extends ChangeNotifier {
   }
 
   Future<void> _commit(HomeDeckState next) async {
+    // Persist before publishing state so a failed write cannot leave a
+    // tile on screen (and an icon in icons/) with no library.json.
+    await _preferences.save(next);
     _state = next;
     notifyListeners();
-    await persist();
   }
 
   Future<LaunchOutcome> launch(String id) async {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:homedeck/core/app_paths.dart';
@@ -25,6 +27,35 @@ void main() {
       'd',
     ]);
     expect(TileLayout.fromJson(layout.toJson()), layout);
+  });
+
+  test('failed save does not publish a tile without library.json', () async {
+    final harness = await createHarness();
+    final dir = harness.directory;
+    // A file where the support directory should be — create(recursive) fails.
+    final blocker = File(p.join(dir.path, 'not-a-dir'));
+    await blocker.writeAsString('x', flush: true);
+    final broken = AppPaths(Directory(p.join(blocker.path, 'HomeDeck')));
+    final prefs = PreferencesRepository(broken);
+    final controller = LibraryController(
+      adapter: FakePlatformAdapter(),
+      preferences: prefs,
+      icons: IconCache(harness.paths),
+    );
+    await controller.load();
+    await expectLater(
+      controller.addRecord(
+        displayName: 'Ghost',
+        target: LaunchTarget(
+          platform: AppPlatform.windows,
+          kind: LaunchTargetKind.windowsExecutable,
+          value: p.join(dir.path, 'Ghost.exe'),
+        ),
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(controller.apps, isEmpty);
+    expect(File(p.join(blocker.path, 'HomeDeck', 'library.json')).existsSync(), isFalse);
   });
 
   test('library layout persists across repository instances', () async {

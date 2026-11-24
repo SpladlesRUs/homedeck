@@ -35,11 +35,39 @@ class PreferencesRepository {
     }
   }
 
+  /// Writes [state] via a temp file then replaces `library.json`.
+  ///
+  /// Uses synchronous IO so widget tests in the fake-async zone (and the
+  /// IconCache sync write path) can finish `_commit` without hanging. Ally
+  /// smoke at 27ba8ec saw `icons\` under AppData with no `library.json`
+  /// after a successful add — persist-before-notify in [LibraryController]
+  /// plus this atomic replace keeps the library file durable.
   Future<void> save(HomeDeckState state) async {
     final file = paths.libraryJsonFile();
-    file.parent.createSync(recursive: true);
+    final dir = file.parent;
+    dir.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
-    file.writeAsStringSync(encoder.convert(state.toJson()), flush: true);
+    final payload = encoder.convert(state.toJson());
+    final temp = File(p.join(dir.path, 'library.json.tmp'));
+    temp.writeAsStringSync(payload, flush: true);
+    try {
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      temp.renameSync(file.path);
+    } on FileSystemException {
+      // Windows sometimes refuses rename-over; copy then remove temp.
+      temp.copySync(file.path);
+      if (temp.existsSync()) {
+        temp.deleteSync();
+      }
+    }
+    if (!file.existsSync()) {
+      throw FileSystemException(
+        'library.json was not present after save',
+        file.path,
+      );
+    }
   }
 
   /// True when [candidate] is the library file inside [paths.supportRoot].
