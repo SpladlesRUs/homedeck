@@ -24,16 +24,17 @@ README use the same PNG.
 
 ## Windows icon extraction
 
-HomeDeck does **not** extract icons from PE resources or `.lnk` files in
-milestone 1. Dart has no built-in `ExtractIconEx` binding, and pulling a Win32
-FFI plugin was out of scope.
+`WindowsAdapter.resolveIcon` extracts icons on Windows via Win32 FFI
+(`PrivateExtractIconsW` / `ExtractIconExW` / `SHGetFileInfoW`, plus
+`IShellLinkW` to resolve `.lnk` target and optional `IconLocation`). The
+result is written as a PNG under the application support directory
+(`icons/<id>.png`, relative `iconRef`) — the same [IconCache] format as
+generated tiles.
 
-When an icon cannot be read, HomeDeck generates a colored tile with the app
-initial and caches it as a PNG under the application support directory
-(`icons/<id>.png`, stored as a relative `iconRef`).
-
-A later Windows adapter can resolve real icons (Win32, PowerShell, or a
-shortcut parser) and write the same cache format.
+When extraction is unavailable (non-Windows host, store URI, missing file,
+or any Win32 failure), HomeDeck generates a colored tile with the app
+initial and caches that instead. Generated tiles remain the permanent
+fallback; extraction never blocks adding a game.
 
 ## Steam Deck validation pending
 
@@ -53,7 +54,7 @@ Do not treat Deck as a separate app.
 | Windows `.exe` launch via `Process.start` (detached) | Implemented; **not verified on a real Windows PC in this environment** |
 | Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
 | Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
-| Windows PE / `.lnk` icon extraction | Not implemented; generated tiles used |
+| Windows PE / `.lnk` icon extraction | Implemented via Win32 FFI; generated tile fallback |
 | Installed-app / Steam / ROM-folder scanner | Not implemented; `discover()` is the hook |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |

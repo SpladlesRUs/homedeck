@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:homedeck/core/generated_icon.dart';
@@ -8,6 +9,7 @@ import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
+import 'package:homedeck/platform/windows_icon_extractor.dart';
 import 'package:homedeck/platform/windows_io.dart';
 
 typedef FilePickerFn = Future<String?> Function({
@@ -15,20 +17,23 @@ typedef FilePickerFn = Future<String?> Function({
   required List<String> extensions,
 });
 
-/// Windows launch adapter (milestone 1).
+/// Windows launch adapter.
 ///
 /// Manual add: `.exe` / `.lnk`, store URIs (`steam://…`), or emulator + ROM.
-/// Icons fall back to a generated colored initial tile because PE resource
-/// extraction is not implemented (see docs/DECISIONS.md).
+/// Icons prefer a real PE / shortcut extract into [IconCache]; generated
+/// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
   WindowsAdapter({
     WindowsIo io = const DartWindowsIo(),
     FilePickerFn? filePicker,
+    WindowsIconExtractor? iconExtractor,
   }) : _io = io,
-       _filePicker = filePicker ?? _defaultPicker;
+       _filePicker = filePicker ?? _defaultPicker,
+       _iconExtractor = iconExtractor ?? Win32IconExtractor();
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
+  final WindowsIconExtractor _iconExtractor;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -56,12 +61,38 @@ class WindowsAdapter implements PlatformAdapter {
     required String appId,
     required String displayName,
   }) async {
-    // Milestone 1 does not parse PE resources or .lnk icon paths.
+    final extracted = await _tryExtractIcon(target);
+    if (extracted != null) {
+      return cache.writePng(appId, extracted);
+    }
     final bytes = await generateInitialIcon(
       displayName: displayName,
       key: appId,
     );
     return cache.writePng(appId, bytes);
+  }
+
+  /// Best-effort PE / `.lnk` extract. Returns `null` for URIs, missing files,
+  /// non-Windows hosts, or any Win32 failure so callers keep the generated tile.
+  Future<Uint8List?> _tryExtractIcon(LaunchTarget target) async {
+    if (target.kind == LaunchTargetKind.windowsUri ||
+        WindowsPaths.isLaunchUri(target.value)) {
+      return null;
+    }
+    final path = target.value.trim();
+    if (path.isEmpty) {
+      return null;
+    }
+    if (!WindowsPaths.isExecutable(path) &&
+        !WindowsPaths.isShortcut(path) &&
+        target.kind != LaunchTargetKind.windowsEmulated) {
+      return null;
+    }
+    try {
+      return await _iconExtractor.extractPng(path);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -141,13 +172,15 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
-      // Always shell-start on Windows. Direct Process.start(detached) often
-      // fails to show GUI targets (notepad harness on Ally) from a Flutter
-      // runner; `cmd /c start` is reliable for .exe, .lnk, and store URIs.
+      final uri = target.kind == LaunchTargetKind.windowsUri ||
+          WindowsPaths.isLaunchUri(target.value);
+      final shortcut = !uri &&
+          (target.kind == LaunchTargetKind.windowsShortcut ||
+              WindowsPaths.isShortcut(target.value));
       await _io.startDetached(
         executable: target.value,
         arguments: target.resolvedArguments,
-        shortcut: true,
+        shortcut: shortcut || uri,
       );
       return const LaunchSuccess();
     } on FileSystemException catch (error) {
