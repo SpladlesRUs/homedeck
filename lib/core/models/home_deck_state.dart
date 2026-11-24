@@ -1,4 +1,5 @@
 import 'package:homedeck/core/models/app_record.dart';
+import 'package:homedeck/core/models/home_layout.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
 
 /// Window chrome persisted with the library.
@@ -44,6 +45,7 @@ class HomeDeckState {
     this.version = 1,
     this.apps = const [],
     this.layout = const TileLayout(),
+    this.home = const HomeLayout(),
     this.window = const WindowPrefs(),
   });
 
@@ -52,6 +54,7 @@ class HomeDeckState {
   final int version;
   final List<AppRecord> apps;
   final TileLayout layout;
+  final HomeLayout home;
   final WindowPrefs window;
 
   List<AppRecord> get orderedApps {
@@ -73,12 +76,14 @@ class HomeDeckState {
     int? version,
     List<AppRecord>? apps,
     TileLayout? layout,
+    HomeLayout? home,
     WindowPrefs? window,
   }) {
     return HomeDeckState(
       version: version ?? this.version,
       apps: apps ?? this.apps,
       layout: layout ?? this.layout,
+      home: home ?? this.home,
       window: window ?? this.window,
     );
   }
@@ -87,6 +92,7 @@ class HomeDeckState {
     'version': version,
     'apps': apps.map((app) => app.toJson()).toList(growable: false),
     'layout': layout.toJson(),
+    'home': home.toJson(),
     'window': window.toJson(),
   };
 
@@ -121,11 +127,24 @@ class HomeDeckState {
         orderedIds: List<String>.unmodifiable(sorted.map((app) => app.id)),
       );
     }
+    final rawHome = json['home'];
+    var home = const HomeLayout();
+    if (rawHome is Map) {
+      home = HomeLayout.fromJson(
+        rawHome.map((key, value) => MapEntry('$key', value)),
+      );
+    } else if (layout.orderedIds.isNotEmpty) {
+      // Legacy library.json had a single packed layout that was Home.
+      home = HomeLayout(
+        slots: List<String?>.unmodifiable(layout.orderedIds),
+      );
+    }
     final rawWindow = json['window'];
     return HomeDeckState(
       version: json['version'] as int? ?? currentVersion,
       apps: List<AppRecord>.unmodifiable(apps),
       layout: layout,
+      home: home,
       window: rawWindow is Map
           ? WindowPrefs.fromJson(
               rawWindow.map((key, value) => MapEntry('$key', value)),
@@ -139,6 +158,7 @@ class HomeDeckState {
     return other is HomeDeckState &&
         other.version == version &&
         other.layout == layout &&
+        other.home == home &&
         other.window == window &&
         _appsEqual(other.apps, apps);
   }
@@ -147,6 +167,7 @@ class HomeDeckState {
   int get hashCode => Object.hash(
     version,
     layout,
+    home,
     window,
     Object.hashAll(apps),
   );

@@ -62,3 +62,7 @@ class OpenMenuIntent extends Intent {
 class OpenDetailsIntent extends Intent {
   const OpenDetailsIntent();
 }
+
+class ToggleLibraryGroupIntent extends Intent {
+  const ToggleLibraryGroupIntent();
+}

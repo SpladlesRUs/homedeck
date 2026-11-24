@@ -38,6 +38,11 @@ flutter run -d windows
 
 `F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome.
 
+Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
+`steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`
+arguments). New games go to the **Library**; optionally pin them to **Home**.
+Steam / ROM-folder auto-scan is a later milestone.
+
 Release defaults to an empty library. To preview a full grid in debug only:
 
 ```bat
@@ -51,7 +56,8 @@ Do not pass that define on a release build.
 Rendered at 1280×800:
 
 - [Before (empty dark home)](docs/proof/ui/before-1280x800.png)
-- [After (iiSU-style 8×3 handheld grid)](docs/proof/ui/after-1280x800.png)
+- [After (Home desktop of pinned shortcuts, empty slots kept)](docs/proof/ui/after-1280x800.png)
+- [Library grouped by console](docs/proof/ui/05-library.png)
 
 ## Open questions
 

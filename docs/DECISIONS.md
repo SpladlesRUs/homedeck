@@ -8,9 +8,11 @@ answer.
 1. **Library scope.** Is HomeDeck limited to games and emulators, or does it
    include general applications? Records already support an optional `category`
    and a free-form display name. Milestone 1 does not filter the library.
-2. **Manual add vs discovery.** Milestone 1 is **manual add only** (file picker
-   for `.exe` / `.lnk`). `PlatformAdapter.discover()` exists and returns an
-   empty list so a scanner can replace it later without touching widgets.
+2. **Manual add vs discovery.** Milestone 1 is **manual add only**. The Add
+   sheet can register a native `.exe` / `.lnk` / store URI, or an emulated
+   game (emulator + ROM + `{rom}` args). `PlatformAdapter.discover()` exists
+   and returns an empty list so a Steam / ROM-folder scanner can replace it
+   later without touching widgets.
 
 ## Official app icon
 
@@ -49,9 +51,10 @@ Do not treat Deck as a separate app.
 | Area | Status |
 | --- | --- |
 | Windows `.exe` launch via `Process.start` (detached) | Implemented; **not verified on a real Windows PC in this environment** |
-| Windows `.lnk` launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
+| Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
+| Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
 | Windows PE / `.lnk` icon extraction | Not implemented; generated tiles used |
-| Installed-app scanner | Not implemented |
+| Installed-app / Steam / ROM-folder scanner | Not implemented; `discover()` is the hook |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
 | Accounts, cloud sync | Out of scope |
@@ -75,8 +78,9 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with the on-screen **Add** tile or the `A` key, pick a `.exe` or
-`.lnk`, then press Enter (or click) to launch. Layout is stored in the
+Add an app with the on-screen **Add** tile: Native (`.exe`, `.lnk`, or a
+URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
+args). Then press Enter (or click) to launch. Layout is stored in the
 application support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
 
@@ -84,19 +88,18 @@ Keyboard:
 
 - Arrow keys move focus
 - Enter launches
-- Delete / Backspace removes from the library
+- Delete / Backspace unpins from Home; in Library it asks to remove the game
 - Esc dismisses overlays
 - M enters rearrange mode (arrows swap tiles; drag also works)
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 
-The home menu follows iiSU / Wii U handheld flow at 1280×800: a blurred
-selected-tile backdrop, one dark glass panel with an 8×3 edge-to-edge tile
-grid, a profile cluster + title pill + status cluster, a 5-tab dock (Home and
-All apps work; Games / Achievements / Friends are placeholders), and A/B/−/+
-corner hints. Pages appear after 24 tiles. Demo tiles are seeded only with
-`--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults stay
-empty.
+Home is a desktop of pinned shortcuts (empty slots stay empty; rearrange with
+Menu > Move, then D-pad, A to drop). The Library tab lists every added game,
+grouped By console or By app (store). Gamepad X switches that grouping.
+Unpinning from Home never deletes the library entry. Demo tiles are seeded only
+with `--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults
+stay empty.
 
 Gamepad input on Windows polls XInput directly (D-pad, A, B, LB, RB, Start,
 Back) so buttons still work when Flutter does not deliver gamepad keys. Keyboard

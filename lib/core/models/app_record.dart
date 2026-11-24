@@ -1,5 +1,7 @@
 import 'package:homedeck/core/models/app_platform.dart';
+import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/launch_target.dart';
+import 'package:homedeck/core/models/tile_kind.dart';
 
 /// Shared library entry. Stable [id] is HomeDeck's identifier; launch
 /// locations live per-platform in [targets] and are not portable.
@@ -11,6 +13,9 @@ class AppRecord {
     this.iconRef,
     this.category,
     this.favorite = false,
+    this.kind = TileKind.native,
+    this.console,
+    this.store,
     this.targets = const {},
   });
 
@@ -31,6 +36,15 @@ class AppRecord {
 
   final bool favorite;
 
+  /// Native Windows game/app versus emulator + ROM.
+  final TileKind kind;
+
+  /// Emulated console, when [kind] is [TileKind.emulated].
+  final ConsoleSystem? console;
+
+  /// Native storefront, when [kind] is [TileKind.native].
+  final Storefront? store;
+
   final Map<AppPlatform, LaunchTarget> targets;
 
   LaunchTarget? targetFor(AppPlatform platform) => targets[platform];
@@ -42,6 +56,9 @@ class AppRecord {
     'position': position,
     'category': category,
     'favorite': favorite,
+    'kind': kind.wireName,
+    if (console != null) 'console': console!.wireName,
+    if (store != null) 'store': store!.wireName,
     'targets': {
       for (final entry in targets.entries) entry.key.wireName: entry.value.toJson(),
     },
@@ -67,6 +84,13 @@ class AppRecord {
       position: json['position'] as int? ?? 0,
       category: json['category'] as String?,
       favorite: json['favorite'] as bool? ?? false,
+      kind: TileKind.fromWire(json['kind'] as String?),
+      console: json['console'] == null
+          ? null
+          : ConsoleSystem.fromWire(json['console'] as String?),
+      store: json['store'] == null
+          ? null
+          : Storefront.fromWire(json['store'] as String?),
       targets: Map<AppPlatform, LaunchTarget>.unmodifiable(targets),
     );
   }
@@ -80,6 +104,11 @@ class AppRecord {
     String? category,
     bool clearCategory = false,
     bool? favorite,
+    TileKind? kind,
+    ConsoleSystem? console,
+    bool clearConsole = false,
+    Storefront? store,
+    bool clearStore = false,
     Map<AppPlatform, LaunchTarget>? targets,
   }) {
     return AppRecord(
@@ -89,6 +118,9 @@ class AppRecord {
       position: position ?? this.position,
       category: clearCategory ? null : (category ?? this.category),
       favorite: favorite ?? this.favorite,
+      kind: kind ?? this.kind,
+      console: clearConsole ? null : (console ?? this.console),
+      store: clearStore ? null : (store ?? this.store),
       targets: targets ?? this.targets,
     );
   }
@@ -102,6 +134,9 @@ class AppRecord {
         other.position == position &&
         other.category == category &&
         other.favorite == favorite &&
+        other.kind == kind &&
+        other.console == console &&
+        other.store == store &&
         _targetMapsEqual(other.targets, targets);
   }
 
@@ -113,6 +148,9 @@ class AppRecord {
     position,
     category,
     favorite,
+    kind,
+    console,
+    store,
     Object.hashAll(
       targets.entries.map((e) => Object.hash(e.key, e.value)),
     ),

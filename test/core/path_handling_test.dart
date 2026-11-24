@@ -99,7 +99,10 @@ void main() {
       },
       permissionDenied: {locked},
     );
-    final adapter = WindowsAdapter(io: io, filePicker: () async => null);
+    final adapter = WindowsAdapter(
+      io: io,
+      filePicker: ({required label, required extensions}) async => null,
+    );
 
     expect(await adapter.validateTarget(windowsTarget(spaced)), isNull);
     expect(await adapter.validateTarget(windowsTarget(unicode)), isNull);
@@ -124,7 +127,10 @@ void main() {
     );
     // These paths are relative Windows paths without a volume, so volume
     // checks are skipped and existence is whatever MemoryWindowsIo reports.
-    final adapter = WindowsAdapter(io: io, filePicker: () async => null);
+    final adapter = WindowsAdapter(
+      io: io,
+      filePicker: ({required label, required extensions}) async => null,
+    );
     final exe = windowsTarget(p.windows.join('Apps', 'My Game.exe'));
     final lnk = windowsTarget(p.windows.join('Apps', 'Link.lnk'));
 

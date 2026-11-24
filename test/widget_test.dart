@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:homedeck/ui/app_tile.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,6 +20,6 @@ void main() {
     expect(find.text('Tile 1'), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('tile-app-2')), findsOneWidget);
-    expect(find.byKey(const ValueKey('tile-add')), findsOneWidget);
+    expect(find.byType(EmptySlot), findsWidgets);
   });
 }

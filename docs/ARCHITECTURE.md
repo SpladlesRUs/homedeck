@@ -30,8 +30,19 @@ gamepad or touch mapping can invoke the same actions.
 ## Data
 
 `AppRecord` has a stable UUID, display name, relative `iconRef`, position,
-optional category/favorite, and `Map<AppPlatform, LaunchTarget>`. A record may
-have only a Windows target. Identifiers do not transfer across devices.
+optional category/favorite, a `TileKind` (`native` or `emulated`), optional
+`console` / `store`, and `Map<AppPlatform, LaunchTarget>`. The **Library** is
+every record. **Home** is a separate sparse slot list (`HomeLayout`) of
+shortcuts the user pins — empty cells stay empty. Unpinning never deletes
+the library entry.
+
+Native Windows targets are a `.exe`, a `.lnk`, or a store URI
+(`steam://rungameid/…`, Epic, GOG, Xbox). Emulated targets are an emulator
+executable plus a `romPath` and an `argsTemplate` (`{rom}` is replaced at
+launch). Steam library and ROM-folder auto-discovery are **not** implemented;
+`PlatformAdapter.discover()` is the extension point and currently returns
+`[]`. A later scanner should emit `DiscoveredApp` (with `TileKind`) and call
+`LibraryController.addRecord` without changing the home widgets.
 
 `PreferencesRepository` writes `library.json` in the application support
 directory. `IconCache` writes PNG tiles under `icons/` in that same tree.
@@ -56,7 +67,7 @@ install folders.
 
    | Platform | `LaunchTargetKind` | `value` |
    | --- | --- | --- |
-   | Windows | `windowsExecutable` / `windowsShortcut` | Absolute `.exe` / `.lnk` path on that PC |
+   | Windows | `windowsExecutable` / `windowsShortcut` / `windowsUri` / `windowsEmulated` | Absolute `.exe` / `.lnk`, store URI, or emulator + ROM |
    | macOS | `macosBundleId` | Bundle identifier |
    | Android | `androidPackage` | Application id |
    | Linux | `linuxDesktopEntry` | Desktop file id or argv suitable for that distro |

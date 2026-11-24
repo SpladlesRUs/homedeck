@@ -41,4 +41,27 @@ class WindowsPaths {
 
   static bool isSupportedLaunchFile(String raw) =>
       isShortcut(raw) || isExecutable(raw);
+
+  static final _scheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+\-.]*:');
+
+  /// Store / protocol URIs such as `steam://rungameid/440`. File paths and
+  /// http(s) URLs are not treated as launch URIs.
+  static bool isLaunchUri(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+    if (looksLikeVolumePath(trimmed) || isAbsolute(trimmed)) {
+      return false;
+    }
+    final match = _scheme.firstMatch(trimmed);
+    if (match == null) {
+      return false;
+    }
+    final scheme = match.group(0)!.replaceAll(':', '').toLowerCase();
+    if (scheme == 'file' || scheme == 'http' || scheme == 'https') {
+      return false;
+    }
+    return true;
+  }
 }

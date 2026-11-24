@@ -188,29 +188,76 @@ class AddTile extends StatelessWidget {
 }
 
 class EmptySlot extends StatelessWidget {
-  const EmptySlot({super.key, required this.metrics});
+  const EmptySlot({
+    super.key,
+    required this.metrics,
+    this.focused = false,
+    this.hovered = false,
+    this.moveMode = false,
+    this.autofocus = false,
+    this.focusNode,
+    this.onActivate,
+    this.onFocus,
+    this.onHover,
+  });
 
   final HomeDeckMetrics metrics;
+  final bool focused;
+  final bool hovered;
+  final bool moveMode;
+  final bool autofocus;
+  final FocusNode? focusNode;
+  final VoidCallback? onActivate;
+  final VoidCallback? onFocus;
+  final ValueChanged<bool>? onHover;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final side = math.min(constraints.maxWidth, constraints.maxHeight);
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: HomeDeckColors.tileEmpty,
-                borderRadius: BorderRadius.circular(14 * metrics.scale),
-                border: Border.all(color: HomeDeckColors.tileEmptyEdge, width: 1.5),
+    return Focus(
+      focusNode: focusNode,
+      autofocus: autofocus,
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          onFocus?.call();
+        }
+      },
+      child: Builder(
+        builder: (context) {
+          return MouseRegion(
+            onEnter: (_) => onHover?.call(true),
+            onExit: (_) => onHover?.call(false),
+            cursor: onActivate == null
+                ? MouseCursor.defer
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                Focus.of(context).requestFocus();
+                onFocus?.call();
+                onActivate?.call();
+              },
+              child: Semantics(
+                label: 'Empty slot',
+                button: true,
+                child: TileFace(
+                  metrics: metrics,
+                  focused: focused || moveMode && focused,
+                  hovered: hovered,
+                  child: ColoredBox(
+                    color: HomeDeckColors.tileEmpty,
+                    child: moveMode && focused
+                        ? Icon(
+                            Icons.open_with_rounded,
+                            color: HomeDeckColors.cyan,
+                            size: 22 * metrics.scale,
+                          )
+                        : const SizedBox.expand(),
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

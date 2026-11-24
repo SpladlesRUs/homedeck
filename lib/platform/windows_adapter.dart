@@ -10,13 +10,16 @@ import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:homedeck/platform/windows_io.dart';
 
-typedef FilePickerFn = Future<String?> Function();
+typedef FilePickerFn = Future<String?> Function({
+  required String label,
+  required List<String> extensions,
+});
 
 /// Windows launch adapter (milestone 1).
 ///
-/// Manual add only: the user picks a `.exe` or `.lnk`. Icons fall back to a
-/// generated colored initial tile because PE resource extraction is not
-/// implemented (see docs/DECISIONS.md).
+/// Manual add: `.exe` / `.lnk`, store URIs (`steam://…`), or emulator + ROM.
+/// Icons fall back to a generated colored initial tile because PE resource
+/// extraction is not implemented (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
   WindowsAdapter({
     WindowsIo io = const DartWindowsIo(),
@@ -27,14 +30,14 @@ class WindowsAdapter implements PlatformAdapter {
   final WindowsIo _io;
   final FilePickerFn _filePicker;
 
-  static const _windowsTypeGroup = XTypeGroup(
-    label: 'Windows apps',
-    extensions: ['exe', 'lnk'],
-  );
-
-  static Future<String?> _defaultPicker() async {
+  static Future<String?> _defaultPicker({
+    required String label,
+    required List<String> extensions,
+  }) async {
     final file = await openFile(
-      acceptedTypeGroups: const [_windowsTypeGroup],
+      acceptedTypeGroups: [
+        XTypeGroup(label: label, extensions: extensions),
+      ],
       confirmButtonText: 'Add to HomeDeck',
     );
     return file?.path;
@@ -69,31 +72,64 @@ class WindowsAdapter implements PlatformAdapter {
         detail: 'This tile has no Windows launch target.',
       );
     }
-    final raw = target.value.trim();
-    if (raw.isEmpty) {
-      return LaunchFailure.missingFile(targetValue: raw);
+    if (target.kind == LaunchTargetKind.windowsUri ||
+        WindowsPaths.isLaunchUri(target.value)) {
+      return _validateUri(target.value);
+    }
+    if (target.kind == LaunchTargetKind.windowsEmulated) {
+      final emulator = await _validatePath(target.value);
+      if (emulator != null) {
+        return emulator;
+      }
+      final rom = target.romPath?.trim() ?? '';
+      if (rom.isEmpty) {
+        return LaunchFailure.missingFile(
+          targetValue: rom,
+          detail: 'No ROM file is set for this emulated game.',
+        );
+      }
+      return _validatePath(rom);
+    }
+    return _validatePath(target.value);
+  }
+
+  LaunchFailure? _validateUri(String raw) {
+    final trimmed = raw.trim();
+    if (!WindowsPaths.isLaunchUri(trimmed)) {
+      return LaunchFailure.launchFailed(
+        targetValue: trimmed,
+        detail: 'This is not a valid launch URI.',
+      );
+    }
+    return null;
+  }
+
+  Future<LaunchFailure?> _validatePath(String raw) async {
+    final path = raw.trim();
+    if (path.isEmpty) {
+      return LaunchFailure.missingFile(targetValue: path);
     }
 
-    if (WindowsPaths.looksLikeVolumePath(raw)) {
-      final root = WindowsPaths.rootPrefix(raw);
+    if (WindowsPaths.looksLikeVolumePath(path)) {
+      final root = WindowsPaths.rootPrefix(path);
       try {
         final ready = await _io.volumeReady(root);
         if (!ready) {
-          return LaunchFailure.removedDrive(targetValue: raw);
+          return LaunchFailure.removedDrive(targetValue: path);
         }
       } on FileSystemException catch (error) {
-        return _mapIoError(error, raw);
+        return _mapIoError(error, path);
       }
     }
 
     try {
-      final exists = await _io.fileExists(raw);
+      final exists = await _io.fileExists(path);
       if (!exists) {
-        return LaunchFailure.missingFile(targetValue: raw);
+        return LaunchFailure.missingFile(targetValue: path);
       }
-      await _io.checkReadable(raw);
+      await _io.checkReadable(path);
     } on FileSystemException catch (error) {
-      return _mapIoError(error, raw);
+      return _mapIoError(error, path);
     }
     return null;
   }
@@ -105,11 +141,15 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
+      final uri = target.kind == LaunchTargetKind.windowsUri ||
+          WindowsPaths.isLaunchUri(target.value);
+      final shortcut = !uri &&
+          (target.kind == LaunchTargetKind.windowsShortcut ||
+              WindowsPaths.isShortcut(target.value));
       await _io.startDetached(
         executable: target.value,
-        arguments: target.arguments,
-        shortcut: target.kind == LaunchTargetKind.windowsShortcut ||
-            WindowsPaths.isShortcut(target.value),
+        arguments: target.resolvedArguments,
+        shortcut: shortcut || uri,
       );
       return const LaunchSuccess();
     } on FileSystemException catch (error) {
@@ -123,10 +163,31 @@ class WindowsAdapter implements PlatformAdapter {
   }
 
   @override
+  Future<String?> pickFile({
+    required String label,
+    required List<String> extensions,
+  }) {
+    return _filePicker(label: label, extensions: extensions);
+  }
+
+  @override
   Future<PickedLaunch?> pickLaunchTarget() async {
-    final path = await _filePicker();
+    final path = await pickFile(
+      label: 'Windows apps',
+      extensions: const ['exe', 'lnk'],
+    );
     if (path == null || path.trim().isEmpty) {
       return null;
+    }
+    if (WindowsPaths.isLaunchUri(path)) {
+      return PickedLaunch(
+        displayName: _uriDisplayName(path),
+        target: LaunchTarget(
+          platform: AppPlatform.windows,
+          kind: LaunchTargetKind.windowsUri,
+          value: path.trim(),
+        ),
+      );
     }
     if (!WindowsPaths.isSupportedLaunchFile(path)) {
       return null;
@@ -142,6 +203,22 @@ class WindowsAdapter implements PlatformAdapter {
         value: path,
       ),
     );
+  }
+
+  String _uriDisplayName(String uri) {
+    final parsed = Uri.tryParse(uri.trim());
+    if (parsed == null) {
+      return uri.trim();
+    }
+    final host = parsed.host;
+    if (host.isNotEmpty) {
+      return host;
+    }
+    final path = parsed.path.replaceAll('/', '').trim();
+    if (path.isNotEmpty) {
+      return path;
+    }
+    return parsed.scheme;
   }
 
   LaunchFailure _mapIoError(FileSystemException error, String path) {

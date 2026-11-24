@@ -218,6 +218,59 @@ class _AvatarCircle extends StatelessWidget {
   }
 }
 
+class HomeTopBar extends StatelessWidget {
+  const HomeTopBar({
+    super.key,
+    required this.metrics,
+    required this.title,
+    required this.now,
+    this.batteryPercent,
+    this.fullscreen = false,
+  });
+
+  final HomeDeckMetrics metrics;
+  final String title;
+  final DateTime now;
+  final int? batteryPercent;
+  final bool fullscreen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        metrics.padding,
+        14 * metrics.scale,
+        metrics.padding,
+        8 * metrics.scale,
+      ),
+      child: SizedBox(
+        height: 48 * metrics.scale,
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ProfileCluster(metrics: metrics),
+            ),
+            Align(
+              alignment: Alignment.topCenter,
+              child: TitlePill(title: title, metrics: metrics),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: StatusCluster(
+                metrics: metrics,
+                now: now,
+                batteryPercent: batteryPercent,
+                fullscreen: fullscreen,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TitlePill extends StatelessWidget {
   const TitlePill({super.key, required this.title, required this.metrics});
 

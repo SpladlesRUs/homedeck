@@ -183,6 +183,8 @@ Future<void> addSampleApps(
     await harness.controller.addRecord(
       displayName: name,
       target: windowsTarget(p.join(harness.directory.path, '$name.exe')),
+      pinToHome: true,
+      homeSlot: i,
     );
   }
 }

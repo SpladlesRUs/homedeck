@@ -37,9 +37,9 @@ class PreferencesRepository {
 
   Future<void> save(HomeDeckState state) async {
     final file = paths.libraryJsonFile();
-    await file.parent.create(recursive: true);
+    file.parent.createSync(recursive: true);
     const encoder = JsonEncoder.withIndent('  ');
-    await file.writeAsString(encoder.convert(state.toJson()), flush: true);
+    file.writeAsStringSync(encoder.convert(state.toJson()), flush: true);
   }
 
   /// True when [candidate] is the library file inside [paths.supportRoot].

@@ -6,15 +6,19 @@ import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
 import 'package:homedeck/core/models/app_record.dart';
+import 'package:homedeck/core/models/game_source.dart';
 import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/window_mode.dart';
+import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
+import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/settings_stub.dart';
+import 'package:homedeck/ui/tile_menu.dart';
 import 'package:material_ui/material_ui.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -47,6 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _moveMode = false;
   bool _settingsOpen = false;
   bool _detailsOpen = false;
+  bool _addOpen = false;
+  bool _menuOpen = false;
+  bool _chipsFocused = false;
+  LibraryGroupMode _libraryMode = LibraryGroupMode.console;
   LaunchFailure? _failure;
   String? _failureApp;
   String? _pendingRemoveId;
@@ -103,21 +111,29 @@ class _HomeScreenState extends State<HomeScreen> {
       _failure != null ||
       _settingsOpen ||
       _detailsOpen ||
+      _addOpen ||
+      _menuOpen ||
       _pendingRemoveId != null;
 
   Map<ShortcutActivator, Intent> get _shortcuts => {
-    const SingleActivator(LogicalKeyboardKey.enter): const LaunchFocusedIntent(),
+    const SingleActivator(LogicalKeyboardKey.enter):
+        const LaunchFocusedIntent(),
     const SingleActivator(LogicalKeyboardKey.numpadEnter):
         const LaunchFocusedIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonA):
         const LaunchFocusedIntent(),
-    const SingleActivator(LogicalKeyboardKey.delete): const RemoveFocusedIntent(),
-    const SingleActivator(LogicalKeyboardKey.backspace): const RemoveFocusedIntent(),
-    const SingleActivator(LogicalKeyboardKey.escape): const DismissOverlayIntent(),
+    const SingleActivator(LogicalKeyboardKey.delete):
+        const RemoveFocusedIntent(),
+    const SingleActivator(LogicalKeyboardKey.backspace):
+        const RemoveFocusedIntent(),
+    const SingleActivator(LogicalKeyboardKey.escape):
+        const DismissOverlayIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonB):
         const DismissOverlayIntent(),
-    const SingleActivator(LogicalKeyboardKey.f11): const ToggleFullscreenIntent(),
-    const SingleActivator(LogicalKeyboardKey.keyM): const ToggleMoveModeIntent(),
+    const SingleActivator(LogicalKeyboardKey.f11):
+        const ToggleFullscreenIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyM):
+        const ToggleMoveModeIntent(),
     const SingleActivator(LogicalKeyboardKey.keyA): const AddAppIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
         const OpenSettingsIntent(),
@@ -128,15 +144,22 @@ class _HomeScreenState extends State<HomeScreen> {
         const OpenMenuIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonSelect):
         const OpenDetailsIntent(),
-    const SingleActivator(LogicalKeyboardKey.keyF): const ToggleFavoriteIntent(),
-    const SingleActivator(LogicalKeyboardKey.bracketLeft): const PrevTabIntent(),
-    const SingleActivator(LogicalKeyboardKey.bracketRight): const NextTabIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyF):
+        const ToggleFavoriteIntent(),
+    const SingleActivator(LogicalKeyboardKey.bracketLeft):
+        const PrevTabIntent(),
+    const SingleActivator(LogicalKeyboardKey.bracketRight):
+        const NextTabIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonLeft1):
         const PrevTabIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonRight1):
         const NextTabIntent(),
     const SingleActivator(LogicalKeyboardKey.pageUp): const PrevTabIntent(),
     const SingleActivator(LogicalKeyboardKey.pageDown): const NextTabIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyX):
+        const ToggleLibraryGroupIntent(),
+    const SingleActivator(LogicalKeyboardKey.gameButtonX):
+        const ToggleLibraryGroupIntent(),
     const SingleActivator(LogicalKeyboardKey.arrowLeft):
         const DirectionalFocusIntent(TraversalDirection.left),
     const SingleActivator(LogicalKeyboardKey.arrowRight):
@@ -175,7 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       ToggleMoveModeIntent: CallbackAction<ToggleMoveModeIntent>(
         onInvoke: (_) {
-          setState(() => _moveMode = !_moveMode);
+          if (_tab == HomeTab.home) {
+            setState(() => _moveMode = !_moveMode);
+          }
           return null;
         },
       ),
@@ -199,7 +224,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       OpenMenuIntent: CallbackAction<OpenMenuIntent>(
         onInvoke: (_) {
-          setState(() => _settingsOpen = true);
+          setState(() => _menuOpen = true);
+          return null;
+        },
+      ),
+      ToggleLibraryGroupIntent: CallbackAction<ToggleLibraryGroupIntent>(
+        onInvoke: (_) {
+          _toggleLibraryGroup();
           return null;
         },
       ),
@@ -238,14 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       DirectionalFocusIntent: CallbackAction<DirectionalFocusIntent>(
         onInvoke: (intent) {
-          if (_overlayOpen) {
-            return null;
-          }
-          if (_moveMode && _focusedId != null && _focusedId != addTileId) {
-            _library.moveFocused(_focusedId!, intent.direction, metrics.columns);
-            return null;
-          }
-          _moveSelection(intent.direction, metrics);
+          _onDirection(intent.direction, metrics);
           return null;
         },
       ),
@@ -288,28 +312,21 @@ class _HomeScreenState extends State<HomeScreen> {
       case GamepadButton.rb:
         _shiftTab(1);
       case GamepadButton.start:
-        setState(() => _settingsOpen = true);
+        setState(() => _menuOpen = true);
       case GamepadButton.back:
         _openDetails();
       case GamepadButton.dpadLeft:
-        if (!_overlayOpen) {
-          _moveSelection(TraversalDirection.left, metrics);
-        }
+        _onDirection(TraversalDirection.left, metrics);
       case GamepadButton.dpadRight:
-        if (!_overlayOpen) {
-          _moveSelection(TraversalDirection.right, metrics);
-        }
+        _onDirection(TraversalDirection.right, metrics);
       case GamepadButton.dpadUp:
-        if (!_overlayOpen) {
-          _moveSelection(TraversalDirection.up, metrics);
-        }
+        _onDirection(TraversalDirection.up, metrics);
       case GamepadButton.dpadDown:
-        if (!_overlayOpen) {
-          _moveSelection(TraversalDirection.down, metrics);
-        }
+        _onDirection(TraversalDirection.down, metrics);
+      case GamepadButton.x:
+        _toggleLibraryGroup();
       case GamepadButton.lt:
       case GamepadButton.rt:
-      case GamepadButton.x:
       case GamepadButton.y:
         break;
     }
@@ -363,8 +380,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _library.remove(id);
       return;
     }
+    if (_menuOpen) {
+      setState(() => _menuOpen = false);
+      return;
+    }
     if (_settingsOpen) {
       setState(() => _settingsOpen = false);
+      return;
+    }
+    if (_addOpen) {
       return;
     }
     if (_detailsOpen) {
@@ -378,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_tab != HomeTab.home && _tab != HomeTab.allApps) {
       return;
     }
-    if (_focusedId == addTileId) {
+    if (_focusedId == addTileId || isEmptySlotId(_focusedId ?? '')) {
       _addApp();
       return;
     }
@@ -400,8 +424,16 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _pendingRemoveId = null);
       return;
     }
+    if (_menuOpen) {
+      setState(() => _menuOpen = false);
+      return;
+    }
     if (_settingsOpen) {
       setState(() => _settingsOpen = false);
+      return;
+    }
+    if (_addOpen) {
+      setState(() => _addOpen = false);
       return;
     }
     if (_detailsOpen) {
@@ -417,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
-    if (_focusedRecord == null && _focusedId != addTileId) {
+    if (_focusedRecord == null) {
       return;
     }
     setState(() => _detailsOpen = true);
@@ -434,6 +466,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _selectedTitle {
     if (_focusedId == addTileId) {
       return 'Add app';
+    }
+    if (isEmptySlotId(_focusedId ?? '')) {
+      return 'Empty slot';
     }
     return _focusedRecord?.displayName ?? 'HomeDeck';
   }
@@ -456,48 +491,123 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _addApp() async {
-    final added = await _library.addFromPicker();
-    if (added != null && mounted) {
-      _focusId(added.id);
+    if (_overlayOpen) {
+      return;
     }
+    setState(() => _addOpen = true);
   }
 
   void _requestRemove() {
     final id = _focusedId;
-    if (id == null || id == addTileId) {
+    if (id == null || id == addTileId || isEmptySlotId(id)) {
+      return;
+    }
+    if (_tab == HomeTab.home) {
+      _library.unpinFromHome(id);
       return;
     }
     setState(() => _pendingRemoveId = id);
   }
 
   void _onReorderDrop(String draggedId, String ontoId) {
-    final ids = _library.apps.map((app) => app.id).toList();
-    final from = ids.indexOf(draggedId);
-    final to = ids.indexOf(ontoId);
-    if (from >= 0 && to >= 0) {
-      _library.reorder(from, to);
+    final from = _library.home.indexOf(draggedId);
+    final to = isEmptySlotId(ontoId)
+        ? emptySlotIndex(ontoId)
+        : _library.home.indexOf(ontoId);
+    if (from != null && to != null) {
+      _library.swapHomeSlots(from, to);
     }
   }
 
-  List<String> get _gridFocusableIds => [
-    ..._library.apps.map((app) => app.id),
-    addTileId,
-  ];
+  void _toggleLibraryGroup() {
+    if (_overlayOpen) {
+      return;
+    }
+    if (_tab != HomeTab.allApps) {
+      setState(() => _tab = HomeTab.allApps);
+      return;
+    }
+    setState(() {
+      _libraryMode = _libraryMode == LibraryGroupMode.console
+          ? LibraryGroupMode.store
+          : LibraryGroupMode.console;
+    });
+  }
+
+  void _onDirection(TraversalDirection direction, HomeDeckMetrics metrics) {
+    if (_overlayOpen) {
+      return;
+    }
+    if (_moveMode && _tab == HomeTab.home) {
+      _nudgeHomeTile(direction, metrics);
+      return;
+    }
+    _moveSelection(direction, metrics);
+  }
+
+  void _nudgeHomeTile(TraversalDirection direction, HomeDeckMetrics metrics) {
+    final from = _homeIndexOfFocused();
+    if (from == null) {
+      return;
+    }
+    final to = switch (direction) {
+      TraversalDirection.left => from - 1,
+      TraversalDirection.right => from + 1,
+      TraversalDirection.up => from - metrics.columns,
+      TraversalDirection.down => from + metrics.columns,
+    };
+    if (to < 0) {
+      return;
+    }
+    _library.moveHomeSlot(from, direction, metrics.columns);
+    final id = _library.home[to] ?? emptySlotId(to);
+    _focusId(id);
+  }
+
+  int? _homeIndexOfFocused() {
+    final id = _focusedId;
+    if (id == null) {
+      return null;
+    }
+    if (isEmptySlotId(id)) {
+      return emptySlotIndex(id);
+    }
+    return _library.home.indexOf(id);
+  }
+
+  List<String> _gridFocusableIds(HomeDeckMetrics metrics) {
+    if (_tab == HomeTab.allApps) {
+      return [
+        for (final section in _library.librarySections(_libraryMode))
+          ...section.apps.map((app) => app.id),
+        addTileId,
+      ];
+    }
+    final pages = _pageCount(metrics);
+    final slots = _library.homeSlots(minLength: pages * metrics.pageSize);
+    return [for (var i = 0; i < slots.length; i++) slots[i] ?? emptySlotId(i)];
+  }
 
   FocusNode _nodeFor(String id) {
     return _focusNodes.putIfAbsent(id, FocusNode.new);
   }
 
-  int _pageCount(HomeDeckMetrics metrics) =>
-      HomeGrid.pageCountFor(_gridFocusableIds.length, metrics.pageSize);
+  int _pageCount(HomeDeckMetrics metrics) {
+    if (_tab == HomeTab.allApps) {
+      return 1;
+    }
+    final last = _library.home.lastOccupiedIndex;
+    final occupied = last < 0 ? 0 : last + 1;
+    return HomeGrid.pageCountFor(occupied, metrics.pageSize);
+  }
 
   void _focusId(String id) {
-    final ids = _gridFocusableIds;
+    final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+    final ids = _gridFocusableIds(metrics);
     final index = ids.indexOf(id);
     setState(() {
       _focusedId = id;
-      if (index >= 0) {
-        final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+      if (index >= 0 && _tab == HomeTab.home) {
         _page = index ~/ metrics.pageSize;
       }
     });
@@ -507,8 +617,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _goToPage(int page) {
     setState(() {
       _page = page;
-      final ids = _gridFocusableIds;
       final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+      final ids = _gridFocusableIds(metrics);
       final start = page * metrics.pageSize;
       if (start < ids.length) {
         _focusedId = ids[start];
@@ -521,7 +631,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _moveSelection(TraversalDirection direction, HomeDeckMetrics metrics) {
-    final ids = _gridFocusableIds;
+    if (_tab == HomeTab.allApps && _chipsFocused) {
+      if (direction == TraversalDirection.left ||
+          direction == TraversalDirection.right) {
+        _toggleLibraryGroup();
+      } else if (direction == TraversalDirection.down) {
+        setState(() => _chipsFocused = false);
+        final ids = _gridFocusableIds(metrics);
+        if (ids.isNotEmpty) {
+          _focusId(ids.first);
+        }
+      }
+      return;
+    }
+    final ids = _gridFocusableIds(metrics);
     if (ids.isEmpty) {
       return;
     }
@@ -537,6 +660,10 @@ class _HomeScreenState extends State<HomeScreen> {
       TraversalDirection.down => index + columns,
     };
     if (next < 0) {
+      if (_tab == HomeTab.allApps && direction == TraversalDirection.up) {
+        setState(() => _chipsFocused = true);
+        return;
+      }
       _focusId(ids.last);
       return;
     }
@@ -548,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int _displayPage(HomeDeckMetrics metrics) {
-    final ids = _gridFocusableIds;
+    final ids = _gridFocusableIds(metrics);
     final index = ids.indexOf(_focusedId ?? '');
     if (index >= 0) {
       return index ~/ metrics.pageSize;
@@ -585,32 +712,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Column(
                     children: [
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          metrics.padding,
-                          14 * metrics.scale,
-                          metrics.padding,
-                          8 * metrics.scale,
-                        ),
-                        child: Row(
-                          children: [
-                            ProfileCluster(metrics: metrics),
-                            Expanded(
-                              child: Center(
-                                child: TitlePill(
-                                  title: _selectedTitle,
-                                  metrics: metrics,
-                                ),
-                              ),
-                            ),
-                            StatusCluster(
-                              metrics: metrics,
-                              now: _now,
-                              batteryPercent: _status.batteryPercent,
-                              fullscreen: _window.isFullscreen,
-                            ),
-                          ],
-                        ),
+                      HomeTopBar(
+                        metrics: metrics,
+                        title: _selectedTitle,
+                        now: _now,
+                        batteryPercent: _status.batteryPercent,
+                        fullscreen: _window.isFullscreen,
                       ),
                       Expanded(
                         child: Padding(
@@ -641,7 +748,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onBack: _dismiss,
                     onDetails: _openDetails,
                     onSelect: _handleConfirm,
-                    onMenu: () => setState(() => _settingsOpen = true),
+                    onMenu: () => setState(() => _menuOpen = true),
                   ),
                   if (_failure != null)
                     LaunchErrorView(
@@ -650,6 +757,73 @@ class _HomeScreenState extends State<HomeScreen> {
                       appName: _failureApp ?? 'This app',
                       scale: metrics.scale,
                       onDismiss: _dismiss,
+                    ),
+                  if (_menuOpen)
+                    TileMenu(
+                      scale: metrics.scale,
+                      app: focused,
+                      onHome: _tab == HomeTab.home,
+                      pinned: focused != null && _library.isOnHome(focused.id),
+                      onClose: () => setState(() => _menuOpen = false),
+                      onAddGame: () {
+                        setState(() {
+                          _menuOpen = false;
+                          _addOpen = true;
+                        });
+                      },
+                      onSettings: () {
+                        setState(() {
+                          _menuOpen = false;
+                          _settingsOpen = true;
+                        });
+                      },
+                      onExit: () => _window.close(),
+                      onAddToHome: focused == null
+                          ? null
+                          : () {
+                              _library.pinToHome(focused.id);
+                              setState(() => _menuOpen = false);
+                            },
+                      onRemoveFromHome: focused == null
+                          ? null
+                          : () {
+                              _library.unpinFromHome(focused.id);
+                              setState(() => _menuOpen = false);
+                            },
+                      onMove: focused == null || _tab != HomeTab.home
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _moveMode = true;
+                              });
+                            },
+                      onDetails: focused == null
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _detailsOpen = true;
+                              });
+                            },
+                      onRemoveFromLibrary: focused == null
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _pendingRemoveId = focused.id;
+                              });
+                            },
+                    ),
+                  if (_addOpen)
+                    AddTileSheet(
+                      controller: _library,
+                      scale: metrics.scale,
+                      onClose: () => setState(() => _addOpen = false),
+                      onAdded: (id) {
+                        setState(() => _addOpen = false);
+                        _focusId(id);
+                      },
                     ),
                   if (_settingsOpen)
                     SettingsStub(
@@ -663,9 +837,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_detailsOpen)
                     _DetailsSheet(
                       name: _selectedTitle,
+                      kindLabel: focused?.kind.wireName,
                       path: focused == null || focused.targets.isEmpty
                           ? null
                           : focused.targets.values.first.value,
+                      romPath: focused == null || focused.targets.isEmpty
+                          ? null
+                          : focused.targets.values.first.romPath,
                       scale: metrics.scale,
                       onClose: () => setState(() => _detailsOpen = false),
                       onRemove: focused == null
@@ -679,7 +857,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   if (_pendingRemoveId != null)
                     _RemoveConfirm(
-                      name: _library.byId(_pendingRemoveId!)?.displayName ??
+                      name:
+                          _library.byId(_pendingRemoveId!)?.displayName ??
                           'this app',
                       scale: metrics.scale,
                       onConfirm: () {
@@ -706,19 +885,59 @@ class _HomeScreenState extends State<HomeScreen> {
         return PlaceholderTab(title: 'Achievements', metrics: metrics);
       case HomeTab.friends:
         return PlaceholderTab(title: 'Friends', metrics: metrics);
-      case HomeTab.home:
       case HomeTab.allApps:
+        return LibraryView(
+          controller: _library,
+          metrics: metrics,
+          mode: _libraryMode,
+          focusedId: _focusedId,
+          hoveredId: _hoveredId,
+          chipsFocused: _chipsFocused,
+          onFocus: (id) {
+            if (_focusedId != id) {
+              setState(() {
+                _focusedId = id;
+                _chipsFocused = false;
+              });
+            }
+          },
+          onHover: (id) => setState(() => _hoveredId = id),
+          onLaunch: _launch,
+          onAdd: _addApp,
+          onMode: (mode) => setState(() => _libraryMode = mode),
+          focusNodeFor: _nodeFor,
+        );
+      case HomeTab.home:
+        final slots = _library.homeSlots(minLength: pages * metrics.pageSize);
+        final start = page * metrics.pageSize;
+        final pageSlots = [
+          for (var i = 0; i < metrics.pageSize; i++)
+            start + i < slots.length ? slots[start + i] : null,
+        ];
         return Column(
           children: [
+            if (_moveMode)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Move mode  ·  D-pad  ·  A to drop',
+                  key: const Key('move-mode-hint'),
+                  style: TextStyle(
+                    color: HomeDeckColors.cyan,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13 * metrics.scale,
+                  ),
+                ),
+              ),
             Expanded(
               child: HomeGrid(
                 controller: _library,
                 metrics: metrics,
-                page: page,
+                slots: pageSlots,
+                pageStart: start,
                 focusedId: _focusedId,
                 hoveredId: _hoveredId,
                 moveMode: _moveMode,
-                hideEmpty: _tab == HomeTab.allApps,
                 onFocus: (id) {
                   if (_focusedId != id) {
                     setState(() => _focusedId = id);
@@ -726,7 +945,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 onHover: (id) => setState(() => _hoveredId = id),
                 onLaunch: _launch,
-                onAdd: _addApp,
+                onEmptyActivate: (_) => _addApp(),
                 onReorderDrop: _onReorderDrop,
                 focusNodeFor: _nodeFor,
               ),
@@ -750,12 +969,16 @@ class _DetailsSheet extends StatelessWidget {
     required this.name,
     required this.scale,
     required this.onClose,
+    this.kindLabel,
     this.path,
+    this.romPath,
     this.onRemove,
   });
 
   final String name;
+  final String? kindLabel;
   final String? path;
+  final String? romPath;
   final double scale;
   final VoidCallback onClose;
   final VoidCallback? onRemove;
@@ -787,6 +1010,18 @@ class _DetailsSheet extends StatelessWidget {
                       fontSize: 24 * scale,
                     ),
                   ),
+                  if (kindLabel != null) ...[
+                    SizedBox(height: 8 * scale),
+                    Text(
+                      kindLabel!,
+                      key: const Key('details-kind'),
+                      style: TextStyle(
+                        color: HomeDeckColors.cyan,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14 * scale,
+                      ),
+                    ),
+                  ],
                   if (path != null) ...[
                     SizedBox(height: 10 * scale),
                     Text(
@@ -798,11 +1033,25 @@ class _DetailsSheet extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (romPath != null) ...[
+                    SizedBox(height: 6 * scale),
+                    Text(
+                      romPath!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: HomeDeckColors.muted,
+                        fontSize: 13 * scale,
+                      ),
+                    ),
+                  ],
                   SizedBox(height: 22 * scale),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      TextButton(onPressed: onClose, child: const Text('Close  ·  B')),
+                      TextButton(
+                        onPressed: onClose,
+                        child: const Text('Close  ·  B'),
+                      ),
                       if (onRemove != null) ...[
                         const SizedBox(width: 16),
                         FilledButton(
@@ -881,7 +1130,10 @@ class _RemoveConfirm extends StatelessWidget {
                         onPressed: onCancel,
                         child: const Text(
                           'Cancel  ·  B',
-                          style: TextStyle(color: HomeDeckColors.muted, fontSize: 16),
+                          style: TextStyle(
+                            color: HomeDeckColors.muted,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),

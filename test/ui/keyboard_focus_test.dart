@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:homedeck/ui/app_tile.dart';
 import 'package:homedeck/ui/home_grid.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -37,7 +38,7 @@ void main() {
 
     expect(second, findsOneWidget);
     expect(third, findsOneWidget);
-    expect(find.byKey(const ValueKey('tile-add')), findsOneWidget);
+    expect(find.byType(EmptySlot), findsWidgets);
     expect(addTileId, isNotEmpty);
   });
 }

@@ -16,6 +16,24 @@ import '../helpers/test_harness.dart';
 void main() {
   const size = Size(1280, 800);
 
+  testWidgets('title pill is pixel-centered on the 1280x800 midpoint', (
+    tester,
+  ) async {
+    _setView(tester, size);
+    HomeScreen.tickClock = false;
+    HomeScreen.clock = () => DateTime(2026, 3, 15, 5, 22);
+    addTearDown(() {
+      HomeScreen.tickClock = true;
+      HomeScreen.clock = DateTime.now;
+    });
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await _pumpApp(tester, harness);
+    final screen = tester.getSize(find.byType(HomeDeckApp));
+    final pill = tester.getRect(find.byKey(const Key('title-pill')));
+    expect(screen.width, 1280);
+    expect((pill.center.dx - 640).abs(), lessThan(1.0));
+  });
+
   testWidgets('capture 1280x800 after screenshot with demo grid', (tester) async {
     if (Platform.environment['SAVE_PROOF'] != '1') {
       return;
@@ -39,6 +57,12 @@ void main() {
     await sendArrow(tester, LogicalKeyboardKey.arrowRight);
     await tester.pump(const Duration(milliseconds: 200));
     await _save(tester, p.join(outDir.path, '02-focus-state.png'));
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const ValueKey('tile-app-16')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await _save(tester, p.join(outDir.path, '05-library.png'));
   });
 
   testWidgets('capture launch error overlay', (tester) async {
