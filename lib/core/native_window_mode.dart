@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:homedeck/core/window_mode.dart';
+import 'package:homedeck/platform/windows_window_chrome.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Production controller backed by window_manager 0.7's native Window API.
+/// Production controller backed by window_manager 0.7's native Window API,
+/// with a Win32 HWND fallback on Windows (Ally F11 chromeChanged=false).
 class NativeWindowModeController extends WindowModeController {
   NativeWindowModeController();
 
@@ -40,20 +44,22 @@ class NativeWindowModeController extends WindowModeController {
   @override
   Future<void> prepareInitialFrame() async {
     final window = await _waitForWindow();
-    if (window == null) {
-      return;
+    if (window != null) {
+      window.title = 'HomeDeck';
+      window.setSize(_defaultSize.toNative(), false);
+      window.minimumSize = const Size(960, 600).toNative();
+      window.center();
+      _eventListener ??= window.addListener((event) {
+        if (event is WindowFocusedEvent) {
+          _emitFocus(true);
+        } else if (event is WindowBlurredEvent) {
+          _emitFocus(false);
+        }
+      });
     }
-    window.title = 'HomeDeck';
-    window.setSize(_defaultSize.toNative(), false);
-    window.minimumSize = const Size(960, 600).toNative();
-    window.center();
-    _eventListener ??= window.addListener((event) {
-      if (event is WindowFocusedEvent) {
-        _emitFocus(true);
-      } else if (event is WindowBlurredEvent) {
-        _emitFocus(false);
-      }
-    });
+    // Even when window_manager never binds the HWND, set the title via the
+    // runner Create() string (already "HomeDeck") and leave size to main.cpp
+    // (1280×800). Win32 chrome path uses FindWindow by that title.
   }
 
   Future<Window?> _waitForWindow() async {
@@ -71,41 +77,55 @@ class NativeWindowModeController extends WindowModeController {
   Future<void> apply(bool fullscreen, bool borderless) async {
     _fullscreen = fullscreen;
     _borderless = borderless;
-    final window = await _waitForWindow();
-    if (window == null) {
-      notifyListeners();
-      return;
+
+    // Windows: drive the real runner HWND first. Ally re-smoke at 80e8517
+    // measured caption True / style 0x14CF0000 / chromeChanged=False because
+    // window_manager never found the Flutter runner window.
+    var win32Applied = false;
+    if (Platform.isWindows) {
+      win32Applied = WindowsWindowChrome.apply(
+        fullscreen: fullscreen,
+        borderless: borderless,
+      );
     }
-    if (fullscreen) {
-      _restoreSize ??= window.size.toSize();
-      _restorePosition ??= window.position.toOffset();
-      // Ally smoke at 27ba8ec: F11 left 1280×720 with chromeChanged=false when
-      // only `isFullScreen` was toggled. Drive a visible change: native
-      // fullscreen + frameless + maximize (covers the display on Windows /
-      // handhelds even when isFullScreen is a no-op).
-      window.isFullScreen = true;
-      window.setFrameless(true);
-      window.maximize();
-    } else {
-      window.isFullScreen = false;
-      if (window.isMaximized) {
-        window.unmaximize();
-      }
-      if (borderless) {
+
+    final window = await _waitForWindow();
+    if (window != null && !win32Applied) {
+      if (fullscreen) {
+        _restoreSize ??= window.size.toSize();
+        _restorePosition ??= window.position.toOffset();
+        window.isFullScreen = true;
         window.setFrameless(true);
+        window.maximize();
       } else {
-        window.setFrameless(false);
+        window.isFullScreen = false;
+        if (window.isMaximized) {
+          window.unmaximize();
+        }
+        if (borderless) {
+          window.setFrameless(true);
+        } else {
+          window.setFrameless(false);
+          window.titleBarStyle = TitleBarStyle.normal;
+        }
+        final size = _restoreSize ?? _defaultSize;
+        window.setSize(size.toNative(), false);
+        final origin = _restorePosition;
+        if (origin != null) {
+          window.position = origin.toNative();
+        } else {
+          window.center();
+        }
+      }
+    } else if (window != null && win32Applied && !fullscreen) {
+      // Keep window_manager state loosely in sync after Win32 restore.
+      window.isFullScreen = false;
+      window.setFrameless(borderless);
+      if (!borderless) {
         window.titleBarStyle = TitleBarStyle.normal;
       }
-      final size = _restoreSize ?? _defaultSize;
-      window.setSize(size.toNative(), false);
-      final origin = _restorePosition;
-      if (origin != null) {
-        window.position = origin.toNative();
-      } else {
-        window.center();
-      }
     }
+
     notifyListeners();
   }
 

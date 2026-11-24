@@ -45,8 +45,9 @@ launch). Steam library and ROM-folder auto-discovery are **not** implemented;
 `[]`. A later scanner should emit `DiscoveredApp` (with `TileKind`) and call
 `LibraryController.addRecord` without changing the home widgets.
 
-`PreferencesRepository` writes `library.json` in the application support
-directory. `IconCache` writes PNG tiles under `icons/` in that same tree.
+`PreferencesRepository` seeds and writes `library.json` in the application
+support directory (`%AppData%\Horton Press\HomeDeck\` on Windows).
+`IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.
 `AudioPrefs` (music on/off + volume + UI clicks) persist in `library.json`.
@@ -90,9 +91,11 @@ desktop runner are not in this tree.
 
 ## Window chrome
 
-Fullscreen and borderless toggling use `window_manager` (F11 and Settings).
-`NativeWindowModeController` wraps the plugin so widget tests can inject
-`MemoryWindowModeController`.
+Fullscreen and borderless toggling go through `NativeWindowModeController`
+(F11 and Settings). On Windows it prefers Win32 HWND chrome
+(`WindowsWindowChrome`) because `window_manager` 0.7 often never binds the
+stock Flutter runner; other platforms use `window_manager`. Widget tests
+inject `MemoryWindowModeController`.
 
 Gamepad and battery follow the same split: `WindowsXInputGamepad` polls XInput
 on Windows; `WindowsBatteryStatus` reads `GetSystemPowerStatus`. Tests inject

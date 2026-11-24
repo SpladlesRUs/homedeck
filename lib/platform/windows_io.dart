@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:homedeck/platform/windows_shell.dart';
+
 /// Filesystem and process operations used by [WindowsAdapter].
 ///
 /// Injected so path handling (spaces, Unicode, missing files, removed
@@ -40,12 +42,17 @@ class DartWindowsIo implements WindowsIo {
     required List<String> arguments,
     required bool shortcut,
   }) async {
-    if (shortcut) {
+    // Prefer ShellExecuteW on Windows — Ally Phase2 Enter after add never
+    // spawned notepad when we only used detached `cmd /c start`.
+    if (Platform.isWindows &&
+        WindowsShell.open(executable, arguments: arguments)) {
+      return;
+    }
+    if (shortcut || Platform.isWindows) {
       // `start` treats the first quoted token as a window title. The empty
       // string occupies that slot so [executable] is the launch target.
       // Arguments stay a list — never concatenated — so spaces and Unicode
-      // in the path are preserved. WindowsAdapter always passes shortcut:
-      // true so GUI .exe launches work from a Flutter runner (Ally smoke).
+      // in the path are preserved.
       await Process.start(
         'cmd',
         ['/c', 'start', '', executable, ...arguments],

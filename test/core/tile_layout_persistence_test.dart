@@ -58,6 +58,23 @@ void main() {
     expect(File(p.join(blocker.path, 'HomeDeck', 'library.json')).existsSync(), isFalse);
   });
 
+  test('load seeds library.json when missing', () async {
+    final harness = await createHarness();
+    final file = harness.paths.libraryJsonFile();
+    if (file.existsSync()) {
+      file.deleteSync();
+    }
+    final reloaded = LibraryController(
+      adapter: FakePlatformAdapter(),
+      preferences: PreferencesRepository(harness.paths),
+      icons: IconCache(harness.paths),
+    );
+    await reloaded.load();
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), greaterThan(0));
+    expect(reloaded.apps, isEmpty);
+  });
+
   test('library layout persists across repository instances', () async {
     final harness = await createHarness();
     await harness.controller.addRecord(

@@ -83,12 +83,12 @@ URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
 args). Then press Enter (or click) to launch. Layout is stored in the
 application support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
-`PreferencesRepository.save` writes atomically (temp + replace) and
-`LibraryController` persists before notifying UI so a failed write cannot
-leave a tile on screen without `library.json`. Windows launches always use
-`cmd /c start` (not bare `Process.start` detached) so GUI targets open from
-the Flutter runner. F11 uses `window_manager` fullscreen plus a frameless
-display-cover fallback so chrome/size change on handheld Windows.
+`PreferencesRepository` seeds `library.json` on first load and saves with a
+flushed direct write (temp copy + final overwrite) under
+`%AppData%\Horton Press\HomeDeck\`. `LibraryController` persists before
+notifying UI. Windows launches use `ShellExecuteW` first, then `cmd /c start`.
+F11 drives the runner HWND via Win32 (`FindWindow` + frameless monitor cover)
+because `window_manager` 0.7 often never binds the stock Flutter window.
 
 Keyboard:
 

@@ -330,6 +330,21 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_gamepad.isConnected && _isGamepadKey(event.logicalKey)) {
       return true;
     }
+    // Ally Phase2 sends Enter/F11 to the focused HWND. When Shortcuts do not
+    // see a focused FocusNode after sheet teardown, still launch or toggle
+    // chrome. Leave Enter alone while an overlay is open so Add/Confirm
+    // Actions keep working.
+    final key = event.logicalKey;
+    if (!_overlayOpen &&
+        (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter)) {
+      _handleConfirm();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.f11) {
+      unawaited(_toggleFullscreen());
+      return true;
+    }
     return false;
   }
 
@@ -1006,6 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: Focus(
+            autofocus: true,
             child: Scaffold(
               body: Stack(
                 children: [
