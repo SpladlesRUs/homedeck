@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _library.addListener(_onLibrary);
-    _window.addListener(_onLibrary);
+    _window.addListener(_onWindowMode);
     widget.music?.addListener(_onLibrary);
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     _gamepad.start(_onGamepad);
@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _gamepad.stop();
     _status.stop();
     _library.removeListener(_onLibrary);
-    _window.removeListener(_onLibrary);
+    _window.removeListener(_onWindowMode);
     widget.music?.removeListener(_onLibrary);
     unawaited(_clicks.dispose());
     for (final node in _focusNodes.values) {
@@ -129,6 +129,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _onWindowMode() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+    // Native WM_KEYDOWN F11 toggles chrome in the runner and only notifies
+    // Dart — persist window prefs so library.json mirrors chrome state.
+    unawaited(
+      _library.setWindowPrefs(
+        WindowPrefs(
+          fullscreen: _window.isFullscreen,
+          borderless: _window.isBorderless,
+        ),
+      ),
+    );
   }
 
   bool get _overlayOpen =>
@@ -1193,15 +1210,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       scale: metrics.scale,
                       onClose: () => setState(() => _addOpen = false),
                       onAdded: (id) {
-                        setState(() => _addOpen = false);
+                        // Set focused id synchronously so Enter via
+                        // HardwareKeyboard launches even if FocusNode is not
+                        // attached yet (Ally: Enter sent, no notepad).
+                        setState(() {
+                          _addOpen = false;
+                          _focusedId = id;
+                        });
                         // Focus after the sheet leaves the tree and the new
                         // Home pin is built; requestFocus on a detached node
-                        // was leaving Enter on Now Playing instead of launch.
+                        // was leaving keyboard focus on Now Playing.
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) {
                             return;
                           }
                           _focusId(id);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) {
+                              return;
+                            }
+                            _nodeFor(id).requestFocus();
+                          });
                         });
                       },
                     ),

@@ -1,14 +1,26 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:homedeck/core/window_mode.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/platform/windows_window_chrome.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Production controller backed by window_manager 0.7's native Window API,
-/// with a Win32 HWND fallback on Windows (Ally F11 chromeChanged=false).
+/// Production controller backed by the Windows runner MethodChannel first,
+/// then Dart FFI FindWindow, then window_manager 0.7.
+///
+/// Ally re-smoke at 2417533 measured caption True / 1280×720 /
+/// chromeChanged=False because window_manager never bound the HWND and
+/// FindWindow from Dart did not land. The runner channel uses the real
+/// Create() HWND; native WM_KEYDOWN F11 also toggles and pushes state here.
 class NativeWindowModeController extends WindowModeController {
-  NativeWindowModeController();
+  NativeWindowModeController() {
+    if (Platform.isWindows) {
+      _nativeFullscreenSub =
+          WindowsNativeBridge.fullscreenChanges.listen(_onNativeFullscreen);
+    }
+  }
 
   static const _defaultSize = Size(1280, 800);
 
@@ -17,6 +29,8 @@ class NativeWindowModeController extends WindowModeController {
   Size? _restoreSize;
   Offset? _restorePosition;
   ListenerId? _eventListener;
+  StreamSubscription<bool>? _nativeFullscreenSub;
+  DateTime? _lastNativeFullscreenAt;
   final _focusListeners = <ValueChanged<bool>>[];
 
   /// Prefer the current window; on Windows getCurrent() can be null until the
@@ -59,7 +73,7 @@ class NativeWindowModeController extends WindowModeController {
     }
     // Even when window_manager never binds the HWND, set the title via the
     // runner Create() string (already "HomeDeck") and leave size to main.cpp
-    // (1280×800). Win32 chrome path uses FindWindow by that title.
+    // (1280×800). Native chrome path uses the Create() HWND directly.
   }
 
   Future<Window?> _waitForWindow() async {
@@ -73,24 +87,36 @@ class NativeWindowModeController extends WindowModeController {
     return _window;
   }
 
+  void _onNativeFullscreen(bool fullscreen) {
+    _lastNativeFullscreenAt = DateTime.now();
+    if (_fullscreen == fullscreen) {
+      notifyListeners();
+      return;
+    }
+    _fullscreen = fullscreen;
+    notifyListeners();
+  }
+
   @override
   Future<void> apply(bool fullscreen, bool borderless) async {
     _fullscreen = fullscreen;
     _borderless = borderless;
 
-    // Windows: drive the real runner HWND first. Ally re-smoke at 80e8517
-    // measured caption True / style 0x14CF0000 / chromeChanged=False because
-    // window_manager never found the Flutter runner window.
-    var win32Applied = false;
+    var applied = false;
     if (Platform.isWindows) {
-      win32Applied = WindowsWindowChrome.apply(
-        fullscreen: fullscreen,
-        borderless: borderless,
-      );
+      // 1) Runner MethodChannel — real HWND from FlutterWindow.
+      applied = await WindowsNativeBridge.setFullscreen(fullscreen);
+      // 2) Dart FFI FindWindow fallback (tests / older builds).
+      if (!applied) {
+        applied = WindowsWindowChrome.apply(
+          fullscreen: fullscreen,
+          borderless: borderless,
+        );
+      }
     }
 
     final window = await _waitForWindow();
-    if (window != null && !win32Applied) {
+    if (window != null && !applied) {
       if (fullscreen) {
         _restoreSize ??= window.size.toSize();
         _restorePosition ??= window.position.toOffset();
@@ -117,7 +143,7 @@ class NativeWindowModeController extends WindowModeController {
           window.center();
         }
       }
-    } else if (window != null && win32Applied && !fullscreen) {
+    } else if (window != null && applied && !fullscreen) {
       // Keep window_manager state loosely in sync after Win32 restore.
       window.isFullScreen = false;
       window.setFrameless(borderless);
@@ -130,13 +156,26 @@ class NativeWindowModeController extends WindowModeController {
   }
 
   @override
-  Future<void> toggleFullscreen() => apply(!_fullscreen, _borderless);
+  Future<void> toggleFullscreen() async {
+    // Native WM_KEYDOWN F11 may already have applied chrome for this key.
+    // Skip a second Dart toggle so Ally does not see chromeChanged flicker
+    // back to the captioned 1280×720 window.
+    final last = _lastNativeFullscreenAt;
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(milliseconds: 400)) {
+      notifyListeners();
+      return;
+    }
+    await apply(!_fullscreen, _borderless);
+  }
 
   @override
   Future<void> toggleBorderless() => apply(_fullscreen, !_borderless);
 
   @override
   Future<void> close() async {
+    await _nativeFullscreenSub?.cancel();
+    _nativeFullscreenSub = null;
     _window?.close();
   }
 

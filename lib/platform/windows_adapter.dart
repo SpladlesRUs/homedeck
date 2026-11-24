@@ -141,9 +141,9 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
-      // ShellExecuteW first (via DartWindowsIo), then `cmd /c start`. Bare
-      // Process.start(detached) and even cmd-start alone failed to spawn
-      // notepad on Ally Phase2 after a successful add.
+      // Runner MethodChannel ShellExecuteW first (via DartWindowsIo), then
+      // Dart FFI / CreateProcess / cmd-start. Ally 2417533 Dart-only
+      // ShellExecute never spawned notepad after Enter.
       await _io.startDetached(
         executable: target.value,
         arguments: target.resolvedArguments,

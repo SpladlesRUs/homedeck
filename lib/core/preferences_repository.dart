@@ -46,10 +46,11 @@ class PreferencesRepository {
 
   /// Writes [state] directly to `library.json` with flush.
   ///
-  /// Ally re-smoke at 80e8517 still saw only `icons\` after add. The prior
-  /// temp+rename path can leave no durable `library.json` on some Windows
-  /// handhelds (Defender / rename races). Direct overwrite + existence and
-  /// non-empty checks match what Phase2 reads under AppData.
+  /// Ally re-smoke at 2417533 saw a durable file after add, but
+  /// apps/layout/home were empty at close ("no tiles had been saved").
+  /// After writing we re-read and refuse success when the on-disk apps
+  /// count does not match [state] — empty-file-only is treated as a
+  /// product bug, not harness timing.
   Future<void> save(HomeDeckState state) async {
     final file = paths.libraryJsonFile();
     final dir = file.parent;
@@ -78,6 +79,53 @@ class PreferencesRepository {
     if (!file.existsSync() || file.lengthSync() <= 0) {
       throw FileSystemException(
         'library.json was not present after save',
+        file.path,
+      );
+    }
+    _verifyRoundTrip(file, state);
+  }
+
+  void _verifyRoundTrip(File file, HomeDeckState state) {
+    try {
+      final raw = file.readAsStringSync();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        throw FileSystemException(
+          'library.json did not decode as an object after save',
+          file.path,
+        );
+      }
+      final loaded = HomeDeckState.fromJson(
+        decoded.map((key, value) => MapEntry('$key', value)),
+      );
+      if (loaded.apps.length != state.apps.length) {
+        // Rewrite once more — Ally saw empty apps[] despite a successful add.
+        file.writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(state.toJson()),
+          flush: true,
+        );
+        final again = file.readAsStringSync();
+        final decodedAgain = jsonDecode(again);
+        if (decodedAgain is! Map) {
+          throw FileSystemException(
+            'library.json apps were empty after save',
+            file.path,
+          );
+        }
+        final reloaded = HomeDeckState.fromJson(
+          decodedAgain.map((key, value) => MapEntry('$key', value)),
+        );
+        if (reloaded.apps.length != state.apps.length) {
+          throw FileSystemException(
+            'library.json apps length ${reloaded.apps.length} != '
+            '${state.apps.length} after save',
+            file.path,
+          );
+        }
+      }
+    } on FormatException catch (error) {
+      throw FileSystemException(
+        'library.json was not valid JSON after save: $error',
         file.path,
       );
     }
