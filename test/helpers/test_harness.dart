@@ -93,6 +93,7 @@ class Harness {
 
 Future<Harness> createHarness({
   FakePlatformAdapter? adapter,
+  bool seedDemo = false,
 }) async {
   final directory = Directory.systemTemp.createTempSync('homedeck_');
   addTearDown(() => _tryDeleteTemp(directory));
@@ -103,6 +104,7 @@ Future<Harness> createHarness({
     preferences: PreferencesRepository(paths),
     icons: IconCache(paths),
     idFactory: SequentialIds().call,
+    seedDemo: seedDemo,
   );
   await controller.load();
   return Harness(
@@ -117,9 +119,10 @@ Future<Harness> createHarness({
 Future<Harness> createHarnessForWidgets(
   WidgetTester tester, {
   FakePlatformAdapter? adapter,
+  bool seedDemo = false,
 }) async {
   final harness = await tester.runAsync(
-    () => createHarness(adapter: adapter),
+    () => createHarness(adapter: adapter, seedDemo: seedDemo),
   );
   return harness!;
 }

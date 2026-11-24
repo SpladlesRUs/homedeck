@@ -71,4 +71,14 @@ void main() {
       isTrue,
     );
   });
+
+  test('demo seed is off by default and fills only when requested', () async {
+    final empty = await createHarness();
+    expect(empty.controller.seedDemo, isFalse);
+    expect(empty.controller.apps, isEmpty);
+
+    final seeded = await createHarness(seedDemo: true);
+    expect(seeded.controller.apps, hasLength(16));
+    expect(seeded.controller.apps.first.displayName, 'Arcade Cabinet');
+  });
 }

@@ -38,12 +38,20 @@ flutter run -d windows
 
 `F11` toggles fullscreen. Settings (Ctrl+,) also exposes borderless chrome.
 
+Release defaults to an empty library. To preview a full grid in debug only:
+
+```bat
+flutter run -d windows --dart-define=HOMEDECK_SEED_DEMO=true
+```
+
+Do not pass that define on a release build.
+
 ## UI screenshots
 
-- [Home grid with tiles](docs/proof/ui/01-home-grid-tiles.png)
-- [Focus state](docs/proof/ui/02-focus-state.png)
-- [Launch-error feedback](docs/proof/ui/03-launch-error.png)
-- [Fullscreen](docs/proof/ui/04-fullscreen.png)
+Rendered at 1280×800:
+
+- [Before (empty dark home)](docs/proof/ui/before-1280x800.png)
+- [After (paged light grid)](docs/proof/ui/after-1280x800.png)
 
 ## Open questions
 

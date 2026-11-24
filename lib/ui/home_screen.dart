@@ -10,6 +10,7 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
+import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/settings_stub.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   LaunchFailure? _failure;
   String? _failureApp;
   String? _pendingRemoveId;
+  int _page = 0;
   Timer? _clock;
   DateTime _now = DateTime.now();
   final _focusNodes = <String, FocusNode>{};
@@ -99,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const DirectionalFocusIntent(TraversalDirection.down),
   };
 
-  Map<Type, Action<Intent>> _actions(int columns) {
+  Map<Type, Action<Intent>> _actions(HomeDeckMetrics metrics) {
     return {
       LaunchFocusedIntent: CallbackAction<LaunchFocusedIntent>(
         onInvoke: (_) {
@@ -158,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ToggleFavoriteIntent: CallbackAction<ToggleFavoriteIntent>(
         onInvoke: (_) {
           final id = _focusedId;
-          if (id != null && id != addTileId) {
+          if (id != null && !_isChrome(id)) {
             _library.toggleFavorite(id);
           }
           return null;
@@ -171,16 +173,19 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           if (_moveMode &&
               _focusedId != null &&
-              _focusedId != addTileId) {
-            _library.moveFocused(_focusedId!, intent.direction, columns);
+              !_isChrome(_focusedId!)) {
+            _library.moveFocused(_focusedId!, intent.direction, metrics.columns);
             return null;
           }
-          _moveSelection(intent.direction, columns);
+          _moveSelection(intent.direction, metrics);
           return null;
         },
       ),
     };
   }
+
+  bool _isChrome(String id) =>
+      id == addTileId || dockIds.contains(id);
 
   Future<void> _toggleFullscreen() async {
     await _window.toggleFullscreen();
@@ -224,8 +229,25 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _moveMode = false);
       return;
     }
-    if (_focusedId == addTileId) {
+    final id = _focusedId;
+    if (id == addTileId || id == dockAddId) {
       _addApp();
+      return;
+    }
+    if (id == dockSettingsId) {
+      setState(() => _settingsOpen = true);
+      return;
+    }
+    if (id == dockFullscreenId) {
+      _toggleFullscreen();
+      return;
+    }
+    if (id == dockLibraryId) {
+      _goToPage(0);
+      return;
+    }
+    if (id == dockExitId) {
+      _window.close();
       return;
     }
     final focused = _focusedRecord;
@@ -257,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppRecord? get _focusedRecord {
     final id = _focusedId;
-    if (id == null || id == addTileId) {
+    if (id == null || _isChrome(id)) {
       return null;
     }
     return _library.byId(id);
@@ -283,13 +305,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _addApp() async {
     final added = await _library.addFromPicker();
     if (added != null && mounted) {
-      setState(() => _focusedId = added.id);
+      _focusId(added.id);
     }
   }
 
   void _requestRemove() {
     final id = _focusedId;
-    if (id == null || id == addTileId) {
+    if (id == null || _isChrome(id)) {
       return;
     }
     setState(() => _pendingRemoveId = id);
@@ -304,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<String> get _focusableIds => [
+  List<String> get _gridFocusableIds => [
     ..._library.apps.map((app) => app.id),
     addTileId,
   ];
@@ -313,8 +335,44 @@ class _HomeScreenState extends State<HomeScreen> {
     return _focusNodes.putIfAbsent(id, FocusNode.new);
   }
 
-  void _moveSelection(TraversalDirection direction, int columns) {
-    final ids = _focusableIds;
+  int _pageCount(HomeDeckMetrics metrics) =>
+      HomeGrid.pageCountFor(_gridFocusableIds.length, metrics.pageSize);
+
+  void _focusId(String id) {
+    final ids = _gridFocusableIds;
+    final index = ids.indexOf(id);
+    setState(() {
+      _focusedId = id;
+      if (index >= 0) {
+        final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+        _page = index ~/ metrics.pageSize;
+      }
+    });
+    _nodeFor(id).requestFocus();
+  }
+
+  void _goToPage(int page) {
+    setState(() {
+      _page = page;
+      final ids = _gridFocusableIds;
+      final metrics = HomeDeckMetrics.of(MediaQuery.sizeOf(context));
+      final start = page * metrics.pageSize;
+      if (start < ids.length) {
+        _focusedId = ids[start];
+      }
+    });
+    final id = _focusedId;
+    if (id != null) {
+      _nodeFor(id).requestFocus();
+    }
+  }
+
+  void _moveSelection(TraversalDirection direction, HomeDeckMetrics metrics) {
+    if (dockIds.contains(_focusedId)) {
+      _moveDock(direction, metrics);
+      return;
+    }
+    final ids = _gridFocusableIds;
     if (ids.isEmpty) {
       return;
     }
@@ -322,69 +380,148 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index < 0) {
       index = 0;
     }
+    final columns = metrics.columns;
+    final pageSize = metrics.pageSize;
+    final row = (index % pageSize) ~/ columns;
+
+    if (direction == TraversalDirection.down &&
+        row >= metrics.rows - 1) {
+      _focusId(dockLibraryId);
+      return;
+    }
+
     final next = switch (direction) {
       TraversalDirection.left => index - 1,
       TraversalDirection.right => index + 1,
       TraversalDirection.up => index - columns,
       TraversalDirection.down => index + columns,
     };
-    if (next < 0 || next >= ids.length) {
+    if (next < 0) {
+      _focusId(ids.last);
       return;
     }
-    final id = ids[next];
-    setState(() => _focusedId = id);
-    _nodeFor(id).requestFocus();
+    if (next >= ids.length) {
+      _focusId(ids.first);
+      return;
+    }
+    _focusId(ids[next]);
+  }
+
+  int _displayPage(HomeDeckMetrics metrics) {
+    final ids = _gridFocusableIds;
+    final index = ids.indexOf(_focusedId ?? '');
+    if (index >= 0) {
+      return index ~/ metrics.pageSize;
+    }
+    return _page.clamp(0, _pageCount(metrics) - 1);
+  }
+
+  void _moveDock(TraversalDirection direction, HomeDeckMetrics metrics) {
+    final index = dockIds.indexOf(_focusedId ?? dockLibraryId);
+    if (direction == TraversalDirection.up) {
+      final ids = _gridFocusableIds;
+      final start = _page * metrics.pageSize;
+      final bottom = (start + metrics.pageSize - metrics.columns)
+          .clamp(0, ids.length - 1);
+      _focusId(ids[bottom]);
+      return;
+    }
+    if (direction == TraversalDirection.down) {
+      return;
+    }
+    final delta = direction == TraversalDirection.left ? -1 : 1;
+    final next = (index + delta) % dockIds.length;
+    _focusId(dockIds[next < 0 ? dockIds.length - 1 : next]);
   }
 
   String _clockLabel() {
-    final h = _now.hour.toString().padLeft(2, '0');
+    final hour = _now.hour % 12 == 0 ? 12 : _now.hour % 12;
     final m = _now.minute.toString().padLeft(2, '0');
-    return '$h:$m';
+    final suffix = _now.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$m $suffix';
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final metrics = HomeDeckMetrics.of(size);
+    final pages = _pageCount(metrics);
+    final page = _displayPage(metrics);
     final overlayOpen =
         _failure != null || _settingsOpen || _pendingRemoveId != null;
 
     return Shortcuts(
       shortcuts: _shortcuts,
       child: Actions(
-        actions: _actions(metrics.columns),
+        actions: _actions(metrics),
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: Focus(
             child: Scaffold(
               body: Stack(
                 children: [
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment(0, -0.6),
-                        radius: 1.15,
-                        colors: [
-                          Color(0xFF24305E),
-                          HomeDeckColors.voidNavy,
-                        ],
-                      ),
-                    ),
-                    child: SizedBox.expand(),
-                  ),
+                  const MenuBackdrop(),
                   Column(
                     children: [
-                      _Header(
-                        metrics: metrics,
-                        clock: _clockLabel(),
-                        moveMode: _moveMode,
-                        fullscreen: _window.isFullscreen,
-                        onSettings: () => setState(() => _settingsOpen = true),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          metrics.padding,
+                          18 * metrics.scale,
+                          metrics.padding,
+                          10 * metrics.scale,
+                        ),
+                        child: Row(
+                          children: [
+                            ProfileBadge(metrics: metrics),
+                            const Spacer(),
+                            PageDots(
+                              count: pages,
+                              page: page,
+                              onSelect: _goToPage,
+                            ),
+                            const Spacer(),
+                            if (_moveMode)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Text(
+                                  'REARRANGE',
+                                  style: TextStyle(
+                                    color: HomeDeckColors.cyanDeep,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13 * metrics.scale,
+                                  ),
+                                ),
+                              ),
+                            if (_window.isFullscreen)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Text(
+                                  'FULLSCREEN',
+                                  key: const Key('fullscreen-badge'),
+                                  style: TextStyle(
+                                    color: HomeDeckColors.cyanDeep,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12 * metrics.scale,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              _clockLabel(),
+                              style: TextStyle(
+                                color: HomeDeckColors.ink,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20 * metrics.scale,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Expanded(
                         child: HomeGrid(
                           controller: _library,
                           metrics: metrics,
+                          page: page,
                           focusedId: _focusedId,
                           hoveredId: _hoveredId,
                           moveMode: _moveMode,
@@ -400,9 +537,43 @@ class _HomeScreenState extends State<HomeScreen> {
                           focusNodeFor: _nodeFor,
                         ),
                       ),
-                      _Footer(metrics: metrics, moveMode: _moveMode),
+                      Center(
+                        child: BottomDock(
+                          metrics: metrics,
+                          focusedId: _focusedId,
+                          fullscreen: _window.isFullscreen,
+                          onFocus: (id) => setState(() => _focusedId = id),
+                          onSettings: () => setState(() => _settingsOpen = true),
+                          onAdd: _addApp,
+                          onFullscreen: _toggleFullscreen,
+                          onLibrary: () => _goToPage(0),
+                          onExit: () => _window.close(),
+                          focusNodeFor: _nodeFor,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 8 * metrics.scale),
+                        child: Text(
+                          _moveMode
+                              ? 'Arrows move tile  ·  Enter or Esc exit'
+                              : 'Arrows move  ·  Enter launch  ·  Delete remove  ·  F11 fullscreen',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: HomeDeckColors.muted,
+                            fontSize: metrics.hintSize,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
+                  if (pages > 1 && page > 0)
+                    PageEdgeTab(left: true, onPressed: () => _goToPage(page - 1)),
+                  if (pages > 1 && page < pages - 1)
+                    PageEdgeTab(
+                      left: false,
+                      onPressed: () => _goToPage(page + 1),
+                    ),
                   if (_failure != null)
                     LaunchErrorView(
                       key: const Key('launch-error-dialog'),
@@ -421,7 +592,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   if (_pendingRemoveId != null)
                     _RemoveConfirm(
-                      name: _library.byId(_pendingRemoveId!)?.displayName ?? 'this app',
+                      name: _library.byId(_pendingRemoveId!)?.displayName ??
+                          'this app',
                       scale: metrics.scale,
                       onConfirm: () {
                         final id = _pendingRemoveId!;
@@ -435,131 +607,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.metrics,
-    required this.clock,
-    required this.moveMode,
-    required this.fullscreen,
-    required this.onSettings,
-  });
-
-  final HomeDeckMetrics metrics;
-  final String clock;
-  final bool moveMode;
-  final bool fullscreen;
-  final VoidCallback onSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        metrics.padding,
-        20 * metrics.scale,
-        metrics.padding,
-        8 * metrics.scale,
-      ),
-      child: Row(
-        children: [
-          HomeDeckMark(size: 64 * metrics.scale),
-          SizedBox(width: 14 * metrics.scale),
-          Text(
-            'HomeDeck',
-            style: TextStyle(
-              color: HomeDeckColors.cream,
-              fontWeight: FontWeight.w900,
-              fontSize: metrics.titleSize,
-              letterSpacing: 0.6,
-            ),
-          ),
-          if (moveMode) ...[
-            SizedBox(width: 16 * metrics.scale),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: HomeDeckColors.gold,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'REARRANGE',
-                style: TextStyle(
-                  color: HomeDeckColors.voidNavy,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16 * metrics.scale,
-                ),
-              ),
-            ),
-          ],
-          const Spacer(),
-          if (fullscreen)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Text(
-                'FULLSCREEN',
-                key: const Key('fullscreen-badge'),
-                style: TextStyle(
-                  color: HomeDeckColors.gold,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16 * metrics.scale,
-                  letterSpacing: 1.4,
-                ),
-              ),
-            ),
-          Text(
-            clock,
-            style: TextStyle(
-              color: HomeDeckColors.cream,
-              fontWeight: FontWeight.w700,
-              fontSize: 28 * metrics.scale,
-            ),
-          ),
-          IconButton(
-            key: const Key('settings-button'),
-            tooltip: 'Settings',
-            onPressed: onSettings,
-            icon: Icon(
-              Icons.settings_rounded,
-              color: HomeDeckColors.muted,
-              size: 32 * metrics.scale,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({required this.metrics, required this.moveMode});
-
-  final HomeDeckMetrics metrics;
-  final bool moveMode;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = moveMode
-        ? 'Arrows move tile  ·  Enter or Esc exit  ·  Drag to reorder'
-        : 'Arrows move  ·  Enter launch  ·  Delete remove  ·  M rearrange  ·  F11 fullscreen';
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        metrics.padding,
-        4,
-        metrics.padding,
-        18 * metrics.scale,
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: HomeDeckColors.muted,
-          fontSize: metrics.hintSize,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -582,39 +629,39 @@ class _RemoveConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withValues(alpha: 0.72),
+      color: Colors.black.withValues(alpha: 0.45),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: HomeDeckColors.deepIndigo,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: HomeDeckColors.gold, width: 3),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: HomeDeckColors.cyan, width: 3),
             ),
             child: Padding(
-              padding: EdgeInsets.all(32 * scale),
+              padding: EdgeInsets.all(28 * scale),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Remove from library?',
                     style: TextStyle(
-                      color: HomeDeckColors.cream,
+                      color: HomeDeckColors.ink,
                       fontWeight: FontWeight.w800,
-                      fontSize: 28 * scale,
-                    ),
-                  ),
-                  SizedBox(height: 12 * scale),
-                  Text(
-                    name,
-                    style: TextStyle(
-                      color: HomeDeckColors.gold,
-                      fontWeight: FontWeight.w700,
                       fontSize: 24 * scale,
                     ),
                   ),
-                  SizedBox(height: 24 * scale),
+                  SizedBox(height: 10 * scale),
+                  Text(
+                    name,
+                    style: TextStyle(
+                      color: HomeDeckColors.cyanDeep,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20 * scale,
+                    ),
+                  ),
+                  SizedBox(height: 22 * scale),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -622,7 +669,10 @@ class _RemoveConfirm extends StatelessWidget {
                         onPressed: onCancel,
                         child: const Text(
                           'Cancel  ·  Esc',
-                          style: TextStyle(color: HomeDeckColors.muted, fontSize: 18),
+                          style: TextStyle(
+                            color: HomeDeckColors.muted,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -630,7 +680,7 @@ class _RemoveConfirm extends StatelessWidget {
                         onPressed: onConfirm,
                         style: FilledButton.styleFrom(
                           backgroundColor: HomeDeckColors.danger,
-                          foregroundColor: HomeDeckColors.cream,
+                          foregroundColor: Colors.white,
                         ),
                         child: const Text('Remove  ·  Enter'),
                       ),

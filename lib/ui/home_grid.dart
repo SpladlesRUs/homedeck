@@ -5,12 +5,26 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:material_ui/material_ui.dart';
 
 const addTileId = '__homedeck_add__';
+const dockSettingsId = '__dock_settings__';
+const dockAddId = '__dock_add__';
+const dockFullscreenId = '__dock_fullscreen__';
+const dockLibraryId = '__dock_library__';
+const dockExitId = '__dock_exit__';
+
+const dockIds = [
+  dockSettingsId,
+  dockAddId,
+  dockFullscreenId,
+  dockLibraryId,
+  dockExitId,
+];
 
 class HomeGrid extends StatelessWidget {
   const HomeGrid({
     super.key,
     required this.controller,
     required this.metrics,
+    required this.page,
     required this.focusedId,
     required this.hoveredId,
     required this.moveMode,
@@ -24,6 +38,7 @@ class HomeGrid extends StatelessWidget {
 
   final LibraryController controller;
   final HomeDeckMetrics metrics;
+  final int page;
   final String? focusedId;
   final String? hoveredId;
   final bool moveMode;
@@ -34,60 +49,85 @@ class HomeGrid extends StatelessWidget {
   final void Function(String draggedId, String ontoId) onReorderDrop;
   final FocusNode Function(String id) focusNodeFor;
 
+  static int pageCountFor(int occupied, int pageSize) {
+    if (occupied <= 0) {
+      return 1;
+    }
+    return ((occupied + pageSize - 1) / pageSize).floor().clamp(1, 999);
+  }
+
   @override
   Widget build(BuildContext context) {
     final apps = controller.apps;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final inner = constraints.maxWidth - metrics.padding * 2;
-        final tileWidth =
-            (inner - metrics.gap * (metrics.columns - 1)) / metrics.columns;
-        return SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: metrics.padding,
-            vertical: 8 * metrics.scale,
-          ),
-          child: Wrap(
-            spacing: metrics.gap,
-            runSpacing: metrics.gap + 12 * metrics.scale,
-            children: [
-              for (var i = 0; i < apps.length; i++)
-                SizedBox(
-                  key: ValueKey('tile-${apps[i].id}'),
-                  width: tileWidth,
-                  child: AppTile(
-                    app: apps[i],
-                    metrics: metrics,
-                    iconFile: controller.iconFile(apps[i]),
-                    focused: focusedId == apps[i].id,
-                    hovered: hoveredId == apps[i].id,
-                    moveMode: moveMode,
-                    autofocus: i == 0 && focusedId == null,
-                    focusNode: focusNodeFor(apps[i].id),
-                    onActivate: () => onLaunch(apps[i]),
-                    onFocus: () => onFocus(apps[i].id),
-                    onHover: (hover) => onHover(hover ? apps[i].id : null),
-                    onDroppedOn: (dragged) => onReorderDrop(dragged, apps[i].id),
-                  ),
-                ),
-              SizedBox(
-                key: const ValueKey('tile-add'),
-                width: tileWidth,
-                child: AddTile(
-                  metrics: metrics,
-                  focused: focusedId == addTileId,
-                  hovered: hoveredId == addTileId,
-                  autofocus: apps.isEmpty && focusedId == null,
-                  focusNode: focusNodeFor(addTileId),
-                  onActivate: onAdd,
-                  onFocus: () => onFocus(addTileId),
-                  onHover: (hover) => onHover(hover ? addTileId : null),
-                ),
+    final pageSize = metrics.pageSize;
+    final start = page * pageSize;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        metrics.padding,
+        10 * metrics.scale,
+        metrics.padding,
+        8 * metrics.scale,
+      ),
+      child: Column(
+        children: [
+          for (var row = 0; row < metrics.rows; row++) ...[
+            if (row > 0) SizedBox(height: metrics.gap),
+            Expanded(
+              child: Row(
+                children: [
+                  for (var col = 0; col < metrics.columns; col++) ...[
+                    if (col > 0) SizedBox(width: metrics.gap),
+                    Expanded(
+                      child: _slot(
+                        start + row * metrics.columns + col,
+                        apps,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _slot(int index, List<AppRecord> apps) {
+    if (index < apps.length) {
+      final app = apps[index];
+      return AppTile(
+        key: ValueKey('tile-${app.id}'),
+        app: app,
+        metrics: metrics,
+        iconFile: controller.iconFile(app),
+        focused: focusedId == app.id,
+        hovered: hoveredId == app.id,
+        moveMode: moveMode,
+        autofocus: index == 0 && focusedId == null,
+        focusNode: focusNodeFor(app.id),
+        onActivate: () => onLaunch(app),
+        onFocus: () => onFocus(app.id),
+        onHover: (hover) => onHover(hover ? app.id : null),
+        onDroppedOn: (dragged) => onReorderDrop(dragged, app.id),
+      );
+    }
+    if (index == apps.length) {
+      return AddTile(
+        key: const ValueKey('tile-add'),
+        metrics: metrics,
+        focused: focusedId == addTileId,
+        hovered: hoveredId == addTileId,
+        autofocus: apps.isEmpty && focusedId == null,
+        focusNode: focusNodeFor(addTileId),
+        onActivate: onAdd,
+        onHover: (hover) => onHover(hover ? addTileId : null),
+        onFocus: () => onFocus(addTileId),
+      );
+    }
+    return EmptySlot(
+      key: ValueKey('empty-slot-$index'),
+      metrics: metrics,
     );
   }
 }

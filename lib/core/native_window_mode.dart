@@ -24,8 +24,8 @@ class NativeWindowModeController extends WindowModeController {
       return;
     }
     window.title = 'HomeDeck';
-    window.setSize(const Size(1280, 720).toNative(), false);
-    window.minimumSize = const Size(960, 540).toNative();
+    window.setSize(const Size(1280, 800).toNative(), false);
+    window.minimumSize = const Size(960, 600).toNative();
     window.center();
   }
 
@@ -51,4 +51,9 @@ class NativeWindowModeController extends WindowModeController {
 
   @override
   Future<void> toggleBorderless() => apply(_fullscreen, !_borderless);
+
+  @override
+  Future<void> close() async {
+    _window?.close();
+  }
 }

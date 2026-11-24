@@ -90,4 +90,8 @@ Keyboard:
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 
-The layout is designed for 1280×720, 1920×1080, and 3840×2160.
+The home menu is a light 5×3 paged grid at 1280×800 (more columns/rows on
+larger windows): glossy rounded tiles, empty slots, page dots, edge tabs, a
+bottom dock, a profile badge, and the clock. Demo tiles are seeded only with
+`--dart-define=HOMEDECK_SEED_DEMO=true` (debug/test); release defaults stay
+empty.

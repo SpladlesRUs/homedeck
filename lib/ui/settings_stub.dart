@@ -34,15 +34,15 @@ class SettingsStub extends StatelessWidget {
       child: Focus(
         autofocus: true,
         child: Material(
-          color: Colors.black.withValues(alpha: 0.72),
+          color: Colors.black.withValues(alpha: 0.4),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: HomeDeckColors.deepIndigo,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: HomeDeckColors.gold, width: 3),
+                  border: Border.all(color: HomeDeckColors.cyan, width: 3),
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(32 * scale.clamp(0.8, 1.3)),
@@ -57,7 +57,7 @@ class SettingsStub extends StatelessWidget {
                           Text(
                             'Settings',
                             style: TextStyle(
-                              color: HomeDeckColors.cream,
+                              color: HomeDeckColors.ink,
                               fontWeight: FontWeight.w800,
                               fontSize: 32 * scale,
                             ),
@@ -65,7 +65,7 @@ class SettingsStub extends StatelessWidget {
                           const Spacer(),
                           IconButton(
                             onPressed: onClose,
-                            icon: const Icon(Icons.close, color: HomeDeckColors.cream),
+                            icon: const Icon(Icons.close, color: HomeDeckColors.ink),
                           ),
                         ],
                       ),
@@ -86,7 +86,7 @@ class SettingsStub extends StatelessWidget {
                       Text(
                         'Milestone 1',
                         style: TextStyle(
-                          color: HomeDeckColors.gold,
+                          color: HomeDeckColors.cyanDeep,
                           fontWeight: FontWeight.w800,
                           fontSize: 18 * scale,
                         ),
@@ -94,7 +94,7 @@ class SettingsStub extends StatelessWidget {
                       const SizedBox(height: 8),
                       const Text(
                         'Apps are added manually. Installed-app discovery is not enabled yet.',
-                        style: TextStyle(color: HomeDeckColors.cream, fontSize: 18, height: 1.35),
+                        style: TextStyle(color: HomeDeckColors.ink, fontSize: 18, height: 1.35),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -110,7 +110,7 @@ class SettingsStub extends StatelessWidget {
                             Text(
                               'HomeDeck',
                               style: TextStyle(
-                                color: HomeDeckColors.cream,
+                                color: HomeDeckColors.ink,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 22 * scale,
                               ),
@@ -130,7 +130,7 @@ class SettingsStub extends StatelessWidget {
                           child: const Text(
                             'Close  ·  Esc',
                             style: TextStyle(
-                              color: HomeDeckColors.gold,
+                              color: HomeDeckColors.cyanDeep,
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
                             ),
@@ -169,15 +169,15 @@ class _ToggleRow extends StatelessWidget {
       title: Text(
         label,
         style: const TextStyle(
-          color: HomeDeckColors.cream,
+          color: HomeDeckColors.ink,
           fontWeight: FontWeight.w700,
           fontSize: 22,
         ),
       ),
       subtitle: Text(hint, style: const TextStyle(color: HomeDeckColors.muted)),
       value: value,
-      activeThumbColor: HomeDeckColors.voidNavy,
-      activeTrackColor: HomeDeckColors.gold,
+      activeThumbColor: Colors.white,
+      activeTrackColor: HomeDeckColors.cyan,
       onChanged: onChanged,
     );
   }

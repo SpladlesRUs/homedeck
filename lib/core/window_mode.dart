@@ -12,6 +12,8 @@ abstract class WindowModeController extends ChangeNotifier {
   Future<void> toggleBorderless();
 
   Future<void> prepareInitialFrame() async {}
+
+  Future<void> close() async {}
 }
 
 class MemoryWindowModeController extends WindowModeController {
@@ -21,6 +23,7 @@ class MemoryWindowModeController extends WindowModeController {
 
   bool _fullscreen;
   bool _borderless;
+  bool closed = false;
 
   @override
   bool get isFullscreen => _fullscreen;
@@ -40,4 +43,10 @@ class MemoryWindowModeController extends WindowModeController {
 
   @override
   Future<void> toggleBorderless() => apply(_fullscreen, !_borderless);
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    notifyListeners();
+  }
 }
