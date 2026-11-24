@@ -49,6 +49,7 @@ class LibraryController extends ChangeNotifier {
   /// after successful adds because overlapping `_commit`s built from a stale
   /// empty `_state` (window/audio prefs) finished after the add write.
   Future<void> _writeChain = Future<void>.value();
+  int _commitGeneration = 0;
 
   bool get isLoaded => _loaded;
 
@@ -219,15 +220,25 @@ class LibraryController extends ChangeNotifier {
   }
 
   Future<void> _commit(HomeDeckState Function(HomeDeckState state) update) {
-    // Persist before publishing so a failed write cannot leave a tile on
-    // screen (and an icon in icons/) with no library.json. Apply [update] to
-    // the latest `_state` when this write's turn runs — never to a snapshot
-    // captured before an in-flight add.
-    final done = _writeChain.then((_) async {
-      final next = update(_state);
-      await _preferences.save(next);
-      _state = next;
-      notifyListeners();
+    // Apply [update] to the live in-memory state immediately so one
+    // `tester.pump()` sees pins/unpins. Queue the disk write of that
+    // snapshot so overlapping window/audio prefs cannot finish after an add
+    // and rewrite library.json with a stale empty apps[] (Ally 4996779).
+    final prior = _state;
+    final next = update(_state);
+    final generation = ++_commitGeneration;
+    _state = next;
+    notifyListeners();
+    final done = _writeChain.catchError((_) {}).then((_) async {
+      try {
+        await _preferences.save(next);
+      } catch (error) {
+        if (generation == _commitGeneration) {
+          _state = prior;
+          notifyListeners();
+        }
+        throw error;
+      }
     });
     _writeChain = done.catchError((_) {});
     return done;
