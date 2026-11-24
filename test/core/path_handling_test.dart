@@ -53,7 +53,8 @@ void main() {
     final paths = AppPaths(dir);
     final relative = paths.iconRelativeRef('abc');
     expect(p.isRelative(relative), isTrue);
-    expect(p.split(relative), ['icons', 'abc.png']);
+    expect(relative, isNot(contains(r'\')));
+    expect(p.posix.split(relative), ['icons', 'abc.png']);
     expect(
       () => paths.resolveOwned(p.join(p.separator, 'etc', 'passwd')),
       throwsArgumentError,

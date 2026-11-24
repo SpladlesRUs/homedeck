@@ -11,7 +11,10 @@ void main() {
     final record = AppRecord(
       id: '11111111-1111-4111-8111-111111111111',
       displayName: 'Photo Deck',
-      iconRef: p.join('icons', '11111111-1111-4111-8111-111111111111.png'),
+      iconRef: p.posix.join(
+        'icons',
+        '11111111-1111-4111-8111-111111111111.png',
+      ),
       position: 2,
       category: 'apps',
       favorite: true,

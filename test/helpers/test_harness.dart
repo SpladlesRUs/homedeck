@@ -96,11 +96,7 @@ Future<Harness> createHarness({
   bool seedDemo = false,
 }) async {
   final directory = Directory.systemTemp.createTempSync('homedeck_');
-  addTearDown(() {
-    if (directory.existsSync()) {
-      directory.deleteSync(recursive: true);
-    }
-  });
+  addTearDown(() => _tryDeleteTemp(directory));
   final paths = AppPaths(directory);
   final fake = adapter ?? FakePlatformAdapter();
   final controller = LibraryController(
@@ -187,6 +183,19 @@ bool focusOn(WidgetTester tester, Key key) {
     matching: find.byType(Text),
   );
   return Focus.of(tester.element(label.first)).hasFocus;
+}
+
+Future<void> _tryDeleteTemp(Directory directory) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (directory.existsSync()) {
+        directory.deleteSync(recursive: true);
+      }
+      return;
+    } on FileSystemException {
+      await Future<void>.delayed(Duration(milliseconds: 40 * (attempt + 1)));
+    }
+  }
 }
 
 Future<void> sendArrow(WidgetTester tester, LogicalKeyboardKey key) async {

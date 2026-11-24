@@ -18,7 +18,10 @@ class AppPaths {
   String get iconsDirectory => p.join(supportRoot, 'icons');
 
   /// Relative reference stored on [AppRecord.iconRef].
-  String iconRelativeRef(String appId) => p.join('icons', '$appId.png');
+  ///
+  /// Always POSIX separators so library.json is portable across Windows
+  /// and Linux; [resolveOwned] turns this into a native path.
+  String iconRelativeRef(String appId) => p.posix.join('icons', '$appId.png');
 
   /// Resolve a HomeDeck-owned relative path. Rejects absolute inputs and
   /// anything that would escape [supportRoot].
