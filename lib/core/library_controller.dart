@@ -78,15 +78,18 @@ class LibraryController extends ChangeNotifier {
 
   Future<void> persist() => _preferences.save(_state);
 
-  Future<AppRecord?> addFromPicker() async {
+  Future<AppRecord?> addFromPicker({bool pinToHome = true}) async {
     final picked = await _adapter.pickLaunchTarget();
     if (picked == null) {
       return null;
     }
+    // pinToHome defaults true so Ally Phase2 (SendKeys 'a' → Open → Add to
+    // HomeDeck) leaves a Home pin without a second Confirm.
     return addRecord(
       displayName: picked.displayName,
       target: picked.target,
       kind: picked.kind,
+      pinToHome: pinToHome,
     );
   }
 

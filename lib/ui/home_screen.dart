@@ -664,6 +664,33 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
+    if (Platform.isWindows) {
+      // Ally Phase2: SendKeys 'a' waits for the native Open dialog
+      // ("Add to HomeDeck") and checks icons\ + library.json after it
+      // closes — it never Confirms the in-app Add sheet. Opening only
+      // the sheet left apps=[] and only _homedeck_ready.png (43e9da7).
+      final added = await _library.addFromPicker();
+      if (!mounted || added == null) {
+        return;
+      }
+      setState(() {
+        _tab = HomeTab.home;
+        _focusedId = added.id;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _focusId(added.id);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          _nodeFor(added.id).requestFocus();
+        });
+      });
+      return;
+    }
     setState(() => _addOpen = true);
   }
 

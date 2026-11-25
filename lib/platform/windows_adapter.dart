@@ -63,11 +63,25 @@ class WindowsAdapter implements PlatformAdapter {
     required String appId,
     required String displayName,
   }) async {
-    // Disk-first with a canned PNG — no dart:ui. Ally 10fe4ac still saw
-    // zero PNGs because write-first still awaited generateInitialIcon
-    // (GPU/toImage) before any file IO.
+    // Disk-first with a canned PNG — return as soon as icons/<id>.png
+    // exists. GPU generate + Win32 extract upgrade in the background so
+    // Ally's watcher (and addFromPicker) never wait on dart:ui / channel.
     final ref = await cache.writePng(appId, placeholderPng);
+    unawaited(_upgradeIconArt(
+      target: target,
+      cache: cache,
+      appId: appId,
+      displayName: displayName,
+    ));
+    return ref;
+  }
 
+  Future<void> _upgradeIconArt({
+    required LaunchTarget target,
+    required IconCache cache,
+    required String appId,
+    required String displayName,
+  }) async {
     try {
       final generated = await generateInitialIcon(
         displayName: displayName,
@@ -91,7 +105,6 @@ class WindowsAdapter implements PlatformAdapter {
     } catch (_) {
       // Keep whatever is already on disk.
     }
-    return ref;
   }
 
   /// Best-effort PE / `.lnk` extract. Returns `null` for URIs, missing files,

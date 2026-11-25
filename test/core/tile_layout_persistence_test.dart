@@ -12,6 +12,7 @@ import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/home_layout.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
 import 'package:homedeck/core/preferences_repository.dart';
+import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:path/path.dart' as p;
 
 import '../helpers/fake_platform_adapter.dart';
@@ -95,6 +96,29 @@ void main() {
     final home = decoded['home'] as Map;
     final slots = home['slots'] as List;
     expect(slots.where((slot) => slot != null), isNotEmpty);
+  });
+
+  test('addFromPicker pins to Home and writes icons/<id>.png', () async {
+    final harness = await createHarness();
+    final notepad = p.join(harness.directory.path, 'notepad.exe');
+    await File(notepad).writeAsString('x', flush: true);
+    harness.adapter.pick = PickedLaunch(
+      displayName: 'notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: notepad,
+      ),
+    );
+    final added = await harness.controller.addFromPicker();
+    expect(added, isNotNull);
+    expect(harness.controller.isOnHome(added!.id), isTrue);
+    final icon = File(p.join(harness.directory.path, 'icons', '${added.id}.png'));
+    expect(icon.existsSync(), isTrue);
+    expect(icon.lengthSync(), greaterThan(0));
+    final decoded =
+        jsonDecode(harness.paths.libraryJsonFile().readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
   });
 
   test('library layout persists across repository instances', () async {

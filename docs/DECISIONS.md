@@ -32,13 +32,17 @@ path remains as a secondary fallback. Bytes are written with sync IO into
 `icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
 
-Ally M2 at b630dc3: `_homedeck_ready.png` PASS (AppData `icons\` is
-writable) but **zero** `icons/<id>.png` after add. Ready used
-`p.join(iconsDir.path, name)`; tile writes used `resolveOwned` /
-`iconFile`, which can disagree on the handheld. Tile PNGs now use that
-same icons-dir join, sync dart:io on the add path (native `writeFile` is
-fire-and-forget), and `_commit` re-asserts missing tile PNGs after
-`library.json` save. Ready marker seed is unchanged.
+Ally M2 at b630dc3 / 43e9da7: `_homedeck_ready.png` PASS but **zero**
+`icons/<id>.png` after add. Path-join alignment alone was not enough —
+Phase2 SendKeys `a` opens the native Open dialog and never Confirms the
+in-app Add sheet, so `addRecord` / IconCache writes never ran (sheet-only
+`_addApp` left only the ready probe; harness still logged add PASS).
+Windows **A** / empty slots now one-shot `addFromPicker` (pin to Home);
+Menu → Add game still opens the sheet for URI / emulated. Ready seed and
+tile adds share one `IconCache.writeBytesSync` helper. `resolveIcon`
+returns after the placeholder lands; GPU / extract upgrade in the
+background. `_commit` re-asserts missing tile PNGs after `library.json`
+save.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
 or any Win32 failure), the placeholder / generated tile already on disk
@@ -87,10 +91,13 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with the on-screen **Add** tile: Native (`.exe`, `.lnk`, or a
-URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
-args). Then press Enter (or click) to launch. Layout is stored in the
-application support directory provided by `path_provider` (typically under
+Add an app with keyboard **A** or an empty Add slot. On Windows that
+one-shot opens the native file picker (`Open` / **Add to HomeDeck**) and
+persists + pins to Home immediately — Ally Phase2 SendKeys `a` expects
+that dialog and checks `icons\<id>.png` after it closes (it never Confirms
+an in-app sheet). Emulated / URI add uses Menu → Add game (sheet). Then
+press Enter (or click) to launch. Layout is stored in the application
+support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
 `PreferencesRepository` seeds `library.json` on first load and saves with a
 flushed direct write (temp copy + final overwrite + apps round-trip check)

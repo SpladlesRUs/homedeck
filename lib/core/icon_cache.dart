@@ -15,7 +15,7 @@ class IconCache {
 
   /// Optional Win32 CreateFile write (set on Windows). Best-effort only —
   /// never awaited on the add critical path (Ally saw ready-marker via
-  /// dart:io; tile writes must use that same join, not block on the channel).
+  /// dart:io; tile writes must use that same helper, not block on the channel).
   final Future<bool> Function(String path, Uint8List bytes)? _nativeWrite;
 
   static const readyProbeName = '_homedeck_ready.png';
@@ -25,30 +25,26 @@ class IconCache {
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
-    // Same join style as tile writes (see [_iconFileForId]).
-    final probe = _fileInIconsDir(readyProbeName);
+    final probe = fileInIconsDir(readyProbeName);
     if (!probe.existsSync() || probe.lengthSync() <= 0) {
-      _durableWriteSync(probe, placeholderPng);
-      _kickNativeWrite(probe.path, placeholderPng);
+      writeBytesSync(probe, placeholderPng);
     }
     return dir;
   }
 
   /// Writes [bytes] to `icons/<appId>.png` beside [_homedeck_ready.png].
   ///
-  /// Ally b630dc3: ready marker PASS but zero tile PNGs. Ready used
-  /// `p.join(iconsDir.path, name)`; tiles used [AppPaths.iconFile] /
-  /// `resolveOwned`, which can disagree with the live AppData path. Tile
-  /// writes now use the identical icons-dir join as the ready marker.
+  /// Ready seed and tile adds share [writeBytesSync] so they cannot diverge
+  /// on path join or flush semantics (Ally 43e9da7: ready PASS, zero tiles
+  /// was an entry-point bug; this keeps IO identical either way).
   Future<String> writePng(String appId, Uint8List bytes) async {
     if (bytes.isEmpty) {
       throw ArgumentError.value(bytes, 'bytes', 'icon PNG bytes must be non-empty');
     }
     await ensureReady();
     final relative = paths.iconRelativeRef(appId);
-    final file = _iconFileForId(appId);
-    _durableWriteSync(file, bytes);
-    _kickNativeWrite(file.path, bytes);
+    final file = fileInIconsDir(p.posix.basename(relative));
+    writeBytesSync(file, bytes);
     if (!file.existsSync() || file.lengthSync() <= 0) {
       throw FileSystemException(
         'icon PNG was not present after write',
@@ -58,19 +54,13 @@ class IconCache {
     return relative;
   }
 
-  /// Absolute file for a tile id — same directory join as the ready probe.
-  File _iconFileForId(String appId) {
-    final relative = paths.iconRelativeRef(appId);
-    final name = p.posix.basename(relative);
-    return _fileInIconsDir(name);
-  }
-
-  File _fileInIconsDir(String fileName) {
-    // Intentionally mirrors ensureReady's probe path construction.
+  /// Absolute file under the live icons directory (same join as the ready probe).
+  File fileInIconsDir(String fileName) {
     return File(p.join(paths.iconsDirectory, fileName));
   }
 
-  void _durableWriteSync(File file, Uint8List bytes) {
+  /// Single durable write used by ready seed and every tile PNG.
+  void writeBytesSync(File file, Uint8List bytes) {
     file.parent.createSync(recursive: true);
     final payload = Uint8List.fromList(bytes);
     final temp = File('${file.path}.tmp');
@@ -88,6 +78,7 @@ class IconCache {
       }
     }
     file.writeAsBytesSync(payload, flush: true);
+    _kickNativeWrite(file.path, payload);
   }
 
   void _kickNativeWrite(String absolutePath, Uint8List bytes) {
@@ -102,7 +93,7 @@ class IconCache {
 
   Future<Uint8List?> read(String relativeRef) async {
     final name = p.posix.basename(relativeRef);
-    final file = _fileInIconsDir(name);
+    final file = fileInIconsDir(name);
     if (!file.existsSync()) {
       return null;
     }
@@ -117,7 +108,7 @@ class IconCache {
     if (name.isEmpty || name == '.' || name == '..') {
       return null;
     }
-    final file = _fileInIconsDir(name);
+    final file = fileInIconsDir(name);
     if (!file.existsSync()) {
       return null;
     }
