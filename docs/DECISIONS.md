@@ -161,8 +161,10 @@ because `window_manager` 0.7 often never binds the stock Flutter window.
 
 1. Scan or open Library with apps present; focus a Library tile (not a folder).
 2. Bare SendKeys **`h`** (no Menu / Add to Home UIA) → `home.slots` gains that
-   app id (same as UI Add to Home).
-3. Switch to Home; focus the pinned tile; SendKeys Enter launches.
+   app id; UI switches to Home with the pinned tile focused and the Enter
+   launch mirror refreshed (same `pinToHome` as UI Add to Home).
+3. SendKeys Enter launches that app (UIA dock → Home keeps the pin focus —
+   does not steal to Now Playing).
 4. Spot-check bare **`s`** / **`p`** / **`a`** unchanged.
 
 Keyboard:

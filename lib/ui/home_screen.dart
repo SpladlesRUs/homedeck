@@ -246,14 +246,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    // Keep the mirrored launch target so Ally Enter can ShellExecute after
-    // navigating to Home (same path as UI Add to Home → focus → Enter).
-    await _syncNativeFocusedLaunchAwait();
+    // Ally M5: land on Home with the pinned tile focused and refresh the
+    // Enter/WH_KEYBOARD_LL launch mirror. Staying on Library left a stale
+    // focus; dock→Home then focused Now Playing and wiped setFocusedLaunch.
+    await _focusAddedApp(focused);
   }
 
   Future<void> _focusAddedApp(AppRecord added) async {
     setState(() {
       _tab = HomeTab.home;
+      _folderTitle = null;
+      _dockForced = true;
       _focusedId = added.id;
     });
     await _syncNativeFocusedLaunchAwait();
@@ -676,6 +679,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _focusFirstForTab() {
     if (_tab == HomeTab.home) {
+      // Prefer an already-focused Home pin (Ally H pin → UIA dock Home) so
+      // Now Playing does not clear the mirrored launch path before Enter.
+      final id = _focusedId;
+      if (id != null &&
+          !isNowPlayingId(id) &&
+          !isEmptySlotId(id) &&
+          !isFolderFocusId(id) &&
+          _library.isOnHome(id)) {
+        _focusId(id, click: false);
+        return;
+      }
       _focusId(nowPlayingId, click: false);
       return;
     }

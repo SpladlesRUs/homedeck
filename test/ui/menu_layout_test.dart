@@ -348,13 +348,26 @@ void main() {
     expect(find.byKey(const Key('menu-add-to-home')), findsNothing);
     expect(harness.controller.isOnHome('app-1'), isTrue);
     expect(harness.controller.home.slots, contains('app-1'));
+    // H lands on Home with the pinned tile focused (Enter/launch mirror).
+    expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
 
-    // B leaves the folder so the dock is visible, then open Home.
-    harness.gamepad.emit(GamepadButton.b);
-    await tester.pump();
+    // Ally UIA dock → Home must keep the pin, not steal to Now Playing.
     await tester.tap(find.byKey(const Key('tab-home')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    expect(harness.adapter.launchCount, greaterThan(0));
+    expect(
+      harness.adapter.launched.last.value,
+      contains('Shelf only.exe'),
+    );
   });
 
   testWidgets('Home Move mode rearranges tiles and keeps empty slots', (
