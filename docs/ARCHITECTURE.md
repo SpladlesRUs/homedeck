@@ -21,8 +21,10 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
   HomeDeck-owned files are referenced with **relative** paths. User-selected
   launch locations stay device-local.
 - **Platform** (`lib/platform`) discovers (later), resolves icons, validates
-  targets, and launches. `selectPlatformAdapter()` is the single switch that
-  returns the adapter for this process.
+  targets, and launches. On Windows, the runner MethodChannel extracts PE /
+  `.lnk` icons (Dart FFI secondary) into `IconCache`; generated tiles on
+  failure. `selectPlatformAdapter()` is the single switch that returns the
+  adapter for this process.
 
 Navigation uses Flutter `Shortcuts`, `Actions`, and `FocusTraversal` intents
 (`LaunchFocusedIntent`, `DirectionalFocusIntent`, and friends) so a later
@@ -45,8 +47,11 @@ launch). Steam library and ROM-folder auto-discovery are **not** implemented;
 `[]`. A later scanner should emit `DiscoveredApp` (with `TileKind`) and call
 `LibraryController.addRecord` without changing the home widgets.
 
-`PreferencesRepository` writes `library.json` in the application support
-directory. `IconCache` writes PNG tiles under `icons/` in that same tree.
+`PreferencesRepository` seeds and writes `library.json` in the application
+support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
+re-reads to verify `apps.length` matches the in-memory state so an
+empty-file-only result cannot look like a successful add.
+`IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.
 `AudioPrefs` (music on/off + volume + UI clicks) persist in `library.json`.
@@ -90,9 +95,12 @@ desktop runner are not in this tree.
 
 ## Window chrome
 
-Fullscreen and borderless toggling use `window_manager` (F11 and Settings).
-`NativeWindowModeController` wraps the plugin so widget tests can inject
-`MemoryWindowModeController`.
+Fullscreen and borderless toggling go through `NativeWindowModeController`
+(F11 and Settings). On Windows the runner `homedeck/win32` MethodChannel
+applies chrome on the real `FlutterWindow` HWND (and native WM_KEYDOWN F11
+toggles the same path). Dart FFI `WindowsWindowChrome` / `window_manager`
+remain fallbacks because 0.7 often never binds the stock Flutter runner.
+Widget tests inject `MemoryWindowModeController`.
 
 Gamepad and battery follow the same split: `WindowsXInputGamepad` polls XInput
 on Windows; `WindowsBatteryStatus` reads `GetSystemPowerStatus`. Tests inject

@@ -1,39 +1,63 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:homedeck/core/generated_icon.dart';
 import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
+import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
+import 'package:homedeck/platform/windows_icon_extractor.dart';
 import 'package:homedeck/platform/windows_io.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 
 typedef FilePickerFn = Future<String?> Function({
   required String label,
   required List<String> extensions,
 });
 
-/// Windows launch adapter (milestone 1).
+/// Windows launch adapter.
 ///
 /// Manual add: `.exe` / `.lnk`, store URIs (`steam://…`), or emulator + ROM.
-/// Icons fall back to a generated colored initial tile because PE resource
-/// extraction is not implemented (see docs/DECISIONS.md).
+/// Icons prefer a real PE / shortcut extract into [IconCache]; generated
+/// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
   WindowsAdapter({
     WindowsIo io = const DartWindowsIo(),
     FilePickerFn? filePicker,
+    WindowsIconExtractor? iconExtractor,
   }) : _io = io,
-       _filePicker = filePicker ?? _defaultPicker;
+       _filePicker = filePicker ?? _defaultPicker,
+       _iconExtractor = iconExtractor ?? Win32IconExtractor();
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
+  final WindowsIconExtractor _iconExtractor;
 
   static Future<String?> _defaultPicker({
     required String label,
     required List<String> extensions,
   }) async {
+    // Prefer classic GetOpenFileName via the runner. Ally Phase2 @bdd3ba1 /
+    // c8a379f: file_selector's IFileDialog is not FindWindow-able as "Open"
+    // → harness false-PASS add_exe_tile while Dart never got a path
+    // (apps=[], only _homedeck_ready.png). OFN is #32770 titled "Open".
+    try {
+      return await WindowsNativeBridge.pickOpenFile(
+        label: label,
+        extensions: extensions,
+        confirmButtonText: 'Add to HomeDeck',
+      );
+    } on MissingPluginException {
+      // Widget tests / non-runner hosts.
+    } on PlatformException {
+      // Fall through to file_selector.
+    }
     final file = await openFile(
       acceptedTypeGroups: [
         XTypeGroup(label: label, extensions: extensions),
@@ -56,12 +80,79 @@ class WindowsAdapter implements PlatformAdapter {
     required String appId,
     required String displayName,
   }) async {
-    // Milestone 1 does not parse PE resources or .lnk icon paths.
-    final bytes = await generateInitialIcon(
+    // Disk-first with a canned PNG — return as soon as icons/<id>.png
+    // exists. GPU generate + Win32 extract upgrade in the background so
+    // Ally's watcher (and addFromPicker) never wait on dart:ui / channel.
+    final ref = await cache.writePng(appId, placeholderPng);
+    unawaited(_upgradeIconArt(
+      target: target,
+      cache: cache,
+      appId: appId,
       displayName: displayName,
-      key: appId,
-    );
-    return cache.writePng(appId, bytes);
+    ));
+    return ref;
+  }
+
+  Future<void> _upgradeIconArt({
+    required LaunchTarget target,
+    required IconCache cache,
+    required String appId,
+    required String displayName,
+  }) async {
+    try {
+      final generated = await generateInitialIcon(
+        displayName: displayName,
+        key: appId,
+      ).timeout(const Duration(milliseconds: 800), onTimeout: () => placeholderPng);
+      if (generated.isNotEmpty) {
+        await cache.writePng(appId, generated);
+      }
+    } catch (_) {
+      // Keep placeholder already on disk.
+    }
+
+    try {
+      final extracted = await _tryExtractIcon(target).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+      if (extracted != null && extracted.isNotEmpty) {
+        await cache.writePng(appId, extracted);
+      }
+    } catch (_) {
+      // Keep whatever is already on disk.
+    }
+  }
+
+  /// Best-effort PE / `.lnk` extract. Returns `null` for URIs, missing files,
+  /// non-Windows hosts, or any Win32 failure so callers keep the generated tile.
+  Future<Uint8List?> _tryExtractIcon(LaunchTarget target) async {
+    if (target.kind == LaunchTargetKind.windowsUri ||
+        WindowsPaths.isLaunchUri(target.value)) {
+      return null;
+    }
+    final path = target.value.trim();
+    if (path.isEmpty) {
+      return null;
+    }
+    if (!WindowsPaths.isExecutable(path) &&
+        !WindowsPaths.isShortcut(path) &&
+        target.kind != LaunchTargetKind.windowsEmulated) {
+      return null;
+    }
+    // Bad / missing paths must not touch Shell extract (Ally "bad path" case).
+    try {
+      if (!await _io.fileExists(path)) {
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
+    try {
+      return await _iconExtractor.extractPng(path);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -141,9 +232,9 @@ class WindowsAdapter implements PlatformAdapter {
       return failure;
     }
     try {
-      // Always shell-start on Windows. Direct Process.start(detached) often
-      // fails to show GUI targets (notepad harness on Ally) from a Flutter
-      // runner; `cmd /c start` is reliable for .exe, .lnk, and store URIs.
+      // Runner MethodChannel ShellExecuteW first (via DartWindowsIo), then
+      // Dart FFI / CreateProcess / cmd-start. Ally 2417533 Dart-only
+      // ShellExecute never spawned notepad after Enter.
       await _io.startDetached(
         executable: target.value,
         arguments: target.resolvedArguments,
@@ -174,36 +265,42 @@ class WindowsAdapter implements PlatformAdapter {
       label: 'Windows apps',
       extensions: const ['exe', 'lnk'],
     );
+    return pickedLaunchFromPath(path);
+  }
+
+  /// Parse a path or URI the runner already chose (native A / HOMEDECK_ADD_PATH).
+  static PickedLaunch? pickedLaunchFromPath(String? path) {
     if (path == null || path.trim().isEmpty) {
       return null;
     }
-    if (WindowsPaths.isLaunchUri(path)) {
+    final trimmed = path.trim();
+    if (WindowsPaths.isLaunchUri(trimmed)) {
       return PickedLaunch(
-        displayName: _uriDisplayName(path),
+        displayName: uriDisplayName(trimmed),
         target: LaunchTarget(
           platform: AppPlatform.windows,
           kind: LaunchTargetKind.windowsUri,
-          value: path.trim(),
+          value: trimmed,
         ),
       );
     }
-    if (!WindowsPaths.isSupportedLaunchFile(path)) {
+    if (!WindowsPaths.isSupportedLaunchFile(trimmed)) {
       return null;
     }
-    final kind = WindowsPaths.isShortcut(path)
+    final kind = WindowsPaths.isShortcut(trimmed)
         ? LaunchTargetKind.windowsShortcut
         : LaunchTargetKind.windowsExecutable;
     return PickedLaunch(
-      displayName: WindowsPaths.basenameWithoutExtension(path),
+      displayName: WindowsPaths.basenameWithoutExtension(trimmed),
       target: LaunchTarget(
         platform: AppPlatform.windows,
         kind: kind,
-        value: path,
+        value: trimmed,
       ),
     );
   }
 
-  String _uriDisplayName(String uri) {
+  static String uriDisplayName(String uri) {
     final parsed = Uri.tryParse(uri.trim());
     if (parsed == null) {
       return uri.trim();

@@ -24,6 +24,8 @@ import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
+import 'package:homedeck/platform/windows_adapter.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/tile_menu.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -87,9 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _library.addListener(_onLibrary);
-    _window.addListener(_onLibrary);
+    _window.addListener(_onWindowMode);
     widget.music?.addListener(_onLibrary);
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
+    if (Platform.isWindows) {
+      WindowsNativeBridge.ensureInitialized();
+      WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
+    }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
     if (HomeScreen.tickClock) {
@@ -112,11 +118,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    if (Platform.isWindows) {
+      if (identical(
+        WindowsNativeBridge.onAddPickedPath,
+        _addPickedPathFromNative,
+      )) {
+        WindowsNativeBridge.onAddPickedPath = null;
+      }
+    }
     _clock?.cancel();
     _gamepad.stop();
     _status.stop();
     _library.removeListener(_onLibrary);
-    _window.removeListener(_onLibrary);
+    _window.removeListener(_onWindowMode);
     widget.music?.removeListener(_onLibrary);
     unawaited(_clicks.dispose());
     for (final node in _focusNodes.values) {
@@ -125,10 +139,64 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// Runner WH_KEYBOARD_LL `A` opened classic Open (or HOMEDECK_ADD_PATH) and
+  /// returned a path — persist + write icons/<id>.png for Ally.
+  Future<void> _addPickedPathFromNative(String path) async {
+    if (!mounted || _overlayOpen) {
+      return;
+    }
+    final picked = WindowsAdapter.pickedLaunchFromPath(path);
+    if (picked == null) {
+      return;
+    }
+    final added = await _library.addRecord(
+      displayName: picked.displayName,
+      target: picked.target,
+      kind: picked.kind,
+      pinToHome: true,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _tab = HomeTab.home;
+      _focusedId = added.id;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _focusId(added.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _nodeFor(added.id).requestFocus();
+      });
+    });
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _onWindowMode() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+    // Native WM_KEYDOWN F11 toggles chrome in the runner and only notifies
+    // Dart — persist window prefs so library.json mirrors chrome state.
+    unawaited(
+      _library.setWindowPrefs(
+        WindowPrefs(
+          fullscreen: _window.isFullscreen,
+          borderless: _window.isBorderless,
+        ),
+      ),
+    );
   }
 
   bool get _overlayOpen =>
@@ -328,6 +396,21 @@ class _HomeScreenState extends State<HomeScreen> {
       return false;
     }
     if (_gamepad.isConnected && _isGamepadKey(event.logicalKey)) {
+      return true;
+    }
+    // Ally Phase2 sends Enter/F11 to the focused HWND. When Shortcuts do not
+    // see a focused FocusNode after sheet teardown, still launch or toggle
+    // chrome. Leave Enter alone while an overlay is open so Add/Confirm
+    // Actions keep working.
+    final key = event.logicalKey;
+    if (!_overlayOpen &&
+        (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter)) {
+      _handleConfirm();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.f11) {
+      unawaited(_toggleFullscreen());
       return true;
     }
     return false;
@@ -630,6 +713,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _addApp() async {
     if (_overlayOpen) {
+      return;
+    }
+    if (Platform.isWindows) {
+      // Ally Phase2: SendKeys 'a' waits for the native Open dialog
+      // ("Add to HomeDeck") and checks icons\ + library.json after it
+      // closes — it never Confirms the in-app Add sheet. Opening only
+      // the sheet left apps=[] and only _homedeck_ready.png (43e9da7).
+      final added = await _library.addFromPicker();
+      if (!mounted || added == null) {
+        return;
+      }
+      setState(() {
+        _tab = HomeTab.home;
+        _focusedId = added.id;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _focusId(added.id);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          _nodeFor(added.id).requestFocus();
+        });
+      });
       return;
     }
     setState(() => _addOpen = true);
@@ -1006,6 +1116,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: Focus(
+            autofocus: true,
             child: Scaffold(
               body: Stack(
                 children: [
@@ -1177,15 +1288,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       scale: metrics.scale,
                       onClose: () => setState(() => _addOpen = false),
                       onAdded: (id) {
-                        setState(() => _addOpen = false);
+                        // Set focused id synchronously so Enter via
+                        // HardwareKeyboard launches even if FocusNode is not
+                        // attached yet (Ally: Enter sent, no notepad).
+                        setState(() {
+                          _addOpen = false;
+                          _focusedId = id;
+                        });
                         // Focus after the sheet leaves the tree and the new
                         // Home pin is built; requestFocus on a detached node
-                        // was leaving Enter on Now Playing instead of launch.
+                        // was leaving keyboard focus on Now Playing.
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) {
                             return;
                           }
                           _focusId(id);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) {
+                              return;
+                            }
+                            _nodeFor(id).requestFocus();
+                          });
                         });
                       },
                     ),

@@ -117,7 +117,7 @@ void main() {
     expect(denied?.kind, LaunchFailureKind.permissionDenied);
   });
 
-  test('Process.start arguments keep spaces; shortcuts use detached cmd start', () async {
+  test('launches keep spaces; WindowsIo always requested with shell start', () async {
     final io = MemoryWindowsIo(
       existing: {
         p.windows.join('Apps', 'My Game.exe'),

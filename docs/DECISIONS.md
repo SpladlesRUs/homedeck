@@ -24,16 +24,36 @@ README use the same PNG.
 
 ## Windows icon extraction
 
-HomeDeck does **not** extract icons from PE resources or `.lnk` files in
-milestone 1. Dart has no built-in `ExtractIconEx` binding, and pulling a Win32
-FFI plugin was out of scope.
+`WindowsAdapter.resolveIcon` extracts icons on Windows primarily through the
+runner MethodChannel (`homedeck/win32` → `extractIcon`): C++ resolves `.lnk`
+targets via `IShellLinkW`, pulls PE/Shell icons (`PrivateExtractIconsW` /
+`ExtractIconExW` / `SHGetFileInfoW`), and encodes PNG with WIC. A Dart FFI
+path remains as a secondary fallback. Bytes are written with sync IO into
+`icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
+generated tiles.
 
-When an icon cannot be read, HomeDeck generates a colored tile with the app
-initial and caches it as a PNG under the application support directory
-(`icons/<id>.png`, stored as a relative `iconRef`).
+Ally M2 icon add (through 1676362): `_homedeck_ready.png` PASS but
+**zero** `icons/<id>.png`; `apps=[]`; harness **`Open dialog not found`**.
+Root causes stacked: (1) Phase2 never Confirms the in-app Add sheet —
+Windows empty-slot / Dart `A` still one-shot `addFromPicker`. (2)
+`file_selector` IFileDialog is not FindWindow-able. (3) SendKeys `a`
+often never reaches Flutter Shortcuts, so MethodChannel `pickOpenFile`
+never ran and classic OFN never appeared. Fix: runner `WH_KEYBOARD_LL`
+on `A` posts `WM_HOMEDECK_ADD` → UI-thread `GetOpenFileNameW` with
+**window class `#32770`**, **window title exactly `Open`** (OK button
+label only is `Add to HomeDeck`; title is force-set in `CDN_INITDONE`),
+then `addPickedPath` → Dart `addRecord` + `icons/<id>.png`. Optional
+`HOMEDECK_ADD_PATH` bypasses the modal. Ally Phase2 Open wait (do not change harness):
+`Wait-WindowTitle -Title 'Open' -TimeoutSec 8` with exact
+`(Get-WindowTitle $h) -eq 'Open'` (visible windows; no class filter).
+Dialog title is forced to exact `Open` on WM_INITDIALOG and CDN_INITDONE;
+OK button may still read `Add to HomeDeck`. Ready seed and tile adds share
+`IconCache.writeBytesSync`. `addFromPicker` refuses success without a
+durable tile PNG.
 
-A later Windows adapter can resolve real icons (Win32, PowerShell, or a
-shortcut parser) and write the same cache format.
+When extraction is unavailable (non-Windows host, store URI, missing file,
+or any Win32 failure), the placeholder / generated tile already on disk
+remains. Extraction never blocks adding a game.
 
 ## Steam Deck validation pending
 
@@ -53,7 +73,7 @@ Do not treat Deck as a separate app.
 | Windows `.exe` launch via `Process.start` (detached) | Implemented; **not verified on a real Windows PC in this environment** |
 | Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
 | Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
-| Windows PE / `.lnk` icon extraction | Not implemented; generated tiles used |
+| Windows PE / `.lnk` icon extraction | Runner MethodChannel + WIC (Dart FFI fallback); generated tile fallback |
 | Installed-app / Steam / ROM-folder scanner | Not implemented; `discover()` is the hook |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
@@ -78,17 +98,23 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with the on-screen **Add** tile: Native (`.exe`, `.lnk`, or a
-URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
-args). Then press Enter (or click) to launch. Layout is stored in the
-application support directory provided by `path_provider` (typically under
+Add an app with keyboard **A** or an empty Add slot. On Windows, runner
+`WH_KEYBOARD_LL` catches SendKeys `a` and shows classic
+`GetOpenFileNameW` (**class `#32770`**, **title `Open`**, OK button
+**Add to HomeDeck**), then Dart persists + pins + writes
+`icons\<id>.png`. Emulated / URI add uses Menu → Add game (sheet). Then
+press Enter (or click) to launch. Layout is stored in the application
+support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
-`PreferencesRepository.save` writes atomically (temp + replace) and
-`LibraryController` persists before notifying UI so a failed write cannot
-leave a tile on screen without `library.json`. Windows launches always use
-`cmd /c start` (not bare `Process.start` detached) so GUI targets open from
-the Flutter runner. F11 uses `window_manager` fullscreen plus a frameless
-display-cover fallback so chrome/size change on handheld Windows.
+`PreferencesRepository` seeds `library.json` on first load and saves with a
+flushed direct write (temp copy + final overwrite + apps round-trip check)
+under `%AppData%\Horton Press\HomeDeck\`. `LibraryController` persists before
+notifying UI. Windows launches use the runner `homedeck/win32` MethodChannel
+(`ShellExecuteW` on the real process), then Dart FFI / CreateProcess /
+`cmd /c start`. F11 is handled in the runner (real HWND + MethodChannel);
+Dart FFI FindWindow remains a fallback because `window_manager` 0.7 often
+never binds the stock Flutter window and Ally 2417533 FindWindow did not
+change chrome on device.
 
 Keyboard:
 

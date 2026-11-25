@@ -14,6 +14,7 @@ import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
 import 'package:homedeck/core/models/tile_kind.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
+import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/preferences_repository.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:path/path.dart' as p;
@@ -77,16 +78,33 @@ class LibraryController extends ChangeNotifier {
 
   Future<void> persist() => _preferences.save(_state);
 
-  Future<AppRecord?> addFromPicker() async {
+  Future<AppRecord?> addFromPicker({bool pinToHome = true}) async {
     final picked = await _adapter.pickLaunchTarget();
     if (picked == null) {
       return null;
     }
-    return addRecord(
+    // pinToHome defaults true so Ally Phase2 (SendKeys 'a' → Open → Add to
+    // HomeDeck) leaves a Home pin without a second Confirm.
+    final record = await addRecord(
       displayName: picked.displayName,
       target: picked.target,
       kind: picked.kind,
+      pinToHome: pinToHome,
     );
+    // Refuse "success" without a durable tile PNG (Ally false PASS with
+    // apps=[] / only _homedeck_ready.png).
+    final tile = _icons.absoluteFile(record.iconRef) ??
+        _icons.absoluteFile('icons/${record.id}.png');
+    if (tile == null) {
+      await _icons.writePng(record.id, placeholderPng);
+      final again = _icons.absoluteFile('icons/${record.id}.png');
+      if (again == null) {
+        throw StateError(
+          'addFromPicker produced no icons/${record.id}.png',
+        );
+      }
+    }
+    return record;
   }
 
   Future<String?> pickFile({
@@ -108,6 +126,9 @@ class LibraryController extends ChangeNotifier {
     int? homeSlot,
   }) async {
     final id = _idFactory();
+    // Guarantee a PNG under icons\ before platform resolve (Ally 10fe4ac
+    // saw empty icons\ when resolveIcon stalled in dart:ui / extract).
+    await _icons.writePng(id, placeholderPng);
     final iconRef = await _adapter.resolveIcon(
       target: target,
       cache: _icons,
@@ -208,6 +229,18 @@ class LibraryController extends ChangeNotifier {
     // Persist before publishing state so a failed write cannot leave a
     // tile on screen (and an icon in icons/) with no library.json.
     await _preferences.save(next);
+    // Ally b630dc3: ready marker on disk but no per-tile PNG after add.
+    // Re-assert every record's icon file beside the ready marker.
+    for (final app in next.apps) {
+      final existing = _icons.absoluteFile(app.iconRef ?? 'icons/${app.id}.png');
+      if (existing == null) {
+        try {
+          await _icons.writePng(app.id, placeholderPng);
+        } catch (_) {
+          // Best-effort; library.json already saved.
+        }
+      }
+    }
     _state = next;
     notifyListeners();
   }

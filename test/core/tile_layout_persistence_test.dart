@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,7 @@ import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/home_layout.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
 import 'package:homedeck/core/preferences_repository.dart';
+import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:path/path.dart' as p;
 
 import '../helpers/fake_platform_adapter.dart';
@@ -56,6 +58,85 @@ void main() {
     );
     expect(controller.apps, isEmpty);
     expect(File(p.join(blocker.path, 'HomeDeck', 'library.json')).existsSync(), isFalse);
+  });
+
+  test('load seeds library.json when missing', () async {
+    final harness = await createHarness();
+    final file = harness.paths.libraryJsonFile();
+    if (file.existsSync()) {
+      file.deleteSync();
+    }
+    final reloaded = LibraryController(
+      adapter: FakePlatformAdapter(),
+      preferences: PreferencesRepository(harness.paths),
+      icons: IconCache(harness.paths),
+    );
+    await reloaded.load();
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), greaterThan(0));
+    expect(reloaded.apps, isEmpty);
+  });
+
+  test('save round-trip keeps non-empty apps on disk', () async {
+    final harness = await createHarness();
+    await harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final file = harness.paths.libraryJsonFile();
+    expect(file.existsSync(), isTrue);
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    final apps = decoded['apps'] as List;
+    expect(apps, isNotEmpty);
+    final home = decoded['home'] as Map;
+    final slots = home['slots'] as List;
+    expect(slots.where((slot) => slot != null), isNotEmpty);
+  });
+
+  test('addFromPicker pins to Home and writes icons/<id>.png', () async {
+    final harness = await createHarness();
+    final notepad = p.join(harness.directory.path, 'notepad.exe');
+    await File(notepad).writeAsString('x', flush: true);
+    harness.adapter.pick = PickedLaunch(
+      displayName: 'notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: notepad,
+      ),
+    );
+    final added = await harness.controller.addFromPicker();
+    expect(added, isNotNull);
+    expect(harness.controller.isOnHome(added!.id), isTrue);
+    final icon = File(p.join(harness.directory.path, 'icons', '${added.id}.png'));
+    expect(icon.existsSync(), isTrue);
+    expect(icon.lengthSync(), greaterThan(0));
+    final decoded =
+        jsonDecode(harness.paths.libraryJsonFile().readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
+  });
+
+  test('addFromPicker with missing .exe still writes icons/<id>.png', () async {
+    final harness = await createHarness();
+    final missing = p.join(harness.directory.path, 'Gone.exe');
+    harness.adapter.pick = PickedLaunch(
+      displayName: 'Gone',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: missing,
+      ),
+    );
+    final added = await harness.controller.addFromPicker();
+    expect(added, isNotNull);
+    final icon = File(p.join(harness.directory.path, 'icons', '${added!.id}.png'));
+    expect(icon.existsSync(), isTrue);
+    expect(icon.lengthSync(), greaterThan(0));
   });
 
   test('library layout persists across repository instances', () async {
