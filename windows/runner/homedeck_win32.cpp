@@ -319,6 +319,13 @@ bool HomedeckWin32::IsOurForeground() const {
   return our_pid != 0 && our_pid == fg_pid;
 }
 
+bool HomedeckWin32::ModifierHeld() {
+  return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+}
+
 LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
                                                      WPARAM w_param,
                                                      LPARAM l_param) {
@@ -335,6 +342,19 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       if (info->vkCode == VK_RETURN) {
         if (instance_->HandleEnter()) {
+          return 1;
+        }
+      }
+      // Ally @82a5a20: SendKeys `a` never reached Flutter Shortcuts /
+      // MethodChannel pickOpenFile, so GetOpenFileName never ran and the
+      // harness logged "Open dialog not found" → apps=[]. Mirror F11/Enter:
+      // post to the UI thread and consume so Shortcuts cannot double-open.
+      if (info->vkCode == 'A' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_ADD, 0, 0);
           return 1;
         }
       }
@@ -493,6 +513,28 @@ void HomedeckWin32::RequestDartLaunch() {
     return;
   }
   channel_->InvokeMethod("launchFocused", nullptr);
+}
+
+void HomedeckWin32::HandleAddKey() {
+  if (picking_file_) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleAddKey opening classic Open\n");
+  const std::wstring path =
+      PickOpenFile(L"Windows apps", L"exe,lnk", L"Add to HomeDeck");
+  if (path.empty()) {
+    return;
+  }
+  NotifyPickedPath(path);
+}
+
+void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {
+  if (channel_ == nullptr || path.empty()) {
+    return;
+  }
+  channel_->InvokeMethod(
+      "addPickedPath",
+      std::make_unique<flutter::EncodableValue>(Utf8FromUtf16(path.c_str())));
 }
 
 void HomedeckWin32::NotifyFullscreen() {

@@ -14,6 +14,7 @@ import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/ui_clicks.dart';
 import 'package:homedeck/core/window_mode.dart';
 import 'package:homedeck/core/models/app_platform.dart';
+import 'package:homedeck/platform/windows_adapter.dart';
 import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
@@ -95,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (Platform.isWindows) {
       WindowsNativeBridge.ensureInitialized();
       WindowsNativeBridge.onLaunchFocused = _launchFocusedFromNative;
+      WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -118,9 +120,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
-    if (Platform.isWindows &&
-        identical(WindowsNativeBridge.onLaunchFocused, _launchFocusedFromNative)) {
-      WindowsNativeBridge.onLaunchFocused = null;
+    if (Platform.isWindows) {
+      if (identical(
+        WindowsNativeBridge.onLaunchFocused,
+        _launchFocusedFromNative,
+      )) {
+        WindowsNativeBridge.onLaunchFocused = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onAddPickedPath,
+        _addPickedPathFromNative,
+      )) {
+        WindowsNativeBridge.onAddPickedPath = null;
+      }
     }
     _clock?.cancel();
     _gamepad.stop();
@@ -141,6 +153,49 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     _handleConfirm();
+  }
+
+  /// Runner WH_KEYBOARD_LL `A` opened classic Open (or HOMEDECK_ADD_PATH) and
+  /// returned a path — persist + pin so Ally Enter can ShellExecute.
+  Future<void> _addPickedPathFromNative(String path) async {
+    if (!mounted || _overlayOpen) {
+      return;
+    }
+    final picked = WindowsAdapter.pickedLaunchFromPath(path);
+    if (picked == null) {
+      return;
+    }
+    final added = await _library.addRecord(
+      displayName: picked.displayName,
+      target: picked.target,
+      kind: picked.kind,
+      pinToHome: true,
+    );
+    if (!mounted) {
+      return;
+    }
+    await _focusAddedApp(added);
+  }
+
+  Future<void> _focusAddedApp(AppRecord added) async {
+    setState(() {
+      _tab = HomeTab.home;
+      _focusedId = added.id;
+    });
+    await _syncNativeFocusedLaunchAwait();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _focusId(added.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _nodeFor(added.id).requestFocus();
+        unawaited(_syncNativeFocusedLaunchAwait());
+      });
+    });
   }
 
   void _onLibrary() {
@@ -684,34 +739,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (Platform.isWindows) {
-      // Ally Phase2 harness: SendKeys 'a' then waits for FindWindow-able
-      // classic Open (#32770 / title "Open", OK "Add to HomeDeck"). One-shot
-      // pick+add matches that — never Confirm an in-app Add sheet.
-      // @bdd3ba1 still failed: file_selector IFileDialog was not FindWindow-
-      // able ("Open dialog not found") so apps=[] and Enter had no path.
-      // Picker now uses runner GetOpenFileName (see WindowsAdapter).
+      // Ally Phase2: SendKeys 'a' is handled by WH_KEYBOARD_LL → WM_HOMEDECK_ADD
+      // → runner GetOpenFileName → addPickedPath (see _addPickedPathFromNative).
+      // Empty Add slots / Menu paths still one-shot pick here so tiles land
+      // without Confirm on an in-app sheet. @82a5a20 failed because Shortcuts
+      // never saw `a`, so this path never ran under the harness.
       final added = await _library.addFromPicker();
       if (!mounted || added == null) {
         return;
       }
-      setState(() {
-        _tab = HomeTab.home;
-        _focusedId = added.id;
-      });
-      await _syncNativeFocusedLaunchAwait();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        _focusId(added.id);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
-            return;
-          }
-          _nodeFor(added.id).requestFocus();
-          unawaited(_syncNativeFocusedLaunchAwait());
-        });
-      });
+      await _focusAddedApp(added);
       return;
     }
     setState(() => _addOpen = true);

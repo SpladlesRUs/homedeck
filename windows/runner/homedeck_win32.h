@@ -9,12 +9,19 @@
 
 #include "win32_window.h"
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `a` (or a real A key)
+// should open the classic FindWindow-able Open dialog on the UI thread.
+#ifndef WM_HOMEDECK_ADD
+#define WM_HOMEDECK_ADD (WM_APP + 0x41)
+#endif
+
 // Native Win32 helpers for Ally Phase2.
 //
 // Ally's harness drives keys with WScript.Shell SendKeys after AppActivate —
 // those land on the Flutter view child, so FlutterWindow::MessageHandler never
-// sees WM_KEYDOWN. A low-level keyboard hook catches F11 / Enter while our
-// process is foreground and applies chrome / ShellExecute without Dart.
+// sees WM_KEYDOWN and Flutter Shortcuts often never see `a`. A low-level
+// keyboard hook catches F11 / Enter / A while our process is foreground:
+// chrome, ShellExecute, and classic GetOpenFileName without waiting on Dart.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -43,6 +50,10 @@ class HomedeckWin32 {
   // while HomeDeck should own the key (caller still checks foreground).
   bool HandleEnter();
 
+  // UI-thread handler for WM_HOMEDECK_ADD: show classic Open (or honor
+  // HOMEDECK_ADD_PATH) then notify Dart via addPickedPath.
+  void HandleAddKey();
+
   // Classic GetOpenFileName titled "Open" (Ally FindWindow) with optional
   // OK label "Add to HomeDeck". Returns empty string when cancelled.
   std::wstring PickOpenFile(const std::wstring& filter_label,
@@ -51,9 +62,11 @@ class HomedeckWin32 {
 
  private:
   void NotifyFullscreen();
+  void NotifyPickedPath(const std::wstring& path);
   void InstallHook();
   void RemoveHook();
   bool IsOurForeground() const;
+  static bool ModifierHeld();
 
   static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
                                                LPARAM l_param);
@@ -67,7 +80,7 @@ class HomedeckWin32 {
   std::wstring focused_path_;
   std::wstring focused_args_;
   HHOOK keyboard_hook_ = nullptr;
-  // True while GetOpenFileName is modal — do not steal Enter/F11 from OFN.
+  // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;
 
   static HomedeckWin32* instance_;

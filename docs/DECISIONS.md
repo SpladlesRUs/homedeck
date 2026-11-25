@@ -80,15 +80,19 @@ The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
 Add an app with the on-screen **Add** tile or keyboard **A**. On Windows, **A**
 (and empty Add slots) one-shot open a classic `GetOpenFileName` dialog
-(window title **Open**, OK label **Add to HomeDeck**) via the runner
-`homedeck/win32` channel and persist + pin to Home immediately — Ally Phase2
-SendKeys `a` expects a FindWindow-able `Open` / `#32770` dialog and checks
-`library.json` after it closes (it never Confirms an in-app sheet). Tip
-`bdd3ba1` still failed because `file_selector`'s `IFileDialog` never produced
-a harness-visible Open window (`Open dialog not found` → `apps=[]`). Optional
-`HOMEDECK_ADD_PATH` bypasses the modal with a fixed exe/lnk for automation.
-Emulated / URI add uses Menu → Add game (sheet). Then press Enter (or click)
-to launch.
+(window title **Open**, OK label **Add to HomeDeck**) and persist + pin to
+Home immediately — Ally Phase2 SendKeys `a` expects a FindWindow-able
+`Open` / `#32770` dialog and checks `library.json` after it closes (it never
+Confirms an in-app sheet). Tip `bdd3ba1` failed because `file_selector`'s
+`IFileDialog` was not FindWindow-able; tip `82a5a20` still failed because
+SendKeys `a` never reached Flutter Shortcuts / MethodChannel `pickOpenFile`,
+so classic OFN never ran (`Open dialog not found` → `apps=[]`). The runner
+`WH_KEYBOARD_LL` hook now posts `WM_HOMEDECK_ADD` on bare **A** (same path as
+F11/Enter), shows OFN on the UI thread, then notifies Dart via
+`addPickedPath`. Optional `HOMEDECK_ADD_PATH` (absolute `.exe` / `.lnk`)
+bypasses the modal and still lands a pinned tile — **if Ally sets it, skip
+the FindWindow Open wait** and assert `library.json` / Enter only. Emulated /
+URI add uses Menu → Add game (sheet). Then press Enter (or click) to launch.
 Layout is stored in the application support directory provided by
 `path_provider` (typically under `%AppData%`) as `library.json`. Cached icons
 live next to it in `icons\`. `PreferencesRepository` seeds `library.json` on
@@ -99,9 +103,10 @@ serializes commits and persists the live `_state` at write time. Windows
 launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
 Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
-a `WH_KEYBOARD_LL` hook for F11 chrome and Enter→focused path while HomeDeck
-is foreground; Dart mirrors the focused launch target and handles a native
-`launchFocused` fallback when the mirror is empty.
+a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, and A→classic
+Open while HomeDeck is foreground; Dart mirrors the focused launch target,
+handles a native `launchFocused` fallback when the mirror is empty, and
+persists native `addPickedPath` results.
 
 Keyboard:
 

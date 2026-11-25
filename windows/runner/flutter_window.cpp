@@ -55,6 +55,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   // Ally Phase2 primarily uses WScript.SendKeys (Flutter view child), which
   // the WH_KEYBOARD_LL hook in HomedeckWin32 handles. Keep this top-level
   // path for PostMessage / real keyboard focus on the frame window.
+  if (message == WM_HOMEDECK_ADD) {
+    win32_.HandleAddKey();
+    return 0;
+  }
   if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
       wparam == VK_F11) {
     win32_.SetFullscreen(!win32_.IsFullscreen());
@@ -63,6 +67,16 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
       wparam == VK_RETURN) {
     if (win32_.HandleEnter()) {
+      return 0;
+    }
+  }
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) && wparam == 'A') {
+    const bool mods = (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
+                      (GetKeyState(VK_MENU) & 0x8000) != 0 ||
+                      (GetKeyState(VK_LWIN) & 0x8000) != 0 ||
+                      (GetKeyState(VK_RWIN) & 0x8000) != 0;
+    if (!mods) {
+      win32_.HandleAddKey();
       return 0;
     }
   }

@@ -8,13 +8,19 @@ import 'package:flutter/services.dart';
 /// Ally Phase2 at 4996779 still failed Enter/F11 because the harness uses
 /// `WScript.Shell.SendKeys` after AppActivate — keys hit the Flutter view
 /// child, not `FlutterWindow::MessageHandler`. The runner now installs a
-/// WH_KEYBOARD_LL hook for F11/Enter while HomeDeck is foreground, and Dart
+/// WH_KEYBOARD_LL hook for F11/Enter/A while HomeDeck is foreground, and Dart
 /// mirrors the focused launch path via [setFocusedLaunch].
 ///
 /// Ally @9800850: F11 PASS via the hook, but Enter still spawned no process
 /// because `focused_path_` was often empty (cleared during Add-sheet library
 /// notify / async mirror race). The hook now falls back to invoking
 /// [onLaunchFocused] in Dart when the mirrored path is missing.
+///
+/// Ally @82a5a20: SendKeys `a` still never opened a FindWindow-able Open
+/// dialog (Flutter Shortcuts never ran `pickOpenFile`). The hook now posts
+/// `WM_HOMEDECK_ADD`, the runner shows classic `GetOpenFileName` titled
+/// `Open`, then invokes [onAddPickedPath] with the chosen path (or the
+/// optional `HOMEDECK_ADD_PATH` bypass value).
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -29,8 +35,12 @@ class WindowsNativeBridge {
   /// empty (Enter via WH_KEYBOARD_LL / top-level WM_KEYDOWN).
   static Future<void> Function()? onLaunchFocused;
 
+  /// Runner finished a native Open pick (WH_KEYBOARD_LL `A` / WM_HOMEDECK_ADD)
+  /// and wants Dart to persist + pin the path.
+  static Future<void> Function(String path)? onAddPickedPath;
+
   /// Ensure the platform method handler is registered (launchFocused +
-  /// fullscreenChanged). Call from HomeScreen init on Windows.
+  /// fullscreenChanged + addPickedPath). Call from HomeScreen init on Windows.
   static void ensureInitialized() => _ensureListening();
 
   /// Absolute fullscreen notifications from the runner (native F11 path).
@@ -56,6 +66,18 @@ class WindowsNativeBridge {
         final handler = onLaunchFocused;
         if (handler != null) {
           await handler();
+        }
+        return;
+      }
+      if (call.method == 'addPickedPath') {
+        final raw = call.arguments;
+        final path = raw is String ? raw.trim() : '';
+        if (path.isEmpty) {
+          return;
+        }
+        final handler = onAddPickedPath;
+        if (handler != null) {
+          await handler(path);
         }
         return;
       }
