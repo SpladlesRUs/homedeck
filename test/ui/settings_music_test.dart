@@ -143,6 +143,94 @@ void main() {
     expect(find.byKey(const Key('settings-scan-steam-message')), findsOneWidget);
   });
 
+  testWidgets('bare P imports Start Menu apps without opening Settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverStartMenuResult: [
+          DiscoveredApp(
+            displayName: 'Notepad',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsExecutable,
+              value: r'C:\Windows\System32\notepad.exe',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('settings-scan-start-menu')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Notepad');
+  });
+
+  testWidgets('settings Start Menu scan imports discovered apps', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverStartMenuResult: [
+          DiscoveredApp(
+            displayName: 'Notepad',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsExecutable,
+              value: r'C:\Windows\System32\notepad.exe',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-settings')));
+    await tester.pump();
+
+    final scan = find.byKey(const Key('settings-scan-start-menu'));
+    expect(scan, findsOneWidget);
+    await tester.ensureVisible(scan);
+    await tester.pump();
+    await tester.tap(scan);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Notepad');
+    expect(
+      find.byKey(const Key('settings-scan-start-menu-message')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('window blur ducks menu music and focus restores it', (
     tester,
   ) async {

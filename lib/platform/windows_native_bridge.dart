@@ -12,9 +12,11 @@ import 'package:flutter/services.dart';
 /// `WM_HOMEDECK_ADD`, shows classic `GetOpenFileName` titled **Open**
 /// (class `#32770`), then invokes [onAddPickedPath]. Bare `s` posts
 /// `WM_HOMEDECK_SCAN_STEAM` → [onScanSteam] (Steam discover without Settings
-/// UIA). The same hook handles F11 chrome and Enter→focused path; Dart
-/// mirrors the target via [setFocusedLaunch] and handles a native
-/// [onLaunchFocused] fallback when the mirrored path is empty.
+/// UIA). Bare `p` posts `WM_HOMEDECK_SCAN_START_MENU` → [onScanStartMenu]
+/// (Start Menu Programs discover without Settings UIA). The same hook handles
+/// F11 chrome and Enter→focused path; Dart mirrors the target via
+/// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
+/// the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -36,6 +38,10 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare `S` / `WM_HOMEDECK_SCAN_STEAM` asks Dart to
   /// run Steam `discover()` → `importDiscovered` (same as Settings scan).
   static Future<void> Function()? onScanSteam;
+
+  /// Runner WH_KEYBOARD_LL bare `P` / `WM_HOMEDECK_SCAN_START_MENU` asks Dart
+  /// to run Start Menu Programs `discover()` → `importDiscovered`.
+  static Future<void> Function()? onScanStartMenu;
 
   /// Ensure the platform method handler is registered. Call from HomeScreen
   /// init on Windows.
@@ -86,7 +92,43 @@ class WindowsNativeBridge {
         }
         return;
       }
+      if (call.method == 'scanStartMenu') {
+        final handler = onScanStartMenu;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
     });
+  }
+
+  /// Resolve a `.lnk` via IShellLink GetPath / GetArguments.
+  ///
+  /// Returns a map with optional `target` (String) and `arguments` (String
+  /// command line), or null when unavailable. UWP / URL-only shortcuts often
+  /// have an empty GetPath — callers should keep the `.lnk` itself.
+  static Future<Map<String, Object?>?> resolveShortcut(String lnkPath) async {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    final trimmed = lnkPath.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final result = await _channel.invokeMethod<dynamic>(
+        'resolveShortcut',
+        <String, Object?>{'path': trimmed},
+      );
+      if (result is! Map) {
+        return null;
+      }
+      return Map<String, Object?>.from(result);
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
   }
 
   /// Ask the runner to apply frameless monitor-cover chrome.

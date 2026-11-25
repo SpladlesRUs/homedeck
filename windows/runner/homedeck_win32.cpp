@@ -224,6 +224,46 @@ std::wstring ResolveShortcutTarget(const std::wstring& lnk_path) {
   return std::wstring();
 }
 
+// Launch-oriented resolve: GetPath first (not icon location), plus arguments.
+bool ResolveShortcutLaunch(const std::wstring& lnk_path, std::wstring* target,
+                           std::wstring* arguments) {
+  if (target == nullptr || arguments == nullptr) {
+    return false;
+  }
+  target->clear();
+  arguments->clear();
+  Microsoft::WRL::ComPtr<IShellLinkW> link;
+  HRESULT hr =
+      CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                       IID_PPV_ARGS(&link));
+  if (FAILED(hr) || link == nullptr) {
+    return false;
+  }
+  Microsoft::WRL::ComPtr<IPersistFile> persist;
+  hr = link.As(&persist);
+  if (FAILED(hr) || persist == nullptr) {
+    return false;
+  }
+  hr = persist->Load(lnk_path.c_str(), STGM_READ);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  wchar_t path_buf[32768] = {};
+  if (SUCCEEDED(link->GetPath(path_buf, ARRAYSIZE(path_buf), nullptr,
+                              SLGP_RAWPATH)) &&
+      path_buf[0] != L'\0') {
+    *target = path_buf;
+  }
+
+  wchar_t args_buf[32768] = {};
+  if (SUCCEEDED(link->GetArguments(args_buf, ARRAYSIZE(args_buf))) &&
+      args_buf[0] != L'\0') {
+    *arguments = args_buf;
+  }
+  return !target->empty() || !arguments->empty();
+}
+
 bool HiconToBgra(HICON icon, int size, std::vector<uint8_t>* out_bgra) {
   BITMAPINFO bmi{};
   bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -419,6 +459,40 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           }
           const bool ok = Launch(Utf8ToWide(path), Utf8ToWide(args));
           result->Success(flutter::EncodableValue(ok));
+          return;
+        }
+        if (method == "resolveShortcut") {
+          std::string path;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto path_it = map->find(flutter::EncodableValue("path"));
+            if (path_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&path_it->second)) {
+                path = *value;
+              }
+            }
+          }
+          if (path.empty()) {
+            result->Error("invalid_args", "resolveShortcut requires path");
+            return;
+          }
+          std::wstring target;
+          std::wstring arguments;
+          if (!ResolveShortcutLaunch(Utf8ToWide(path), &target, &arguments)) {
+            result->Success(flutter::EncodableValue());
+            return;
+          }
+          flutter::EncodableMap out;
+          if (!target.empty()) {
+            out[flutter::EncodableValue("target")] =
+                flutter::EncodableValue(Utf8FromUtf16(target.c_str()));
+          }
+          if (!arguments.empty()) {
+            out[flutter::EncodableValue("arguments")] =
+                flutter::EncodableValue(Utf8FromUtf16(arguments.c_str()));
+          }
+          result->Success(flutter::EncodableValue(out));
           return;
         }
         if (method == "setFocusedLaunch") {
@@ -681,6 +755,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M4: bare SendKeys `p` -> Start Menu Programs scan (Settings ->
+      // Scan Start Menu) without Settings UIA. M stays move-mode in Dart.
+      if (info->vkCode == 'P' && !modifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_START_MENU, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -740,6 +825,18 @@ void HomedeckWin32::HandleScanSteamKey() {
   }
   OutputDebugStringW(L"homedeck: HandleScanSteamKey → Dart scanSteam\n");
   channel_->InvokeMethod("scanSteam", nullptr);
+}
+
+void HomedeckWin32::HandleScanStartMenuKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleScanStartMenuKey → Dart scanStartMenu\n");
+  channel_->InvokeMethod("scanStartMenu", nullptr);
 }
 
 void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {

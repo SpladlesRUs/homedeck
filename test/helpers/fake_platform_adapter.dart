@@ -83,12 +83,14 @@ class FakePlatformAdapter implements PlatformAdapter {
     this.validation,
     this.launchResult,
     this.discoverResult = const [],
+    this.discoverStartMenuResult = const [],
   });
 
   PickedLaunch? pick;
   LaunchFailure? validation;
   LaunchOutcome? launchResult;
   List<DiscoveredApp> discoverResult;
+  List<DiscoveredApp> discoverStartMenuResult;
   final fileQueue = <String>[];
   int launchCount = 0;
   int validateCount = 0;
@@ -100,6 +102,10 @@ class FakePlatformAdapter implements PlatformAdapter {
 
   @override
   Future<List<DiscoveredApp>> discover() async => discoverResult;
+
+  @override
+  Future<List<DiscoveredApp>> discoverStartMenu() async =>
+      discoverStartMenuResult;
 
   @override
   Future<LaunchOutcome> launch(LaunchTarget target) async {

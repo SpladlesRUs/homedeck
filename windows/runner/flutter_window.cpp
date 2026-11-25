@@ -63,6 +63,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleScanSteamKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_SCAN_START_MENU) {
+    win32_.HandleScanStartMenuKey();
+    return 0;
+  }
   // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
   // Dart only used FindWindow / window_manager. Toggle via the real HWND and
   // let Dart sync badge/prefs over the method channel event.

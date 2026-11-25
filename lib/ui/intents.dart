@@ -75,3 +75,8 @@ class OpenSearchIntent extends Intent {
 class ScanSteamLibraryIntent extends Intent {
   const ScanSteamLibraryIntent();
 }
+
+/// Start Menu Programs discover → import (Settings scan / Ally bare `P`).
+class ScanStartMenuIntent extends Intent {
+  const ScanStartMenuIntent();
+}

@@ -17,7 +17,7 @@ class PickedLaunch {
   final TileKind kind;
 }
 
-/// Metadata from an installed-app scanner (Steam library today; ROM folders later).
+/// Metadata from an installed-app scanner (Steam / Start Menu today; ROM later).
 class DiscoveredApp {
   const DiscoveredApp({
     required this.displayName,
@@ -39,8 +39,11 @@ class DiscoveredApp {
 abstract class PlatformAdapter {
   AppPlatform get platform;
 
-  /// Installed-app scan. Windows returns Steam library games; other hosts [].
+  /// Steam library scan on Windows; empty on other hosts.
   Future<List<DiscoveredApp>> discover();
+
+  /// Start Menu Programs `.lnk` scan on Windows; empty on other hosts.
+  Future<List<DiscoveredApp>> discoverStartMenu() async => const [];
 
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({
