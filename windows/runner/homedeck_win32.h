@@ -36,6 +36,13 @@ class HomedeckWin32 {
   // Remember the focused tile launch target for the keyboard hook.
   void SetFocusedLaunch(const std::wstring& path, const std::wstring& args);
 
+  // Ask Dart to launch the focused tile when [focused_path_] is empty.
+  void RequestDartLaunch();
+
+  // Enter: ShellExecute mirrored path, else ask Dart. Always returns true
+  // while HomeDeck should own the key (caller still checks foreground).
+  bool HandleEnter();
+
  private:
   void NotifyFullscreen();
   void InstallHook();

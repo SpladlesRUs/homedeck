@@ -203,13 +203,24 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
         return 1;
       }
       if (info->vkCode == VK_RETURN) {
-        if (instance_->LaunchFocused()) {
+        if (instance_->HandleEnter()) {
           return 1;
         }
       }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
+}
+
+bool HomedeckWin32::HandleEnter() {
+  // Prefer the mirrored path (no Dart round-trip). When empty — Add sheet
+  // open, or Ally Enter racing setFocusedLaunch — ask Dart and do *not*
+  // consume the key so Add Confirm still receives Enter.
+  if (LaunchFocused()) {
+    return true;
+  }
+  RequestDartLaunch();
+  return false;
 }
 
 bool HomedeckWin32::SetFullscreen(bool fullscreen) {
@@ -286,6 +297,13 @@ void HomedeckWin32::SetFocusedLaunch(const std::wstring& path,
                                      const std::wstring& args) {
   focused_path_ = path;
   focused_args_ = args;
+}
+
+void HomedeckWin32::RequestDartLaunch() {
+  if (channel_ == nullptr) {
+    return;
+  }
+  channel_->InvokeMethod("launchFocused", nullptr);
 }
 
 void HomedeckWin32::NotifyFullscreen() {

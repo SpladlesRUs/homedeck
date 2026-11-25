@@ -220,10 +220,10 @@ class LibraryController extends ChangeNotifier {
   }
 
   Future<void> _commit(HomeDeckState Function(HomeDeckState state) update) {
-    // Apply [update] to the live in-memory state immediately so one
-    // `tester.pump()` sees pins/unpins. Queue the disk write of that
-    // snapshot so overlapping window/audio prefs cannot finish after an add
-    // and rewrite library.json with a stale empty apps[] (Ally 4996779).
+    // Publish in-memory immediately so one `tester.pump()` sees pins/unpins.
+    // Queue a disk write of the *live* `_state` (not this commit's snapshot):
+    // Ally @9800850 still saw apps=[] at close because a queued window/audio
+    // prefs write held an empty snapshot captured before add and landed last.
     final prior = _state;
     final next = update(_state);
     final generation = ++_commitGeneration;
@@ -231,7 +231,7 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
     final done = _writeChain.catchError((_) {}).then((_) async {
       try {
-        await _preferences.save(next);
+        await _preferences.save(_state);
       } catch (error) {
         if (generation == _commitGeneration) {
           _state = prior;

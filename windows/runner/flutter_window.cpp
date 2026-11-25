@@ -60,6 +60,12 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.SetFullscreen(!win32_.IsFullscreen());
     return 0;
   }
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
+      wparam == VK_RETURN) {
+    if (win32_.HandleEnter()) {
+      return 0;
+    }
+  }
 
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {

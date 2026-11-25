@@ -10,6 +10,11 @@ import 'package:flutter/services.dart';
 /// child, not `FlutterWindow::MessageHandler`. The runner now installs a
 /// WH_KEYBOARD_LL hook for F11/Enter while HomeDeck is foreground, and Dart
 /// mirrors the focused launch path via [setFocusedLaunch].
+///
+/// Ally @9800850: F11 PASS via the hook, but Enter still spawned no process
+/// because `focused_path_` was often empty (cleared during Add-sheet library
+/// notify / async mirror race). The hook now falls back to invoking
+/// [onLaunchFocused] in Dart when the mirrored path is missing.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -19,6 +24,14 @@ class WindowsNativeBridge {
       StreamController<bool>.broadcast();
 
   static bool _listening = false;
+
+  /// Runner asks Dart to launch the focused tile when the mirrored path is
+  /// empty (Enter via WH_KEYBOARD_LL / top-level WM_KEYDOWN).
+  static Future<void> Function()? onLaunchFocused;
+
+  /// Ensure the platform method handler is registered (launchFocused +
+  /// fullscreenChanged). Call from HomeScreen init on Windows.
+  static void ensureInitialized() => _ensureListening();
 
   /// Absolute fullscreen notifications from the runner (native F11 path).
   static Stream<bool> get fullscreenChanges {
@@ -37,6 +50,14 @@ class WindowsNativeBridge {
         if (value is bool) {
           _fullscreenChanges.add(value);
         }
+        return;
+      }
+      if (call.method == 'launchFocused') {
+        final handler = onLaunchFocused;
+        if (handler != null) {
+          await handler();
+        }
+        return;
       }
     });
   }
@@ -93,6 +114,7 @@ class WindowsNativeBridge {
     if (!Platform.isWindows) {
       return;
     }
+    _ensureListening();
     try {
       await _channel.invokeMethod<void>(
         'setFocusedLaunch',

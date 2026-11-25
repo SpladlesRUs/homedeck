@@ -92,6 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _window.addListener(_onWindowMode);
     widget.music?.addListener(_onLibrary);
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
+    if (Platform.isWindows) {
+      WindowsNativeBridge.ensureInitialized();
+      WindowsNativeBridge.onLaunchFocused = _launchFocusedFromNative;
+    }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
     if (HomeScreen.tickClock) {
@@ -114,6 +118,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    if (Platform.isWindows &&
+        identical(WindowsNativeBridge.onLaunchFocused, _launchFocusedFromNative)) {
+      WindowsNativeBridge.onLaunchFocused = null;
+    }
     _clock?.cancel();
     _gamepad.stop();
     _status.stop();
@@ -125,6 +133,14 @@ class _HomeScreenState extends State<HomeScreen> {
       node.dispose();
     }
     super.dispose();
+  }
+
+  /// Runner WH_KEYBOARD_LL / WM_KEYDOWN Enter when mirrored path was empty.
+  Future<void> _launchFocusedFromNative() async {
+    if (!mounted || _overlayOpen) {
+      return;
+    }
+    _handleConfirm();
   }
 
   void _onLibrary() {
@@ -886,6 +902,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (_overlayOpen) {
+      // Clear so Add-sheet Enter confirms instead of re-launching a prior tile.
       unawaited(WindowsNativeBridge.setFocusedLaunch(null));
       return;
     }
@@ -905,6 +922,27 @@ class _HomeScreenState extends State<HomeScreen> {
         target.value,
         arguments: target.resolvedArguments,
       ),
+    );
+  }
+
+  Future<void> _syncNativeFocusedLaunchAwait() async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    final app = _focusedRecord;
+    if (app == null) {
+      await WindowsNativeBridge.setFocusedLaunch(null);
+      return;
+    }
+    final target =
+        app.targetFor(AppPlatform.windows) ?? app.targets[AppPlatform.windows];
+    if (target == null) {
+      await WindowsNativeBridge.setFocusedLaunch(null);
+      return;
+    }
+    await WindowsNativeBridge.setFocusedLaunch(
+      target.value,
+      arguments: target.resolvedArguments,
     );
   }
 
@@ -1247,12 +1285,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       onAdded: (id) {
                         // Set focused id synchronously so Enter via
                         // HardwareKeyboard / runner hook launches even if
-                        // FocusNode is not attached yet.
+                        // FocusNode is not attached yet. Await the mirror so
+                        // Ally SendKeys Enter cannot race an empty path.
                         setState(() {
                           _addOpen = false;
                           _focusedId = id;
                         });
-                        _syncNativeFocusedLaunch();
+                        unawaited(_syncNativeFocusedLaunchAwait());
                         // Focus after the sheet leaves the tree and the new
                         // Home pin is built; requestFocus on a detached node
                         // was leaving keyboard focus on Now Playing.
@@ -1266,7 +1305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               return;
                             }
                             _nodeFor(id).requestFocus();
-                            _syncNativeFocusedLaunch();
+                            unawaited(_syncNativeFocusedLaunchAwait());
                           });
                         });
                       },

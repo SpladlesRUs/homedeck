@@ -85,15 +85,17 @@ application support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
 `PreferencesRepository` seeds `library.json` on first load and saves with a
 flushed direct write (temp copy + final overwrite + apps round-trip check)
-under `%AppData%\Horton Press\HomeDeck\`. `LibraryController` serializes
-commits as functional updates on the latest state so overlapping window/audio
-prefs cannot wipe a concurrent add (Ally 4996779: add PASS then `apps=[]` at
-close). Windows launches use the runner `homedeck/win32` MethodChannel
-(`ShellExecuteW`), then Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2
-drives keys with `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the
-runner also installs a `WH_KEYBOARD_LL` hook for F11 chrome and Enter→focused
-path while HomeDeck is foreground; Dart mirrors the focused launch target.
-Dart FFI FindWindow remains a fallback when the channel is missing.
+under `%AppData%\Horton Press\HomeDeck\`. Empty `apps[]` writes never clobber
+a non-empty on-disk library (Ally @9800850 still saw empty at close after the
+snapshot-based queue). `LibraryController` serializes commits and persists
+the live `_state` at write time so overlapping window/audio prefs cannot wipe
+a concurrent add. Windows launches use the runner `homedeck/win32`
+MethodChannel (`ShellExecuteW`), then Dart FFI / CreateProcess / `cmd /c start`.
+Ally Phase2 drives keys with `WScript.Shell.SendKeys` (not top-level
+`WM_KEYDOWN`), so the runner installs a `WH_KEYBOARD_LL` hook for F11 chrome
+and Enter→focused path while HomeDeck is foreground; Dart mirrors the focused
+launch target and handles a native `launchFocused` fallback when the mirror
+is empty. Dart FFI FindWindow remains a fallback when the channel is missing.
 
 Keyboard:
 

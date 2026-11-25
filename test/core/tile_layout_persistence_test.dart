@@ -121,6 +121,32 @@ void main() {
     expect(harness.controller.state.window.fullscreen, isTrue);
   });
 
+  test('stale empty prefs snapshot cannot clobber apps on disk', () async {
+    final harness = await createHarness();
+    await harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final file = harness.paths.libraryJsonFile();
+    expect((jsonDecode(file.readAsStringSync()) as Map)['apps'] as List,
+        isNotEmpty);
+
+    // Simulate a stale empty snapshot write (Ally @9800850 close-time fail).
+    await PreferencesRepository(harness.paths).save(
+      const HomeDeckState(window: WindowPrefs(fullscreen: true)),
+    );
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
+    final home = decoded['home'] as Map;
+    expect((home['slots'] as List).where((s) => s != null), isNotEmpty);
+    expect(decoded['window'], containsPair('fullscreen', true));
+  });
+
   test('library layout persists across repository instances', () async {
     final harness = await createHarness();
     await harness.controller.addRecord(
