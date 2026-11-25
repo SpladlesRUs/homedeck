@@ -545,6 +545,21 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(true));
           return;
         }
+        if (method == "setRemoveArmed") {
+          bool armed = false;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto it = map->find(flutter::EncodableValue("armed"));
+            if (it != map->end()) {
+              if (const auto* flag = std::get_if<bool>(&it->second)) {
+                armed = *flag;
+              }
+            }
+          }
+          SetRemoveArmed(armed);
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
         if (method == "setFullscreenOnLaunch") {
           bool enabled = true;
           if (const auto* map =
@@ -781,7 +796,34 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
         return 1;
       }
       if (info->vkCode == VK_RETURN) {
+        // Library remove confirm: Enter must confirm, not ShellExecute.
+        // Post CONFIRM after any prior REMOVE so Dart sets pending first.
+        if (instance_->RemoveArmed()) {
+          HWND hwnd = instance_->window_ != nullptr
+                          ? instance_->window_->GetHandle()
+                          : nullptr;
+          if (hwnd != nullptr) {
+            PostMessageW(hwnd, WM_HOMEDECK_CONFIRM, 0, 0);
+            return 1;
+          }
+        }
         if (instance_->HandleEnter()) {
+          return 1;
+        }
+      }
+      // Ally M9: Menu/Details Remove is not UIA-reachable. Bare Delete /
+      // Backspace → unpin (Home) or Library remove confirm (same as
+      // RemoveFocusedIntent). Arm + clear mirror before PostMessage so a
+      // following Enter cannot ShellExecute before Dart handles REMOVE.
+      if ((info->vkCode == VK_DELETE || info->vkCode == VK_BACK) &&
+          !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          instance_->SetRemoveArmed(true);
+          instance_->SetFocusedLaunch(L"", L"");
+          PostMessageW(hwnd, WM_HOMEDECK_REMOVE, 0, 0);
           return 1;
         }
       }
@@ -847,6 +889,14 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
 }
 
 bool HomedeckWin32::HandleEnter() {
+  // Library remove confirm arms Enter → WM_HOMEDECK_CONFIRM (not launch).
+  if (remove_armed_) {
+    HWND hwnd = window_ != nullptr ? window_->GetHandle() : nullptr;
+    if (hwnd != nullptr) {
+      PostMessageW(hwnd, WM_HOMEDECK_CONFIRM, 0, 0);
+      return true;
+    }
+  }
   // Prefer the mirrored path (no Dart round-trip). When a path is mirrored,
   // always ShellExecute and consume Enter. When empty, ask Dart (focus may
   // exist but mirror raced) and do *not* consume so Add-sheet Confirm / OFN
@@ -857,6 +907,8 @@ bool HomedeckWin32::HandleEnter() {
   RequestDartLaunch();
   return false;
 }
+
+void HomedeckWin32::SetRemoveArmed(bool armed) { remove_armed_ = armed; }
 
 bool HomedeckWin32::LaunchFocused() {
   if (focused_path_.empty()) {
@@ -1022,6 +1074,31 @@ void HomedeckWin32::HandlePinHomeKey() {
   OutputDebugStringW(
       L"homedeck: HandlePinHomeKey → Dart pinFocusedToHome\n");
   channel_->InvokeMethod("pinFocusedToHome", nullptr);
+}
+
+void HomedeckWin32::HandleRemoveKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  // Mirror already cleared + armed in the LL hook (Delete→Enter race).
+  OutputDebugStringW(
+      L"homedeck: HandleRemoveKey → Dart removeFocused\n");
+  channel_->InvokeMethod("removeFocused", nullptr);
+}
+
+void HomedeckWin32::HandleConfirmKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleConfirmKey → Dart confirmFocused\n");
+  channel_->InvokeMethod("confirmFocused", nullptr);
 }
 
 void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {

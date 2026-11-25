@@ -63,7 +63,11 @@ available. Pinning a focused Library tile to Home uses
 `LibraryController.pinToHome`: humans use Menu / Details → Add to Home;
 Ally / harness uses bare **H** (`WM_HOMEDECK_PIN_HOME` → Dart
 `pinFocusedToHome`) because the Add to Home control is not UIA-reachable.
-ROM-folder scanning walks a Settings-persisted folder (or
+Unpin / Library remove uses `unpinFromHome` / pending confirm → `remove`:
+humans use Menu / Details; Ally uses bare **Delete** / **Backspace**
+(`WM_HOMEDECK_REMOVE` → Dart `removeFocused`). While Library remove confirm
+is pending, Enter posts `WM_HOMEDECK_CONFIRM` (not ShellExecute) until
+dismiss/confirm. ROM-folder scanning walks a Settings-persisted folder (or
 `HOMEDECK_ROM_ROOT`) for common extensions and emits `emulated` tiles with
 `{rom}` argsTemplate. Optional `HOMEDECK_EMULATOR` or a single obvious
 library emulator `.exe` fills the emulator path; otherwise the path is left
@@ -87,7 +91,9 @@ SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
 Shortcuts alone never saw harness `a` @82a5a20). Optional
 `HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome,
 Enter→focused launch (with a Dart `launchFocused` fallback when the
-mirrored path is empty), and bare **H** → `pinFocusedToHome`.
+mirrored path is empty), bare **H** → `pinFocusedToHome`, and bare
+**Delete** / **Backspace** → `removeFocused` (Library confirm Enter →
+`confirmFocused`, not ShellExecute).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

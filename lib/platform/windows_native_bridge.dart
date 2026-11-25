@@ -16,10 +16,13 @@ import 'package:flutter/services.dart';
 /// (Start Menu Programs discover without Settings UIA). Bare `r` posts
 /// `WM_HOMEDECK_SCAN_ROMS` → [onScanRoms] (ROM-folder discover without
 /// Settings UIA). Bare `h` posts `WM_HOMEDECK_PIN_HOME` →
-/// [onPinFocusedToHome] (same as UI Add to Home — no UIA on the menu). The
-/// same hook handles F11 chrome and Enter→focused path; Dart mirrors the
-/// target via [setFocusedLaunch] and handles a native [onLaunchFocused]
-/// fallback when the mirrored path is empty.
+/// [onPinFocusedToHome] (same as UI Add to Home — no UIA on the menu). Bare
+/// Delete/Backspace posts `WM_HOMEDECK_REMOVE` → [onRemoveFocused] (same as
+/// RemoveFocusedIntent). While Library remove is pending, Enter posts
+/// `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not ShellExecute). The same
+/// hook handles F11 chrome and Enter→focused path; Dart mirrors the target
+/// via [setFocusedLaunch] and handles a native [onLaunchFocused] fallback
+/// when the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -53,6 +56,14 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare `H` / `WM_HOMEDECK_PIN_HOME` asks Dart to pin
   /// the focused Library record onto Home (same as UI Add to Home).
   static Future<void> Function()? onPinFocusedToHome;
+
+  /// Runner WH_KEYBOARD_LL bare Delete/Backspace / `WM_HOMEDECK_REMOVE` asks
+  /// Dart to unpin (Home) or show Library remove confirm (`_requestRemove`).
+  static Future<void> Function()? onRemoveFocused;
+
+  /// Runner WH_KEYBOARD_LL Enter while remove-armed / `WM_HOMEDECK_CONFIRM`
+  /// asks Dart `_handleConfirm` (Library remove) without ShellExecute.
+  static Future<void> Function()? onConfirmFocused;
 
   /// Runner finished waiting on a tracked local launch process and restored
   /// HomeDeck (when Settings restore-on-exit is ON). Dart unducks music and
@@ -124,6 +135,20 @@ class WindowsNativeBridge {
       }
       if (call.method == 'pinFocusedToHome') {
         final handler = onPinFocusedToHome;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'removeFocused') {
+        final handler = onRemoveFocused;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'confirmFocused') {
+        final handler = onConfirmFocused;
         if (handler != null) {
           await handler();
         }
@@ -233,6 +258,25 @@ class WindowsNativeBridge {
       // Tests / non-runner.
     } on PlatformException {
       // Ignore — Dart Enter path remains.
+    }
+  }
+
+  /// Ally Delete→Enter: while [armed], Enter confirms Library remove instead
+  /// of ShellExecute. Cleared after Home unpin or confirm/cancel.
+  static Future<void> setRemoveArmed(bool armed) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    _ensureListening();
+    try {
+      await _channel.invokeMethod<void>(
+        'setRemoveArmed',
+        <String, Object?>{'armed': armed},
+      );
+    } on MissingPluginException {
+      // Tests / non-runner.
+    } on PlatformException {
+      // Ignore — Dart Shortcuts path remains.
     }
   }
 

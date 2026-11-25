@@ -53,7 +53,9 @@ URI / `.lnk`). Settings → **Choose ROM folder** / **Scan ROM folder** (or
 keyboard **R**) imports common ROM files as emulated tiles with `{rom}` args
 (`HOMEDECK_ROM_ROOT` / `HOMEDECK_EMULATOR` optional for Ally fixtures). Focus
 a Library tile and press **H** to pin it to Home (same as Menu → Add to Home;
-for Ally harnesses that cannot reach that control).
+for Ally harnesses that cannot reach that control). **Delete** / **Backspace**
+unpins a focused Home tile, or asks to remove a focused Library tile
+(Enter confirms; Esc cancels — same as Menu Remove, without UIA).
 
 Release defaults to an empty library. To preview a full grid in debug only:
 
