@@ -163,7 +163,7 @@ class SettingsStub extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Scan installs Steam games into Library (By app → Steam). Manual Add stays available for .exe, .lnk, URIs, and emulators.',
+                            'Scan installs Steam games into Library (By app → Steam). Keyboard S (Ally SendKeys s) runs the same scan without opening Settings. Manual Add stays available for .exe, .lnk, URIs, and emulators.',
                             style: TextStyle(
                               color: HomeDeckColors.ink,
                               fontSize: 18,

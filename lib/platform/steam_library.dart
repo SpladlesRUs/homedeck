@@ -31,10 +31,16 @@ class SteamLibraryScanner {
   final p.Context _path;
 
   /// Common Steam install guesses from environment (no hard-coded drive letter).
+  ///
+  /// Optional `HOMEDECK_STEAM_ROOT` (Ally / CI fixture) is tried first.
   static List<String> defaultCandidateRoots() {
     final env = Platform.environment;
     final out = <String>[];
     final path = WindowsPaths.context;
+    final forced = env['HOMEDECK_STEAM_ROOT']?.trim();
+    if (forced != null && forced.isNotEmpty) {
+      out.add(WindowsPaths.normalize(forced));
+    }
     void addUnder(String? base) {
       if (base == null || base.trim().isEmpty) {
         return;

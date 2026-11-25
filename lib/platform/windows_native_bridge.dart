@@ -10,10 +10,11 @@ import 'package:flutter/services.dart';
 /// never see `a`, so MethodChannel `pickOpenFile` never ran and the harness
 /// logged "Open dialog not found". The runner WH_KEYBOARD_LL hook posts
 /// `WM_HOMEDECK_ADD`, shows classic `GetOpenFileName` titled **Open**
-/// (class `#32770`), then invokes [onAddPickedPath]. The same hook handles
-/// F11 chrome and Enter→focused path; Dart mirrors the target via
-/// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
-/// the mirrored path is empty.
+/// (class `#32770`), then invokes [onAddPickedPath]. Bare `s` posts
+/// `WM_HOMEDECK_SCAN_STEAM` → [onScanSteam] (Steam discover without Settings
+/// UIA). The same hook handles F11 chrome and Enter→focused path; Dart
+/// mirrors the target via [setFocusedLaunch] and handles a native
+/// [onLaunchFocused] fallback when the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -31,6 +32,10 @@ class WindowsNativeBridge {
   /// Runner finished a native Open pick (WH_KEYBOARD_LL `A` / WM_HOMEDECK_ADD)
   /// and wants Dart to persist + write `icons/<id>.png`.
   static Future<void> Function(String path)? onAddPickedPath;
+
+  /// Runner WH_KEYBOARD_LL bare `S` / `WM_HOMEDECK_SCAN_STEAM` asks Dart to
+  /// run Steam `discover()` → `importDiscovered` (same as Settings scan).
+  static Future<void> Function()? onScanSteam;
 
   /// Ensure the platform method handler is registered. Call from HomeScreen
   /// init on Windows.
@@ -71,6 +76,13 @@ class WindowsNativeBridge {
         final handler = onAddPickedPath;
         if (handler != null) {
           await handler(path);
+        }
+        return;
+      }
+      if (call.method == 'scanSteam') {
+        final handler = onScanSteam;
+        if (handler != null) {
+          await handler();
         }
         return;
       }

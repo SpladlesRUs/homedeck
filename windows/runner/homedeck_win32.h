@@ -22,15 +22,23 @@
 #define WM_HOMEDECK_ADD (WM_APP + 0x41)
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `s` (or a real S key)
+// should run Steam library discover → Library import (no Settings UIA).
+#ifndef WM_HOMEDECK_SCAN_STEAM
+#define WM_HOMEDECK_SCAN_STEAM (WM_APP + 0x53)
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
-// PE/.lnk icon extraction, and classic GetOpenFileName for Phase2 FindWindow.
+// PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
+// and bare S → Steam library scan.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
 // found". WH_KEYBOARD_LL posts WM_HOMEDECK_ADD; the UI thread shows OFN titled
-// exactly "Open" (class #32770), then notifies Dart via addPickedPath. The same
-// hook handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
-// fallback when the mirror is empty).
+// exactly "Open" (class #32770), then notifies Dart via addPickedPath. Bare
+// `s` posts WM_HOMEDECK_SCAN_STEAM → Dart `scanSteam` (Settings scan without
+// opening the overlay). The same hook handles F11 chrome and Enter→mirrored
+// path (with a Dart launchFocused fallback when the mirror is empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -77,6 +85,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_ADD: show classic Open (or honor
   // HOMEDECK_ADD_PATH) then notify Dart via addPickedPath.
   void HandleAddKey();
+
+  // UI-thread handler for WM_HOMEDECK_SCAN_STEAM: ask Dart to run the same
+  // Steam discover → importDiscovered path as Settings → Scan Steam library.
+  void HandleScanSteamKey();
 
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.

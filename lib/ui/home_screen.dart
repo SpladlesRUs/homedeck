@@ -99,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.ensureInitialized();
       WindowsNativeBridge.onLaunchFocused = _launchFocusedFromNative;
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
+      WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -134,6 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _addPickedPathFromNative,
       )) {
         WindowsNativeBridge.onAddPickedPath = null;
+      }
+      if (identical(WindowsNativeBridge.onScanSteam, _scanSteamFromNative)) {
+        WindowsNativeBridge.onScanSteam = null;
       }
     }
     _clock?.cancel();
@@ -177,6 +181,20 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _focusAddedApp(added);
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `S` / WM_HOMEDECK_SCAN_STEAM — same import as
+  /// Settings → Scan Steam, without opening the Settings overlay (Ally UIA).
+  Future<void> _scanSteamFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    // Allow while Settings is open so a human/hotkey scan still updates the
+    // message; skip only while Add/OFN-style overlays own the session.
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanSteamLibrary();
   }
 
   Future<void> _focusAddedApp(AppRecord added) async {
@@ -299,6 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const SingleActivator(LogicalKeyboardKey.keyM):
         const ToggleMoveModeIntent(),
     const SingleActivator(LogicalKeyboardKey.keyA): const AddAppIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyS):
+        const ScanSteamLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
         const OpenSettingsIntent(),
     const SingleActivator(LogicalKeyboardKey.equal): const OpenMenuIntent(),
@@ -360,6 +380,12 @@ class _HomeScreenState extends State<HomeScreen> {
       AddAppIntent: CallbackAction<AddAppIntent>(
         onInvoke: (_) {
           _addApp();
+          return null;
+        },
+      ),
+      ScanSteamLibraryIntent: CallbackAction<ScanSteamLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanSteamLibrary());
           return null;
         },
       ),

@@ -670,6 +670,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M3: Settings overlay is not UIA-reachable. Bare SendKeys `s`
+      // posts scanSteam (same discover → import as Settings → Scan Steam).
+      if (info->vkCode == 'S' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_STEAM, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -718,6 +729,17 @@ void HomedeckWin32::HandleAddKey() {
     return;
   }
   NotifyPickedPath(path);
+}
+
+void HomedeckWin32::HandleScanSteamKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleScanSteamKey → Dart scanSteam\n");
+  channel_->InvokeMethod("scanSteam", nullptr);
 }
 
 void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {

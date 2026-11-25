@@ -10,10 +10,13 @@ answer.
    and a free-form display name. Milestone 1 does not filter the library.
 2. **Manual add vs discovery.** Manual Add remains the primary path (native
    `.exe` / `.lnk` / store URI, or emulator + ROM + `{rom}` args). Windows
-   Steam library scan is available from Settings and feeds Library via
-   `PlatformAdapter.discover()` → `LibraryController.importDiscovered`.
-   ROM-folder discovery is still not implemented. Games-only filtering of
-   Steam tools/redistributables is left open with library scope.
+   Steam library scan feeds Library via `PlatformAdapter.discover()` →
+   `LibraryController.importDiscovered`. Humans use Settings → Scan Steam;
+   Ally Phase2 uses bare **S** (WH_KEYBOARD_LL → `WM_HOMEDECK_SCAN_STEAM` →
+   Dart `scanSteam`, same as the Settings button — no Settings UIA). Optional
+   `HOMEDECK_STEAM_ROOT` points the scanner at a fixture Steam tree. ROM-folder
+   discovery is still not implemented. Games-only filtering of Steam
+   tools/redistributables is left open with library scope.
 
 ## Official app icon
 

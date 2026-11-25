@@ -44,8 +44,8 @@ has focus. Press Y for global search. B is always Back.
 Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
 `steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`
 arguments). New games go to the **Library**; optionally pin them to **Home**.
-Settings → **Scan Steam library** imports installed Steam games as
-`steam://rungameid/…` tiles. ROM-folder auto-scan is a later milestone.
+Settings → **Scan Steam library** (or keyboard **S**) imports installed Steam
+games as `steam://rungameid/…` tiles. ROM-folder auto-scan is a later milestone.
 
 Release defaults to an empty library. To preview a full grid in debug only:
 

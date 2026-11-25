@@ -70,3 +70,8 @@ class ToggleLibraryGroupIntent extends Intent {
 class OpenSearchIntent extends Intent {
   const OpenSearchIntent();
 }
+
+/// Steam library discover → import (Settings scan / Ally bare `S`).
+class ScanSteamLibraryIntent extends Intent {
+  const ScanSteamLibraryIntent();
+}

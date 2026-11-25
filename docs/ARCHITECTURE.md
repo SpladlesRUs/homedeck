@@ -43,12 +43,14 @@ Native Windows targets are a `.exe`, a `.lnk`, or a store URI
 (`steam://rungameid/…`, Epic, GOG, Xbox). Emulated targets are an emulator
 executable plus a `romPath` and an `argsTemplate` (`{rom}` is replaced at
 launch). Windows Steam discovery is implemented: `WindowsAdapter.discover()`
-finds Steam via registry / common `ProgramFiles` candidates, reads
-`steamapps/libraryfolders.vdf` and `appmanifest_*.acf`, and emits
-`DiscoveredApp` rows with `steam://rungameid/{appid}`. Settings → Scan Steam
-library calls `LibraryController.importDiscovered` (Library only; Home pins
-unchanged). Manual Add stays available. ROM-folder scanning is still not
-implemented.
+finds Steam via registry / common `ProgramFiles` candidates (optional
+`HOMEDECK_STEAM_ROOT` fixture), reads `steamapps/libraryfolders.vdf` and
+`appmanifest_*.acf`, and emits `DiscoveredApp` rows with
+`steam://rungameid/{appid}`. Settings → Scan Steam library and bare keyboard
+**S** (runner `WH_KEYBOARD_LL` → `WM_HOMEDECK_SCAN_STEAM` → Dart `scanSteam`)
+both call `LibraryController.importDiscovered` (Library only; Home pins
+unchanged). Manual Add (**A** / Open) stays available. ROM-folder scanning is
+still not implemented.
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
