@@ -71,6 +71,8 @@ class PreferencesRepository {
             toWrite = existing.copyWith(
               window: state.window,
               audio: state.audio,
+              romRoot: state.romRoot,
+              clearRomRoot: state.romRoot == null,
             );
           }
         }

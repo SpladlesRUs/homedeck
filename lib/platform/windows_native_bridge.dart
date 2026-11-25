@@ -13,11 +13,13 @@ import 'package:flutter/services.dart';
 /// (class `#32770`), then invokes [onAddPickedPath]. Bare `s` posts
 /// `WM_HOMEDECK_SCAN_STEAM` → [onScanSteam] (Steam discover without Settings
 /// UIA). Bare `p` posts `WM_HOMEDECK_SCAN_START_MENU` → [onScanStartMenu]
-/// (Start Menu Programs discover without Settings UIA). Bare `h` posts
-/// `WM_HOMEDECK_PIN_HOME` → [onPinFocusedToHome] (same as UI Add to Home —
-/// no UIA on the menu). The same hook handles F11 chrome and Enter→focused
-/// path; Dart mirrors the target via [setFocusedLaunch] and handles a native
-/// [onLaunchFocused] fallback when the mirrored path is empty.
+/// (Start Menu Programs discover without Settings UIA). Bare `r` posts
+/// `WM_HOMEDECK_SCAN_ROMS` → [onScanRoms] (ROM-folder discover without
+/// Settings UIA). Bare `h` posts `WM_HOMEDECK_PIN_HOME` →
+/// [onPinFocusedToHome] (same as UI Add to Home — no UIA on the menu). The
+/// same hook handles F11 chrome and Enter→focused path; Dart mirrors the
+/// target via [setFocusedLaunch] and handles a native [onLaunchFocused]
+/// fallback when the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -43,6 +45,10 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare `P` / `WM_HOMEDECK_SCAN_START_MENU` asks Dart
   /// to run Start Menu Programs `discover()` → `importDiscovered`.
   static Future<void> Function()? onScanStartMenu;
+
+  /// Runner WH_KEYBOARD_LL bare `R` / `WM_HOMEDECK_SCAN_ROMS` asks Dart to
+  /// run ROM-folder `discover()` → `importRoms`.
+  static Future<void> Function()? onScanRoms;
 
   /// Runner WH_KEYBOARD_LL bare `H` / `WM_HOMEDECK_PIN_HOME` asks Dart to pin
   /// the focused Library record onto Home (same as UI Add to Home).
@@ -99,6 +105,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'scanStartMenu') {
         final handler = onScanStartMenu;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'scanRoms') {
+        final handler = onScanRoms;
         if (handler != null) {
           await handler();
         }

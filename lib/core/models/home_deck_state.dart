@@ -49,6 +49,7 @@ class HomeDeckState {
     this.home = const HomeLayout(),
     this.window = const WindowPrefs(),
     this.audio = const AudioPrefs(),
+    this.romRoot,
   });
 
   static const currentVersion = 1;
@@ -59,6 +60,10 @@ class HomeDeckState {
   final HomeLayout home;
   final WindowPrefs window;
   final AudioPrefs audio;
+
+  /// Absolute Windows folder scanned by ROM discovery (Settings picker).
+  /// Overridden at scan time by `HOMEDECK_ROM_ROOT` when that env is set.
+  final String? romRoot;
 
   List<AppRecord> get orderedApps {
     final byId = {for (final app in apps) app.id: app};
@@ -82,6 +87,8 @@ class HomeDeckState {
     HomeLayout? home,
     WindowPrefs? window,
     AudioPrefs? audio,
+    String? romRoot,
+    bool clearRomRoot = false,
   }) {
     return HomeDeckState(
       version: version ?? this.version,
@@ -90,6 +97,7 @@ class HomeDeckState {
       home: home ?? this.home,
       window: window ?? this.window,
       audio: audio ?? this.audio,
+      romRoot: clearRomRoot ? null : (romRoot ?? this.romRoot),
     );
   }
 
@@ -100,6 +108,7 @@ class HomeDeckState {
     'home': home.toJson(),
     'window': window.toJson(),
     'audio': audio.toJson(),
+    if (romRoot != null) 'romRoot': romRoot,
   };
 
   factory HomeDeckState.fromJson(Map<String, Object?> json) {
@@ -149,6 +158,7 @@ class HomeDeckState {
     }
     final rawWindow = json['window'];
     final rawAudio = json['audio'];
+    final rawRomRoot = json['romRoot'];
     return HomeDeckState(
       version: json['version'] as int? ?? currentVersion,
       apps: List<AppRecord>.unmodifiable(apps),
@@ -164,6 +174,9 @@ class HomeDeckState {
               rawAudio.map((key, value) => MapEntry('$key', value)),
             )
           : const AudioPrefs(),
+      romRoot: rawRomRoot is String && rawRomRoot.trim().isNotEmpty
+          ? rawRomRoot.trim()
+          : null,
     );
   }
 
@@ -175,12 +188,20 @@ class HomeDeckState {
         other.home == home &&
         other.window == window &&
         other.audio == audio &&
+        other.romRoot == romRoot &&
         _appsEqual(other.apps, apps);
   }
 
   @override
-  int get hashCode =>
-      Object.hash(version, layout, home, window, audio, Object.hashAll(apps));
+  int get hashCode => Object.hash(
+    version,
+    layout,
+    home,
+    window,
+    audio,
+    romRoot,
+    Object.hashAll(apps),
+  );
 }
 
 bool _appsEqual(List<AppRecord> a, List<AppRecord> b) {
