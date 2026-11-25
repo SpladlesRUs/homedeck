@@ -108,11 +108,17 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
-      // Ally Enter ShellExecutes natively — mirror the Settings pref so the
-      // runner can enter F11 chrome after a successful launch.
+      WindowsNativeBridge.onGameExited = _gameExitedFromNative;
+      // Ally Enter ShellExecutes natively — mirror Settings prefs so the
+      // runner can enter F11 chrome and restore on process exit.
       unawaited(
         WindowsNativeBridge.setFullscreenOnLaunch(
           _library.state.window.fullscreenOnLaunch,
+        ),
+      );
+      unawaited(
+        WindowsNativeBridge.setRestoreOnExit(
+          _library.state.window.restoreOnExit,
         ),
       );
     }
@@ -168,6 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _pinFocusedToHomeFromNative,
       )) {
         WindowsNativeBridge.onPinFocusedToHome = null;
+      }
+      if (identical(WindowsNativeBridge.onGameExited, _gameExitedFromNative)) {
+        WindowsNativeBridge.onGameExited = null;
       }
     }
     _clock?.cancel();
@@ -445,13 +454,17 @@ class _HomeScreenState extends State<HomeScreen> {
     unawaited(_library.setWindowPrefs(_chromeWindowPrefs()));
   }
 
-  /// Current chrome flags plus the persisted fullscreen-on-launch preference.
-  WindowPrefs _chromeWindowPrefs({bool? fullscreenOnLaunch}) {
+  /// Current chrome flags plus persisted launch / restore preferences.
+  WindowPrefs _chromeWindowPrefs({
+    bool? fullscreenOnLaunch,
+    bool? restoreOnExit,
+  }) {
     return WindowPrefs(
       fullscreen: _window.isFullscreen,
       borderless: _window.isBorderless,
       fullscreenOnLaunch:
           fullscreenOnLaunch ?? _library.state.window.fullscreenOnLaunch,
+      restoreOnExit: restoreOnExit ?? _library.state.window.restoreOnExit,
     );
   }
 
@@ -818,6 +831,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _setRestoreOnExit(bool enabled) async {
+    await _library.setWindowPrefs(_chromeWindowPrefs(restoreOnExit: enabled));
+    if (Platform.isWindows) {
+      await WindowsNativeBridge.setRestoreOnExit(enabled);
+    }
+  }
+
   /// Same chrome path as F11 after a successful Home / Library launch.
   Future<void> _enterFullscreenOnLaunchIfEnabled() async {
     if (!_library.state.window.fullscreenOnLaunch) {
@@ -828,6 +848,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     await _window.apply(true, _window.isBorderless);
     await _library.setWindowPrefs(_chromeWindowPrefs());
+  }
+
+  /// Runner waited on a tracked local process and restored chrome/foreground.
+  Future<void> _gameExitedFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    await widget.music?.unduck();
+    await _library.setWindowPrefs(_chromeWindowPrefs());
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _handleConfirm() {
@@ -1694,6 +1726,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           _library.state.window.fullscreenOnLaunch,
                       onFullscreenOnLaunch: (enabled) {
                         unawaited(_setFullscreenOnLaunch(enabled));
+                      },
+                      restoreOnExit: _library.state.window.restoreOnExit,
+                      onRestoreOnExit: (enabled) {
+                        unawaited(_setRestoreOnExit(enabled));
                       },
                       musicEnabled:
                           widget.music?.musicEnabled ??

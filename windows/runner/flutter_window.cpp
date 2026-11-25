@@ -75,6 +75,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandlePinHomeKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_GAME_EXIT) {
+    const uint64_t generation =
+        (static_cast<uint64_t>(static_cast<uint32_t>(lparam)) << 32) |
+        static_cast<uint32_t>(wparam);
+    win32_.HandleGameExit(generation);
+    return 0;
+  }
   // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
   // Dart only used FindWindow / window_manager. Toggle via the real HWND and
   // let Dart sync badge/prefs over the method channel event.

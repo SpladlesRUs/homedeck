@@ -164,6 +164,27 @@ bool EndsWithIgnoreCase(const std::wstring& value, const wchar_t* suffix) {
   return _wcsicmp(value.c_str() + (value.size() - len), suffix) == 0;
 }
 
+// Store / protocol URIs (steam://, epic, …). Drive-letter paths are not URIs.
+bool LooksLikeLaunchUri(const std::wstring& path) {
+  if (path.empty()) {
+    return false;
+  }
+  // C:\… or \\server\share — filesystem, not a protocol launch.
+  if (path.size() >= 2 && path[1] == L':' &&
+      ((path[0] >= L'A' && path[0] <= L'Z') ||
+       (path[0] >= L'a' && path[0] <= L'z'))) {
+    return false;
+  }
+  if (path.size() >= 2 && path[0] == L'\\' && path[1] == L'\\') {
+    return false;
+  }
+  if (path.find(L"://") != std::wstring::npos) {
+    return true;
+  }
+  const size_t colon = path.find(L':');
+  return colon != std::wstring::npos && colon > 1;
+}
+
 HICON LoadFileIcon(const std::wstring& path, int size) {
   HICON large = nullptr;
   UINT extracted = PrivateExtractIconsW(path.c_str(), 0, size, size, &large,
@@ -399,6 +420,8 @@ HomedeckWin32* HomedeckWin32::instance_ = nullptr;
 
 HomedeckWin32::~HomedeckWin32() {
   RemoveHook();
+  // Invalidate any in-flight WaitForSingleObject → PostMessage restore.
+  watch_generation_.fetch_add(1);
   if (instance_ == this) {
     instance_ = nullptr;
   }
@@ -534,6 +557,21 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
             }
           }
           SetFullscreenOnLaunch(enabled);
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
+        if (method == "setRestoreOnExit") {
+          bool enabled = true;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto it = map->find(flutter::EncodableValue("enabled"));
+            if (it != map->end()) {
+              if (const auto* flag = std::get_if<bool>(&it->second)) {
+                enabled = *flag;
+              }
+            }
+          }
+          SetRestoreOnExit(enabled);
           result->Success(flutter::EncodableValue(true));
           return;
         }
@@ -845,6 +883,81 @@ void HomedeckWin32::SetFullscreenOnLaunch(bool enabled) {
   fullscreen_on_launch_ = enabled;
 }
 
+void HomedeckWin32::SetRestoreOnExit(bool enabled) {
+  restore_on_exit_ = enabled;
+}
+
+void HomedeckWin32::StartWatchingProcess(HANDLE process) {
+  if (process == nullptr || process == INVALID_HANDLE_VALUE) {
+    return;
+  }
+  const uint64_t generation = watch_generation_.fetch_add(1) + 1;
+  watching_active_ = true;
+  entered_fullscreen_for_launch_ = false;
+  HWND hwnd = window_ != nullptr ? window_->GetHandle() : nullptr;
+  if (hwnd == nullptr) {
+    watching_active_ = false;
+    CloseHandle(process);
+    return;
+  }
+  // Detached waiter: notepad / short-lived Ally pins exit quickly; games may
+  // run for hours. Generation invalidates stale posts after a re-launch.
+  std::thread([hwnd, process, generation]() {
+    WaitForSingleObject(process, INFINITE);
+    CloseHandle(process);
+    const WPARAM wparam = static_cast<WPARAM>(generation & 0xffffffffu);
+    const LPARAM lparam = static_cast<LPARAM>(generation >> 32);
+    PostMessageW(hwnd, WM_HOMEDECK_GAME_EXIT, wparam, lparam);
+  }).detach();
+}
+
+void HomedeckWin32::BringHomeDeckToForeground() {
+  if (window_ == nullptr) {
+    return;
+  }
+  HWND hwnd = window_->GetHandle();
+  if (hwnd == nullptr) {
+    return;
+  }
+  if (IsIconic(hwnd)) {
+    ShowWindow(hwnd, SW_RESTORE);
+  } else {
+    ShowWindow(hwnd, SW_SHOW);
+  }
+  HWND foreground = GetForegroundWindow();
+  DWORD fg_tid = 0;
+  if (foreground != nullptr) {
+    fg_tid = GetWindowThreadProcessId(foreground, nullptr);
+  }
+  const DWORD our_tid = GetCurrentThreadId();
+  const bool attached = fg_tid != 0 && fg_tid != our_tid &&
+                        AttachThreadInput(our_tid, fg_tid, TRUE);
+  BringWindowToTop(hwnd);
+  SetForegroundWindow(hwnd);
+  SetActiveWindow(hwnd);
+  if (attached) {
+    AttachThreadInput(our_tid, fg_tid, FALSE);
+  }
+}
+
+void HomedeckWin32::HandleGameExit(uint64_t generation) {
+  if (generation != watch_generation_.load()) {
+    return;
+  }
+  watching_active_ = false;
+  if (!restore_on_exit_) {
+    entered_fullscreen_for_launch_ = false;
+    return;
+  }
+  // Only leave chrome we entered for this launch — prior F11 stays.
+  if (entered_fullscreen_for_launch_ && fullscreen_) {
+    SetFullscreen(false);
+  }
+  entered_fullscreen_for_launch_ = false;
+  BringHomeDeckToForeground();
+  NotifyGameExited();
+}
+
 void HomedeckWin32::RequestDartLaunch() {
   if (channel_ == nullptr) {
     return;
@@ -1009,6 +1122,11 @@ bool HomedeckWin32::SetFullscreen(bool fullscreen) {
                  target.right - target.left, target.bottom - target.top,
                  SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     fullscreen_ = true;
+    // Ally Enter / Dart launch apply chrome after ShellExecute — mark so
+    // game-exit restore can leave that chrome without touching a prior F11.
+    if (watching_active_) {
+      entered_fullscreen_for_launch_ = true;
+    }
     NotifyFullscreen();
     return true;
   }
@@ -1029,10 +1147,29 @@ bool HomedeckWin32::Launch(const std::wstring& path,
   if (path.empty()) {
     return false;
   }
-  const wchar_t* params = args.empty() ? nullptr : args.c_str();
-  const HINSTANCE result = ShellExecuteW(nullptr, L"open", path.c_str(),
-                                         params, nullptr, SW_SHOWNORMAL);
-  return reinterpret_cast<INT_PTR>(result) > 32;
+  const bool is_uri = LooksLikeLaunchUri(path);
+  SHELLEXECUTEINFOW info{};
+  info.cbSize = sizeof(info);
+  // SEE_MASK_NOCLOSEPROCESS yields hProcess for local .exe/.lnk when the
+  // shell started a process we can wait on. Protocol handlers (steam://)
+  // usually return null — and even when they do not, waiting on Steam's
+  // helper is not a game session, so URIs never start a watch.
+  info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
+  info.lpVerb = L"open";
+  info.lpFile = path.c_str();
+  info.lpParameters = args.empty() ? nullptr : args.c_str();
+  info.nShow = SW_SHOWNORMAL;
+  if (!ShellExecuteExW(&info)) {
+    return false;
+  }
+  if (info.hProcess != nullptr) {
+    if (is_uri) {
+      CloseHandle(info.hProcess);
+    } else {
+      StartWatchingProcess(info.hProcess);
+    }
+  }
+  return true;
 }
 
 bool HomedeckWin32::WriteFileBytes(const std::wstring& path,
@@ -1136,4 +1273,11 @@ void HomedeckWin32::NotifyFullscreen() {
   channel_->InvokeMethod(
       "fullscreenChanged",
       std::make_unique<flutter::EncodableValue>(fullscreen_));
+}
+
+void HomedeckWin32::NotifyGameExited() {
+  if (channel_ == nullptr) {
+    return;
+  }
+  channel_->InvokeMethod("gameExited", nullptr);
 }

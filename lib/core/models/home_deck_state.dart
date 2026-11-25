@@ -9,6 +9,7 @@ class WindowPrefs {
     this.fullscreen = false,
     this.borderless = false,
     this.fullscreenOnLaunch = true,
+    this.restoreOnExit = true,
   });
 
   final bool fullscreen;
@@ -18,15 +19,22 @@ class WindowPrefs {
   /// fullscreen chrome path as F11 so the game covers a handheld display.
   final bool fullscreenOnLaunch;
 
+  /// When true (default), a tracked local .exe/.lnk exit leaves launch
+  /// fullscreen (if we entered it) and brings HomeDeck to the foreground.
+  /// Store URIs (steam://) are best-effort launch only — no process wait.
+  final bool restoreOnExit;
+
   WindowPrefs copyWith({
     bool? fullscreen,
     bool? borderless,
     bool? fullscreenOnLaunch,
+    bool? restoreOnExit,
   }) {
     return WindowPrefs(
       fullscreen: fullscreen ?? this.fullscreen,
       borderless: borderless ?? this.borderless,
       fullscreenOnLaunch: fullscreenOnLaunch ?? this.fullscreenOnLaunch,
+      restoreOnExit: restoreOnExit ?? this.restoreOnExit,
     );
   }
 
@@ -34,6 +42,7 @@ class WindowPrefs {
     'fullscreen': fullscreen,
     'borderless': borderless,
     'fullscreenOnLaunch': fullscreenOnLaunch,
+    'restoreOnExit': restoreOnExit,
   };
 
   factory WindowPrefs.fromJson(Map<String, Object?> json) {
@@ -42,6 +51,7 @@ class WindowPrefs {
       borderless: json['borderless'] as bool? ?? false,
       // Missing key → console-feel default ON.
       fullscreenOnLaunch: json['fullscreenOnLaunch'] as bool? ?? true,
+      restoreOnExit: json['restoreOnExit'] as bool? ?? true,
     );
   }
 
@@ -50,12 +60,17 @@ class WindowPrefs {
     return other is WindowPrefs &&
         other.fullscreen == fullscreen &&
         other.borderless == borderless &&
-        other.fullscreenOnLaunch == fullscreenOnLaunch;
+        other.fullscreenOnLaunch == fullscreenOnLaunch &&
+        other.restoreOnExit == restoreOnExit;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(fullscreen, borderless, fullscreenOnLaunch);
+  int get hashCode => Object.hash(
+    fullscreen,
+    borderless,
+    fullscreenOnLaunch,
+    restoreOnExit,
+  );
 }
 
 /// Entire persisted HomeDeck library.

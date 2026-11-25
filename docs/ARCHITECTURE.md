@@ -138,9 +138,16 @@ applies chrome on the real `FlutterWindow` HWND (and native WM_KEYDOWN F11
 toggles the same path). Successful Home / Library launch also enters that
 chrome when `WindowPrefs.fullscreenOnLaunch` is true (default; Settings
 toggle; mirrored to the runner so Ally Enter→ShellExecute does not skip
-it). Dart FFI `WindowsWindowChrome` / `window_manager` remain fallbacks
-because 0.7 often never binds the stock Flutter runner. Widget tests inject
-`MemoryWindowModeController`.
+it). Local `.exe` / `.lnk` launches use `ShellExecuteEx` with
+`SEE_MASK_NOCLOSEPROCESS`; a waiter thread posts `WM_HOMEDECK_GAME_EXIT`
+when the process ends. If `WindowPrefs.restoreOnExit` is true (default;
+Settings “Return to HomeDeck when game exits”; mirrored to the runner),
+the runner leaves launch-entered fullscreen and brings the HomeDeck HWND
+to the foreground, then notifies Dart (`gameExited`) to unduck music and
+persist prefs. Store URIs (`steam://`, Epic, …) are launch-only — no
+process wait and no Steam overlay hooks. Dart FFI `WindowsWindowChrome` /
+`window_manager` remain fallbacks because 0.7 often never binds the stock
+Flutter runner. Widget tests inject `MemoryWindowModeController`.
 
 Gamepad and battery follow the same split: `WindowsXInputGamepad` polls XInput
 on Windows; `WindowsBatteryStatus` reads `GetSystemPowerStatus`. Tests inject
