@@ -87,6 +87,7 @@ Do not treat Deck as a separate app.
 | --- | --- |
 | Windows `.exe` launch via `Process.start` (detached) | Implemented; **not verified on a real Windows PC in this environment** |
 | Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
+| Restore HomeDeck when local game exits | Implemented for tracked `.exe`/`.lnk` (`ShellExecuteEx` + wait); store URIs best-effort launch only (no Steam overlay / session hooks) |
 | Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
 | Windows PE / `.lnk` icon extraction | Runner MethodChannel + WIC (Dart FFI fallback); generated tile fallback |
 | Steam library scanner (Windows) | Implemented; Settings → Scan Steam library |
@@ -187,6 +188,20 @@ Flutter window.
 4. SendKeys **`r`** again: `apps.length` unchanged (no duplicate ROM paths).
 5. Spot-check bare **`s`** / **`p`** / **`h`** / **`a`** unchanged.
 
+### Ally M8 restore-on-exit smoke
+
+1. Fullscreen-on-launch ON (default); pin notepad (or another short-lived
+   `.exe`); SendKeys Enter → HomeDeck enters fullscreen.
+2. Exit notepad → HomeDeck returns to the foreground and leaves fullscreen
+   (windowed chrome). Menu music unducks.
+3. Settings → turn OFF “Return to HomeDeck when game exits” → launch notepad
+   again, exit → HomeDeck does **not** force restore (stays background /
+   launch fullscreen as left).
+4. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`h`** / **`a`**.
+5. Store URI / `steam://` tiles still launch; restore is best-effort only
+   (no process wait / Steam overlay hooks) — do not FAIL the smoke if a
+   Steam session does not auto-return.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -201,6 +216,9 @@ Keyboard:
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”
   is ON (default); Esc / F11 still exit
+- When a tracked local `.exe`/`.lnk` exits and Settings “Return to HomeDeck
+  when game exits” is ON (default), HomeDeck leaves launch fullscreen and
+  comes to the foreground (store `steam://` URIs are not waited on)
 - Ctrl+, opens the settings stub
 
 Home is a WiiSU-style paged desktop of pinned shortcuts only — no platform

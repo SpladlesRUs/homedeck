@@ -4,6 +4,8 @@
 #include <flutter/method_channel.h>
 #include <flutter/encodable_value.h>
 
+#include <atomic>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,6 +48,12 @@
 #define WM_HOMEDECK_PIN_HOME (WM_APP + 0x48)
 #endif
 
+// Posted by the game-exit watcher thread when a tracked .exe/.lnk process
+// terminates. WPARAM/LPARAM carry the 64-bit watch generation.
+#ifndef WM_HOMEDECK_GAME_EXIT
+#define WM_HOMEDECK_GAME_EXIT (WM_APP + 0x47)  // 'G'
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
@@ -73,8 +81,11 @@ class HomedeckWin32 {
 
   bool IsFullscreen() const { return fullscreen_; }
 
-  // ShellExecuteW the path (.exe / .lnk / URI). Returns true on success.
-  static bool Launch(const std::wstring& path, const std::wstring& args);
+  // ShellExecuteEx the path (.exe / .lnk / URI). Returns true on success.
+  // Local .exe/.lnk: tracks the process handle and restores HomeDeck on exit
+  // when restore-on-exit is enabled. Store URIs (steam:// etc.) are
+  // best-effort launch only — no process wait / Steam overlay hooks.
+  bool Launch(const std::wstring& path, const std::wstring& args);
 
   // Launch the path Dart last reported as focused (Enter / A).
   bool LaunchFocused();
@@ -86,6 +97,15 @@ class HomedeckWin32 {
   void SetFullscreenOnLaunch(bool enabled);
 
   bool FullscreenOnLaunch() const { return fullscreen_on_launch_; }
+
+  // Mirror Dart WindowPrefs.restoreOnExit (default true).
+  void SetRestoreOnExit(bool enabled);
+
+  bool RestoreOnExit() const { return restore_on_exit_; }
+
+  // UI-thread handler for WM_HOMEDECK_GAME_EXIT: leave launch fullscreen
+  // (when we entered it) and bring HomeDeck to the foreground.
+  void HandleGameExit(uint64_t generation);
 
   // Ask Dart to launch the focused tile when [focused_path_] is empty.
   void RequestDartLaunch();
@@ -135,10 +155,13 @@ class HomedeckWin32 {
 
  private:
   void NotifyFullscreen();
+  void NotifyGameExited();
   void NotifyPickedPath(const std::wstring& path);
   void InstallHook();
   void RemoveHook();
   bool IsOurForeground() const;
+  void StartWatchingProcess(HANDLE process);
+  void BringHomeDeckToForeground();
   static bool ModifierHeld();
 
   static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
@@ -154,6 +177,15 @@ class HomedeckWin32 {
   std::wstring focused_args_;
   // Default ON — console feel; Dart mirrors Settings via setFullscreenOnLaunch.
   bool fullscreen_on_launch_ = true;
+  // Default ON — return to launcher when a tracked local process exits.
+  bool restore_on_exit_ = true;
+  // True while WaitForSingleObject is pending for the latest local launch.
+  bool watching_active_ = false;
+  // True when SetFullscreen(true) ran while watching_active_ (fullscreen-on-
+  // launch for this session — not a prior standalone F11).
+  bool entered_fullscreen_for_launch_ = false;
+  // Bumped on each new watch / destructor so stale exit posts are ignored.
+  std::atomic<uint64_t> watch_generation_{0};
   HHOOK keyboard_hook_ = nullptr;
   // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;

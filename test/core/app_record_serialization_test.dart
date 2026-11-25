@@ -66,6 +66,7 @@ void main() {
         fullscreen: true,
         borderless: true,
         fullscreenOnLaunch: false,
+        restoreOnExit: false,
       ),
       audio: const AudioPrefs(
         musicEnabled: false,
@@ -89,6 +90,22 @@ void main() {
         'borderless': false,
         'fullscreenOnLaunch': false,
       }).fullscreenOnLaunch,
+      isFalse,
+    );
+  });
+
+  test('WindowPrefs.restoreOnExit defaults ON when JSON omits the key', () {
+    final decoded = WindowPrefs.fromJson({
+      'fullscreen': false,
+      'borderless': false,
+    });
+    expect(decoded.restoreOnExit, isTrue);
+    expect(
+      WindowPrefs.fromJson({
+        'fullscreen': false,
+        'borderless': false,
+        'restoreOnExit': false,
+      }).restoreOnExit,
       isFalse,
     );
   });

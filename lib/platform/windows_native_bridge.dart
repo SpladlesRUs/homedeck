@@ -54,6 +54,11 @@ class WindowsNativeBridge {
   /// the focused Library record onto Home (same as UI Add to Home).
   static Future<void> Function()? onPinFocusedToHome;
 
+  /// Runner finished waiting on a tracked local launch process and restored
+  /// HomeDeck (when Settings restore-on-exit is ON). Dart unducks music and
+  /// persists window prefs; chrome/foreground already applied natively.
+  static Future<void> Function()? onGameExited;
+
   /// Ensure the platform method handler is registered. Call from HomeScreen
   /// init on Windows.
   static void ensureInitialized() => _ensureListening();
@@ -119,6 +124,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'pinFocusedToHome') {
         final handler = onPinFocusedToHome;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'gameExited') {
+        final handler = onGameExited;
         if (handler != null) {
           await handler();
         }
@@ -240,6 +252,25 @@ class WindowsNativeBridge {
       // Tests / non-runner.
     } on PlatformException {
       // Ignore — Dart launch path still honors the pref.
+    }
+  }
+
+  /// Mirror Settings “Return to HomeDeck when game exits” so Ally Enter
+  /// (native ShellExecute without a Dart round-trip) restores on process exit.
+  static Future<void> setRestoreOnExit(bool enabled) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    _ensureListening();
+    try {
+      await _channel.invokeMethod<void>(
+        'setRestoreOnExit',
+        <String, Object?>{'enabled': enabled},
+      );
+    } on MissingPluginException {
+      // Tests / non-runner.
+    } on PlatformException {
+      // Ignore — native default stays ON until mirrored.
     }
   }
 

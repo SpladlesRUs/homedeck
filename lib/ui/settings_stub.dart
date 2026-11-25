@@ -14,6 +14,8 @@ class SettingsStub extends StatelessWidget {
     required this.onToggleBorderless,
     this.fullscreenOnLaunch = true,
     this.onFullscreenOnLaunch,
+    this.restoreOnExit = true,
+    this.onRestoreOnExit,
     this.musicEnabled = true,
     this.musicVolume = 0.35,
     this.uiClicksEnabled = true,
@@ -41,6 +43,8 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback onToggleBorderless;
   final bool fullscreenOnLaunch;
   final ValueChanged<bool>? onFullscreenOnLaunch;
+  final bool restoreOnExit;
+  final ValueChanged<bool>? onRestoreOnExit;
   final bool musicEnabled;
   final double musicVolume;
   final bool uiClicksEnabled;
@@ -138,6 +142,14 @@ class SettingsStub extends StatelessWidget {
                                 'Enter covers the display when launching a game (same as F11)',
                             value: fullscreenOnLaunch,
                             onChanged: onFullscreenOnLaunch ?? (_) {},
+                          ),
+                          _ToggleRow(
+                            key: const Key('settings-restore-on-exit'),
+                            label: 'Return to HomeDeck when game exits',
+                            hint:
+                                'Leave launch fullscreen and foreground HomeDeck when a local .exe/.lnk exits (store URIs best-effort only)',
+                            value: restoreOnExit,
+                            onChanged: onRestoreOnExit ?? (_) {},
                           ),
                           _ToggleRow(
                             key: const Key('settings-music-enabled'),
