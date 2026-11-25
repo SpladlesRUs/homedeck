@@ -116,4 +116,30 @@ class WindowsNativeBridge {
       return null;
     }
   }
+
+  /// Write [bytes] to an absolute [path] via Win32 CreateFile + FlushFileBuffers.
+  /// Used as a dual-write for IconCache so Ally sees PNGs under AppData.
+  static Future<bool> writeFile(String path, Uint8List bytes) async {
+    if (!Platform.isWindows) {
+      return false;
+    }
+    final trimmed = path.trim();
+    if (trimmed.isEmpty || bytes.isEmpty) {
+      return false;
+    }
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'writeFile',
+        <String, Object?>{
+          'path': trimmed,
+          'bytes': bytes,
+        },
+      );
+      return result ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }

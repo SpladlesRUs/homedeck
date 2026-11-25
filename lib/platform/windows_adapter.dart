@@ -8,6 +8,7 @@ import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
+import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:homedeck/platform/windows_icon_extractor.dart';
@@ -62,15 +63,22 @@ class WindowsAdapter implements PlatformAdapter {
     required String appId,
     required String displayName,
   }) async {
-    // Always land a generated PNG first. Ally f9b1d14 saw icons\ empty for
-    // the whole run — a sync MethodChannel extract that blocks the Win32
-    // message pump never returned, so writePng never ran. Generated art must
-    // hit disk before any extract attempt.
-    final generated = await generateInitialIcon(
-      displayName: displayName,
-      key: appId,
-    );
-    final ref = await cache.writePng(appId, generated);
+    // Disk-first with a canned PNG — no dart:ui. Ally 10fe4ac still saw
+    // zero PNGs because write-first still awaited generateInitialIcon
+    // (GPU/toImage) before any file IO.
+    final ref = await cache.writePng(appId, placeholderPng);
+
+    try {
+      final generated = await generateInitialIcon(
+        displayName: displayName,
+        key: appId,
+      ).timeout(const Duration(milliseconds: 800), onTimeout: () => placeholderPng);
+      if (generated.isNotEmpty) {
+        await cache.writePng(appId, generated);
+      }
+    } catch (_) {
+      // Keep placeholder already on disk.
+    }
 
     try {
       final extracted = await _tryExtractIcon(target).timeout(
@@ -81,7 +89,7 @@ class WindowsAdapter implements PlatformAdapter {
         await cache.writePng(appId, extracted);
       }
     } catch (_) {
-      // Keep the generated tile already on disk.
+      // Keep whatever is already on disk.
     }
     return ref;
   }

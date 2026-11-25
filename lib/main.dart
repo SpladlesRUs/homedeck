@@ -11,6 +11,7 @@ import 'package:homedeck/core/native_window_mode.dart';
 import 'package:homedeck/platform/select_adapter.dart';
 import 'package:homedeck/platform/select_device.dart';
 import 'package:homedeck/platform/select_menu_music.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Off in release. Pass `--dart-define=HOMEDECK_SEED_DEMO=true` in debug/tests.
@@ -20,7 +21,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final support = await getApplicationSupportDirectory();
   final paths = AppPaths(support);
-  final icons = IconCache(paths);
+  // Dual-write icons via runner CreateFile so Ally's AppData watcher sees
+  // bytes even if dart:io flush is unreliable on the handheld.
+  final icons = IconCache(
+    paths,
+    nativeWrite: WindowsNativeBridge.writeFile,
+  );
   final preferences = PreferencesRepository(paths);
   final controller = LibraryController(
     adapter: selectPlatformAdapter(),

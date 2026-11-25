@@ -2,29 +2,36 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:homedeck/core/app_paths.dart';
+import 'package:homedeck/core/placeholder_png.dart';
 import 'package:path/path.dart' as p;
 
 /// PNG tiles stored under the support directory and referenced relatively.
 class IconCache {
-  IconCache(this.paths);
+  IconCache(this.paths, {Future<bool> Function(String path, Uint8List bytes)? nativeWrite})
+    : _nativeWrite = nativeWrite;
 
   final AppPaths paths;
+
+  /// Optional Win32 CreateFile write (set on Windows) so Ally sees bytes even
+  /// if Dart `dart:io` flush is flaky on the handheld.
+  final Future<bool> Function(String path, Uint8List bytes)? _nativeWrite;
 
   Future<Directory> ensureReady() async {
     final dir = paths.iconsDir();
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
+    // Probe file so Ally's `icons\*.png` watcher can confirm the live AppData
+    // path is writable before any add (empty icons\ alone was a false signal).
+    final probe = File(p.join(dir.path, '_homedeck_ready.png'));
+    if (!probe.existsSync() || probe.lengthSync() <= 0) {
+      await _durableWrite(probe, placeholderPng);
+    }
     return dir;
   }
 
-  /// Writes [bytes] to `icons/<appId>.png` with the same durable sync pattern
-  /// as [PreferencesRepository.save] (temp + copy + authoritative overwrite).
-  ///
-  /// Ally M2 re-smoke at f9b1d14 still saw zero PNGs under
-  /// `%AppData%\Horton Press\HomeDeck\icons` for the whole run — even the
-  /// generated-tile fallback. A hung sync MethodChannel extract before any
-  /// write left the folder empty while AppTile painted letter faces.
+  /// Writes [bytes] to `icons/<appId>.png` with durable sync IO (+ optional
+  /// native CreateFile). Never depends on dart:ui.
   Future<String> writePng(String appId, Uint8List bytes) async {
     if (bytes.isEmpty) {
       throw ArgumentError.value(bytes, 'bytes', 'icon PNG bytes must be non-empty');
@@ -32,10 +39,14 @@ class IconCache {
     await ensureReady();
     final relative = paths.iconRelativeRef(appId);
     final file = paths.iconFile(relative);
-    file.parent.createSync(recursive: true);
+    await _durableWrite(file, bytes);
+    return relative;
+  }
 
+  Future<void> _durableWrite(File file, Uint8List bytes) async {
+    file.parent.createSync(recursive: true);
     final payload = Uint8List.fromList(bytes);
-    final temp = File(p.join(file.parent.path, '$appId.png.tmp'));
+    final temp = File('${file.path}.tmp');
     temp.writeAsBytesSync(payload, flush: true);
     try {
       temp.copySync(file.path);
@@ -46,27 +57,34 @@ class IconCache {
       try {
         temp.deleteSync();
       } on FileSystemException {
-        // Best-effort; [file] is what Ally checks.
+        // Best-effort.
       }
     }
-    // Final authoritative write — same as library.json on Ally.
     file.writeAsBytesSync(payload, flush: true);
 
-    if (!file.existsSync() || file.lengthSync() <= 0) {
+    final native = _nativeWrite;
+    if (native != null) {
+      try {
+        await native(file.path, payload);
+      } catch (_) {
+        // Dart write is authoritative when native fails.
+      }
+    }
+
+    final verify = File(file.path);
+    if (!verify.existsSync() || verify.lengthSync() <= 0) {
+      // Last resort: native-only rewrite.
+      if (native != null) {
+        final ok = await native(file.path, payload);
+        if (ok && verify.existsSync() && verify.lengthSync() > 0) {
+          return;
+        }
+      }
       throw FileSystemException(
         'icon PNG was not present after write',
         file.path,
       );
     }
-    // Re-open by absolute path to catch path-resolution mismatches.
-    final verify = File(file.path);
-    if (!verify.existsSync() || verify.lengthSync() != payload.length) {
-      throw FileSystemException(
-        'icon PNG failed verification after write',
-        file.path,
-      );
-    }
-    return relative;
   }
 
   Future<Uint8List?> read(String relativeRef) async {

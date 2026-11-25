@@ -38,6 +38,10 @@ class HomedeckWin32 {
   static std::optional<std::vector<uint8_t>> ExtractIconPng(
       const std::wstring& path, int size);
 
+  // Durable CreateFile write for IconCache dual-write to AppData.
+  static bool WriteFileBytes(const std::wstring& path,
+                             const std::vector<uint8_t>& bytes);
+
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.
   bool HandleIconDone(LPARAM lparam);

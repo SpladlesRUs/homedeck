@@ -231,4 +231,11 @@ void main() {
     expect(cache.absoluteFile(ref)!.path, file.path);
     expect(cache.absoluteFile('icons/missing.png'), isNull);
   });
+
+  test('ensureReady seeds a probe PNG Ally can watch under icons/', () async {
+    await cache.ensureReady();
+    final probe = File(p.join(tempDir.path, 'icons', '_homedeck_ready.png'));
+    expect(probe.existsSync(), isTrue);
+    expect(probe.lengthSync(), greaterThan(0));
+  });
 }

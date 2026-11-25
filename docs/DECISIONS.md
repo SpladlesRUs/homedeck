@@ -32,16 +32,19 @@ path remains as a secondary fallback. Bytes are written with sync IO into
 `icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
 
-Ally M2 at 8715ce4 / f9b1d14 saw an empty `icons\` for the whole run —
-even generated art never landed — because extract ran (and could hang)
-before any `writePng`. `resolveIcon` now always writes a generated PNG
-first, then best-effort upgrades via Dart FFI / async runner extract
-(worker thread + `WM_HOMEDECK_ICON_DONE`) with a short timeout. `IconCache`
-uses the same durable sync write pattern as `library.json`.
+Ally M2 at 10fe4ac still saw **zero** PNGs under
+`%AppData%\Horton Press\HomeDeck\icons` while `icons\` itself existed
+(ensureReady) and `library.json` seeded — so the AppData root was correct
+but the first write still never happened. Write-first had awaited
+`generateInitialIcon` (dart:ui `toImage`) before any disk IO; that can
+stall on the handheld. The critical path now writes a canned
+`placeholderPng` with sync dart:io + optional runner `writeFile`
+(CreateFile/FlushFileBuffers), seeds `_homedeck_ready.png` on load, then
+best-effort upgrades (generated art / PE extract) behind short timeouts.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
-or any Win32 failure), the generated tile already on disk remains. Extraction
-never blocks adding a game.
+or any Win32 failure), the placeholder / generated tile already on disk
+remains. Extraction never blocks adding a game.
 
 ## Steam Deck validation pending
 

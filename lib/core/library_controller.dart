@@ -14,6 +14,7 @@ import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/models/launch_target.dart';
 import 'package:homedeck/core/models/tile_kind.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
+import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/preferences_repository.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:path/path.dart' as p;
@@ -108,6 +109,9 @@ class LibraryController extends ChangeNotifier {
     int? homeSlot,
   }) async {
     final id = _idFactory();
+    // Guarantee a PNG under icons\ before platform resolve (Ally 10fe4ac
+    // saw empty icons\ when resolveIcon stalled in dart:ui / extract).
+    await _icons.writePng(id, placeholderPng);
     final iconRef = await _adapter.resolveIcon(
       target: target,
       cache: _icons,

@@ -325,6 +325,34 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(ok));
           return;
         }
+        if (method == "writeFile") {
+          std::string path;
+          std::vector<uint8_t> bytes;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto path_it = map->find(flutter::EncodableValue("path"));
+            if (path_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&path_it->second)) {
+                path = *value;
+              }
+            }
+            auto bytes_it = map->find(flutter::EncodableValue("bytes"));
+            if (bytes_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::vector<uint8_t>>(&bytes_it->second)) {
+                bytes = *value;
+              }
+            }
+          }
+          if (path.empty() || bytes.empty()) {
+            result->Error("invalid_args", "writeFile requires path and bytes");
+            return;
+          }
+          const bool ok = WriteFileBytes(Utf8ToWide(path), bytes);
+          result->Success(flutter::EncodableValue(ok));
+          return;
+        }
         if (method == "extractIcon") {
           std::string path;
           int size = kDefaultIconSize;
@@ -444,6 +472,33 @@ bool HomedeckWin32::Launch(const std::wstring& path,
   const HINSTANCE result = ShellExecuteW(nullptr, L"open", path.c_str(),
                                          params, nullptr, SW_SHOWNORMAL);
   return reinterpret_cast<INT_PTR>(result) > 32;
+}
+
+bool HomedeckWin32::WriteFileBytes(const std::wstring& path,
+                                   const std::vector<uint8_t>& bytes) {
+  if (path.empty() || bytes.empty()) {
+    return false;
+  }
+  // Ensure parent directory exists (icons\).
+  const size_t slash = path.find_last_of(L"\\/");
+  if (slash != std::wstring::npos && slash > 0) {
+    const std::wstring dir = path.substr(0, slash);
+    if (!dir.empty()) {
+      SHCreateDirectoryExW(nullptr, dir.c_str(), nullptr);
+    }
+  }
+  HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
+                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  DWORD written = 0;
+  const BOOL ok =
+      ::WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()),
+                  &written, nullptr);
+  FlushFileBuffers(file);
+  CloseHandle(file);
+  return ok && written == bytes.size();
 }
 
 bool HomedeckWin32::HandleIconDone(LPARAM lparam) {
