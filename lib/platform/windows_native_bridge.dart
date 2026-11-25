@@ -1,26 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 
 /// Method channel to the Windows runner (`homedeck/win32`).
 ///
-/// Ally Phase2 at 4996779 still failed Enter/F11 because the harness uses
-/// `WScript.Shell.SendKeys` after AppActivate — keys hit the Flutter view
-/// child, not `FlutterWindow::MessageHandler`. The runner now installs a
-/// WH_KEYBOARD_LL hook for F11/Enter/A while HomeDeck is foreground, and Dart
-/// mirrors the focused launch path via [setFocusedLaunch].
-///
-/// Ally @9800850: F11 PASS via the hook, but Enter still spawned no process
-/// because `focused_path_` was often empty (cleared during Add-sheet library
-/// notify / async mirror race). The hook now falls back to invoking
-/// [onLaunchFocused] in Dart when the mirrored path is missing.
-///
-/// Ally @82a5a20: SendKeys `a` still never opened a FindWindow-able Open
-/// dialog (Flutter Shortcuts never ran `pickOpenFile`). The hook now posts
-/// `WM_HOMEDECK_ADD`, the runner shows classic `GetOpenFileName` titled
-/// `Open`, then invokes [onAddPickedPath] with the chosen path (or the
-/// optional `HOMEDECK_ADD_PATH` bypass value).
+/// Ally Phase2 SendKeys land on the Flutter view child — Shortcuts often
+/// never see `a`, so MethodChannel `pickOpenFile` never ran and the harness
+/// logged "Open dialog not found". The runner WH_KEYBOARD_LL hook posts
+/// `WM_HOMEDECK_ADD`, shows classic `GetOpenFileName` titled **Open**
+/// (class `#32770`), then invokes [onAddPickedPath]. The same hook handles
+/// F11 chrome and Enter→focused path; Dart mirrors the target via
+/// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
+/// the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -36,11 +29,11 @@ class WindowsNativeBridge {
   static Future<void> Function()? onLaunchFocused;
 
   /// Runner finished a native Open pick (WH_KEYBOARD_LL `A` / WM_HOMEDECK_ADD)
-  /// and wants Dart to persist + pin the path.
+  /// and wants Dart to persist + write `icons/<id>.png`.
   static Future<void> Function(String path)? onAddPickedPath;
 
-  /// Ensure the platform method handler is registered (launchFocused +
-  /// fullscreenChanged + addPickedPath). Call from HomeScreen init on Windows.
+  /// Ensure the platform method handler is registered. Call from HomeScreen
+  /// init on Windows.
   static void ensureInitialized() => _ensureListening();
 
   /// Absolute fullscreen notifications from the runner (native F11 path).
@@ -152,11 +145,43 @@ class WindowsNativeBridge {
     }
   }
 
+  /// Extract a PE / `.lnk` icon as PNG bytes via the runner (WIC).
+  /// Returns null when unavailable, missing plugin, or extraction fails.
+  static Future<Uint8List?> extractIconPng(
+    String path, {
+    int size = 256,
+  }) async {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final result = await _channel.invokeMethod<dynamic>(
+        'extractIcon',
+        <String, Object?>{'path': trimmed, 'size': size},
+      );
+      if (result is Uint8List && result.isNotEmpty) {
+        return result;
+      }
+      if (result is List<int> && result.isNotEmpty) {
+        return Uint8List.fromList(result);
+      }
+      return null;
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
+
   /// Classic GetOpenFileName titled `Open` (Ally FindWindow / SendKeys).
   ///
-  /// Returns the selected path, `null` when cancelled, or throws
-  /// [MissingPluginException] when the runner channel is absent (tests).
-  /// Optional `HOMEDECK_ADD_PATH` env bypasses the modal with a fixed path.
+  /// Returns the selected path, `null` when cancelled. Optional
+  /// `HOMEDECK_ADD_PATH` env bypasses the modal with a fixed path.
+  /// Throws [MissingPluginException] when the runner channel is absent.
   static Future<String?> pickOpenFile({
     required String label,
     required List<String> extensions,
@@ -178,5 +203,31 @@ class WindowsNativeBridge {
       return null;
     }
     return result;
+  }
+
+  /// Write [bytes] to an absolute [path] via Win32 CreateFile + FlushFileBuffers.
+  /// Used as a dual-write for IconCache so Ally sees PNGs under AppData.
+  static Future<bool> writeFile(String path, Uint8List bytes) async {
+    if (!Platform.isWindows) {
+      return false;
+    }
+    final trimmed = path.trim();
+    if (trimmed.isEmpty || bytes.isEmpty) {
+      return false;
+    }
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'writeFile',
+        <String, Object?>{
+          'path': trimmed,
+          'bytes': bytes,
+        },
+      );
+      return result ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
   }
 }

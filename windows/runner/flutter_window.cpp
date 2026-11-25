@@ -59,6 +59,9 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleAddKey();
     return 0;
   }
+  // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
+  // Dart only used FindWindow / window_manager. Toggle via the real HWND and
+  // let Dart sync badge/prefs over the method channel event.
   if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
       wparam == VK_F11) {
     win32_.SetFullscreen(!win32_.IsFullscreen());
@@ -79,6 +82,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       win32_.HandleAddKey();
       return 0;
     }
+  }
+
+  // Background extractIcon worker finished — complete the MethodChannel on
+  // the platform thread (must not call MethodResult from the worker).
+  if (message == WM_HOMEDECK_ICON_DONE) {
+    win32_.HandleIconDone(lparam);
+    return 0;
   }
 
   // Give Flutter, including plugins, an opportunity to handle window messages.
