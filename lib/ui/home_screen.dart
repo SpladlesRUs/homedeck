@@ -24,6 +24,8 @@ import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
+import 'package:homedeck/platform/windows_adapter.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/tile_menu.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -90,6 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _window.addListener(_onWindowMode);
     widget.music?.addListener(_onLibrary);
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
+    if (Platform.isWindows) {
+      WindowsNativeBridge.ensureInitialized();
+      WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
+    }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
     if (HomeScreen.tickClock) {
@@ -112,6 +118,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    if (Platform.isWindows) {
+      if (identical(
+        WindowsNativeBridge.onAddPickedPath,
+        _addPickedPathFromNative,
+      )) {
+        WindowsNativeBridge.onAddPickedPath = null;
+      }
+    }
     _clock?.cancel();
     _gamepad.stop();
     _status.stop();
@@ -123,6 +137,43 @@ class _HomeScreenState extends State<HomeScreen> {
       node.dispose();
     }
     super.dispose();
+  }
+
+  /// Runner WH_KEYBOARD_LL `A` opened classic Open (or HOMEDECK_ADD_PATH) and
+  /// returned a path — persist + write icons/<id>.png for Ally.
+  Future<void> _addPickedPathFromNative(String path) async {
+    if (!mounted || _overlayOpen) {
+      return;
+    }
+    final picked = WindowsAdapter.pickedLaunchFromPath(path);
+    if (picked == null) {
+      return;
+    }
+    final added = await _library.addRecord(
+      displayName: picked.displayName,
+      target: picked.target,
+      kind: picked.kind,
+      pinToHome: true,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _tab = HomeTab.home;
+      _focusedId = added.id;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _focusId(added.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _nodeFor(added.id).requestFocus();
+      });
+    });
   }
 
   void _onLibrary() {

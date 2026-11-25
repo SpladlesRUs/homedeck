@@ -265,36 +265,42 @@ class WindowsAdapter implements PlatformAdapter {
       label: 'Windows apps',
       extensions: const ['exe', 'lnk'],
     );
+    return pickedLaunchFromPath(path);
+  }
+
+  /// Parse a path or URI the runner already chose (native A / HOMEDECK_ADD_PATH).
+  static PickedLaunch? pickedLaunchFromPath(String? path) {
     if (path == null || path.trim().isEmpty) {
       return null;
     }
-    if (WindowsPaths.isLaunchUri(path)) {
+    final trimmed = path.trim();
+    if (WindowsPaths.isLaunchUri(trimmed)) {
       return PickedLaunch(
-        displayName: _uriDisplayName(path),
+        displayName: uriDisplayName(trimmed),
         target: LaunchTarget(
           platform: AppPlatform.windows,
           kind: LaunchTargetKind.windowsUri,
-          value: path.trim(),
+          value: trimmed,
         ),
       );
     }
-    if (!WindowsPaths.isSupportedLaunchFile(path)) {
+    if (!WindowsPaths.isSupportedLaunchFile(trimmed)) {
       return null;
     }
-    final kind = WindowsPaths.isShortcut(path)
+    final kind = WindowsPaths.isShortcut(trimmed)
         ? LaunchTargetKind.windowsShortcut
         : LaunchTargetKind.windowsExecutable;
     return PickedLaunch(
-      displayName: WindowsPaths.basenameWithoutExtension(path),
+      displayName: WindowsPaths.basenameWithoutExtension(trimmed),
       target: LaunchTarget(
         platform: AppPlatform.windows,
         kind: kind,
-        value: path,
+        value: trimmed,
       ),
     );
   }
 
-  String _uriDisplayName(String uri) {
+  static String uriDisplayName(String uri) {
     final parsed = Uri.tryParse(uri.trim());
     if (parsed == null) {
       return uri.trim();

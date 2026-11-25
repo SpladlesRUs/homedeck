@@ -45,11 +45,17 @@ UINT_PTR CALLBACK PickOpenHook(HWND hwnd, UINT msg, WPARAM, LPARAM lparam) {
     const auto* notify = reinterpret_cast<LPOFNOTIFY>(lparam);
     if (notify != nullptr && notify->hdr.code == CDN_INITDONE &&
         notify->lpOFN != nullptr) {
+      HWND parent = GetParent(hwnd);
+      // Force the FindWindow title Ally already searches — never rename the
+      // dialog to the OK label ("Add to HomeDeck").
+      if (parent != nullptr) {
+        SetWindowTextW(parent, L"Open");
+      }
       const auto* state =
           reinterpret_cast<PickHookState*>(notify->lpOFN->lCustData);
       if (state != nullptr && state->ok_label != nullptr &&
-          state->ok_label[0] != L'\0') {
-        CommDlg_OpenSave_SetControlText(GetParent(hwnd), IDOK, state->ok_label);
+          state->ok_label[0] != L'\0' && parent != nullptr) {
+        CommDlg_OpenSave_SetControlText(parent, IDOK, state->ok_label);
       }
     }
   }
@@ -344,9 +350,19 @@ bool EncodePngWic(const std::vector<uint8_t>& bgra, int size,
 
 }  // namespace
 
+HomedeckWin32* HomedeckWin32::instance_ = nullptr;
+
+HomedeckWin32::~HomedeckWin32() {
+  RemoveHook();
+  if (instance_ == this) {
+    instance_ = nullptr;
+  }
+}
+
 void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
                              Win32Window* window) {
   window_ = window;
+  instance_ = this;
   channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       messenger, kChannel, &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
@@ -544,6 +560,103 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
         }
         result->NotImplemented();
       });
+  InstallHook();
+}
+
+void HomedeckWin32::InstallHook() {
+  if (keyboard_hook_ != nullptr) {
+    return;
+  }
+  keyboard_hook_ = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc,
+                                     GetModuleHandle(nullptr), 0);
+}
+
+void HomedeckWin32::RemoveHook() {
+  if (keyboard_hook_ != nullptr) {
+    UnhookWindowsHookEx(keyboard_hook_);
+    keyboard_hook_ = nullptr;
+  }
+}
+
+bool HomedeckWin32::IsOurForeground() const {
+  if (window_ == nullptr) {
+    return false;
+  }
+  HWND hwnd = window_->GetHandle();
+  if (hwnd == nullptr) {
+    return false;
+  }
+  HWND foreground = GetForegroundWindow();
+  if (foreground == nullptr) {
+    return false;
+  }
+  if (foreground == hwnd || IsChild(hwnd, foreground)) {
+    return true;
+  }
+  DWORD our_pid = 0;
+  DWORD fg_pid = 0;
+  GetWindowThreadProcessId(hwnd, &our_pid);
+  GetWindowThreadProcessId(foreground, &fg_pid);
+  return our_pid != 0 && our_pid == fg_pid;
+}
+
+bool HomedeckWin32::ModifierHeld() {
+  return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+         (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+}
+
+LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
+                                                     WPARAM w_param,
+                                                     LPARAM l_param) {
+  if (n_code == HC_ACTION && instance_ != nullptr &&
+      (w_param == WM_KEYDOWN || w_param == WM_SYSKEYDOWN)) {
+    const auto* info = reinterpret_cast<KBDLLHOOKSTRUCT*>(l_param);
+    // While classic Open is up, let OFN own keys (Enter confirms the file).
+    if (info != nullptr && instance_->IsOurForeground() &&
+        !instance_->picking_file_) {
+      if (info->vkCode == VK_F11) {
+        instance_->SetFullscreen(!instance_->IsFullscreen());
+        return 1;
+      }
+      // Ally @1676362: SendKeys `a` never reached Flutter Shortcuts /
+      // MethodChannel pickOpenFile → "Open dialog not found" / apps=[].
+      // Post to the UI thread and consume so Shortcuts cannot double-open.
+      if (info->vkCode == 'A' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_ADD, 0, 0);
+          return 1;
+        }
+      }
+    }
+  }
+  return CallNextHookEx(nullptr, n_code, w_param, l_param);
+}
+
+void HomedeckWin32::HandleAddKey() {
+  if (picking_file_) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleAddKey opening classic Open\n");
+  const std::wstring path =
+      PickOpenFile(L"Windows apps", L"exe,lnk", L"Add to HomeDeck");
+  if (path.empty()) {
+    return;
+  }
+  NotifyPickedPath(path);
+}
+
+void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {
+  if (channel_ == nullptr || path.empty()) {
+    return;
+  }
+  channel_->InvokeMethod(
+      "addPickedPath",
+      std::make_unique<flutter::EncodableValue>(Utf8FromUtf16(path.c_str())));
 }
 
 std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
@@ -572,7 +685,9 @@ std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
   ofn.nFilterIndex = 1;
   ofn.lpstrFile = file;
   ofn.nMaxFile = ARRAYSIZE(file);
-  // Explicit title — Ally Phase2 FindWindow(null, "Open") / class #32770.
+  // Exact title Ally Phase2 FindWindow(null, "Open") expects. Class #32770.
+  // OK button text is separately "Add to HomeDeck" via PickOpenHook — do not
+  // put that string in lpstrTitle.
   ofn.lpstrTitle = L"Open";
   // No OFN_FILEMUSTEXIST so Ally can type a bad/missing .exe path and still
   // get a Dart callback → icons/<id>.png placeholder.
@@ -586,7 +701,9 @@ std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
   }
 
   OutputDebugStringW(L"homedeck: GetOpenFileNameW showing classic Open\n");
+  picking_file_ = true;
   const BOOL ok = GetOpenFileNameW(&ofn);
+  picking_file_ = false;
   if (!ok) {
     const DWORD err = CommDlgExtendedError();
     if (err != 0) {

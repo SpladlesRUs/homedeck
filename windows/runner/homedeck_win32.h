@@ -16,13 +16,23 @@
 #define WM_HOMEDECK_ICON_DONE (WM_APP + 0x4D44)  // 'MD'
 #endif
 
-// Native Win32 helpers for Ally: launch, F11 chrome, and PE/.lnk icon
-// extraction. Sync MethodChannel extract on the platform thread deadlocked
-// the message pump at f9b1d14 (icons\ stayed empty). extractIcon now runs on
-// a worker thread and completes via WM_HOMEDECK_ICON_DONE.
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `a` (or a real A key)
+// should open the classic FindWindow-able Open dialog on the UI thread.
+#ifndef WM_HOMEDECK_ADD
+#define WM_HOMEDECK_ADD (WM_APP + 0x41)
+#endif
+
+// Native Win32 helpers for Ally: launch, F11 chrome, PE/.lnk icon extraction,
+// and classic GetOpenFileName for Phase2 FindWindow.
+//
+// Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
+// see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
+// found". WH_KEYBOARD_LL posts WM_HOMEDECK_ADD; the UI thread shows OFN titled
+// exactly "Open" (class #32770), then notifies Dart via addPickedPath.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
+  ~HomedeckWin32();
 
   void Register(flutter::BinaryMessenger* messenger, Win32Window* window);
 
@@ -42,12 +52,16 @@ class HomedeckWin32 {
   static bool WriteFileBytes(const std::wstring& path,
                              const std::vector<uint8_t>& bytes);
 
-  // Classic GetOpenFileName titled "Open" (Ally FindWindow / SendKeys) with
-  // optional OK label "Add to HomeDeck". Empty string when cancelled.
+  // Classic GetOpenFileName titled "Open" (Ally FindWindow class #32770).
+  // OK button label defaults to "Add to HomeDeck". Empty when cancelled.
   // HOMEDECK_ADD_PATH env bypasses the modal with a fixed path.
   std::wstring PickOpenFile(const std::wstring& filter_label,
                             const std::wstring& extensions,
                             const std::wstring& ok_label);
+
+  // UI-thread handler for WM_HOMEDECK_ADD: show classic Open (or honor
+  // HOMEDECK_ADD_PATH) then notify Dart via addPickedPath.
+  void HandleAddKey();
 
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.
@@ -55,6 +69,14 @@ class HomedeckWin32 {
 
  private:
   void NotifyFullscreen();
+  void NotifyPickedPath(const std::wstring& path);
+  void InstallHook();
+  void RemoveHook();
+  bool IsOurForeground() const;
+  static bool ModifierHeld();
+
+  static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
+                                               LPARAM l_param);
 
   Win32Window* window_ = nullptr;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
@@ -62,6 +84,11 @@ class HomedeckWin32 {
   LONG_PTR restore_style_ = 0;
   RECT restore_rect_{};
   bool has_restore_ = false;
+  HHOOK keyboard_hook_ = nullptr;
+  // True while GetOpenFileName is modal — do not steal A from OFN.
+  bool picking_file_ = false;
+
+  static HomedeckWin32* instance_;
 };
 
 #endif  // RUNNER_HOMEDECK_WIN32_H_

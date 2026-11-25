@@ -32,19 +32,21 @@ path remains as a secondary fallback. Bytes are written with sync IO into
 `icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
 
-Ally M2 at b630dc3 / 43e9da7 / c8a379f: `_homedeck_ready.png` PASS but
-**zero** `icons/<id>.png` after add; `apps=[]` at close. Two blockers:
-(1) Phase2 SendKeys `a` never Confirms the in-app Add sheet — Windows
-**A** / empty slots one-shot `addFromPicker` (pin to Home); Menu → Add
-game still opens the sheet for URI / emulated. (2) `file_selector`'s
-IFileDialog is not FindWindow-able as classic `#32770` "Open", so the
-harness drove an "existing Open flow" / false-PASS while Dart never
-received a path. Picker now prefers runner `pickOpenFile`
-(`GetOpenFileNameW`, OK label "Add to HomeDeck", optional
-`HOMEDECK_ADD_PATH` bypass). Ready seed and tile adds share
-`IconCache.writeBytesSync`. `resolveIcon` returns after the placeholder;
-GPU / extract upgrade in the background. `addFromPicker` refuses success
-without a durable `icons/<id>.png`.
+Ally M2 icon add (through 1676362): `_homedeck_ready.png` PASS but
+**zero** `icons/<id>.png`; `apps=[]`; harness **`Open dialog not found`**.
+Root causes stacked: (1) Phase2 never Confirms the in-app Add sheet —
+Windows empty-slot / Dart `A` still one-shot `addFromPicker`. (2)
+`file_selector` IFileDialog is not FindWindow-able. (3) SendKeys `a`
+often never reaches Flutter Shortcuts, so MethodChannel `pickOpenFile`
+never ran and classic OFN never appeared. Fix: runner `WH_KEYBOARD_LL`
+on `A` posts `WM_HOMEDECK_ADD` → UI-thread `GetOpenFileNameW` with
+**window class `#32770`**, **window title exactly `Open`** (OK button
+label only is `Add to HomeDeck`; title is force-set in `CDN_INITDONE`),
+then `addPickedPath` → Dart `addRecord` + `icons/<id>.png`. Optional
+`HOMEDECK_ADD_PATH` bypasses the modal. Ally FindWindow:
+`FindWindow(null, "Open")` or class `#32770` + title `Open`. Ready seed
+and tile adds share `IconCache.writeBytesSync`. `addFromPicker` refuses
+success without a durable tile PNG.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
 or any Win32 failure), the placeholder / generated tile already on disk
@@ -93,12 +95,12 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with keyboard **A** or an empty Add slot. On Windows that
-one-shot opens classic `GetOpenFileName` titled **Open** (OK =
-**Add to HomeDeck**) via `homedeck/win32` `pickOpenFile` — Ally Phase2
-FindWindow/SendKeys — then persists + pins to Home and writes
-`icons\<id>.png` immediately. Emulated / URI add uses Menu → Add game
-(sheet). Then press Enter (or click) to launch. Layout is stored in the application
+Add an app with keyboard **A** or an empty Add slot. On Windows, runner
+`WH_KEYBOARD_LL` catches SendKeys `a` and shows classic
+`GetOpenFileNameW` (**class `#32770`**, **title `Open`**, OK button
+**Add to HomeDeck**), then Dart persists + pins + writes
+`icons\<id>.png`. Emulated / URI add uses Menu → Add game (sheet). Then
+press Enter (or click) to launch. Layout is stored in the application
 support directory provided by `path_provider` (typically under
 `%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
 `PreferencesRepository` seeds `library.json` on first load and saves with a

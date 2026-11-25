@@ -6,10 +6,11 @@ import 'package:flutter/services.dart';
 
 /// Method channel to the Windows runner (`homedeck/win32`).
 ///
-/// Ally Phase2 at 2417533 still failed Enter/F11 when Dart FFI used
-/// ShellExecuteW + FindWindow — the runner never changed chrome and notepad
-/// never spawned. M2 at 8715ce4 left `icons\` empty with Dart FFI extract.
-/// The C++ side owns HWND, ShellExecute, and PE/.lnk → PNG extraction.
+/// Ally Phase2 SendKeys land on the Flutter view child — Shortcuts often
+/// never see `a`, so MethodChannel `pickOpenFile` never ran and the harness
+/// logged "Open dialog not found". The runner WH_KEYBOARD_LL hook posts
+/// `WM_HOMEDECK_ADD`, shows classic `GetOpenFileName` titled **Open**
+/// (class `#32770`), then invokes [onAddPickedPath].
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -19,6 +20,14 @@ class WindowsNativeBridge {
       StreamController<bool>.broadcast();
 
   static bool _listening = false;
+
+  /// Runner finished a native Open pick (WH_KEYBOARD_LL `A` / WM_HOMEDECK_ADD)
+  /// and wants Dart to persist + write `icons/<id>.png`.
+  static Future<void> Function(String path)? onAddPickedPath;
+
+  /// Ensure the platform method handler is registered. Call from HomeScreen
+  /// init on Windows.
+  static void ensureInitialized() => _ensureListening();
 
   /// Absolute fullscreen notifications from the runner (native F11 path).
   static Stream<bool> get fullscreenChanges {
@@ -37,6 +46,19 @@ class WindowsNativeBridge {
         if (value is bool) {
           _fullscreenChanges.add(value);
         }
+        return;
+      }
+      if (call.method == 'addPickedPath') {
+        final raw = call.arguments;
+        final path = raw is String ? raw.trim() : '';
+        if (path.isEmpty) {
+          return;
+        }
+        final handler = onAddPickedPath;
+        if (handler != null) {
+          await handler(path);
+        }
+        return;
       }
     });
   }
