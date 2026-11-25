@@ -166,6 +166,9 @@ class _AddTileSheetState extends State<AddTileSheet> {
       if (mounted) {
         widget.onAdded(added.id);
       }
+    } catch (_) {
+      // Leave the sheet open on failure (Browse alone must not look like a
+      // completed add with no icons/<id>.png).
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -223,6 +226,7 @@ class _AddTileSheetState extends State<AddTileSheet> {
         ),
         ConfirmIntent: CallbackAction<ConfirmIntent>(
           onInvoke: (_) {
+            // ignore: discarded_futures
             _save();
             return null;
           },
@@ -231,6 +235,7 @@ class _AddTileSheetState extends State<AddTileSheet> {
         // ConfirmIntent. Handle both so Add · A / Enter actually saves.
         LaunchFocusedIntent: CallbackAction<LaunchFocusedIntent>(
           onInvoke: (_) {
+            // ignore: discarded_futures
             _save();
             return null;
           },

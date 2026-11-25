@@ -32,15 +32,13 @@ path remains as a secondary fallback. Bytes are written with sync IO into
 `icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
 
-Ally M2 at 10fe4ac still saw **zero** PNGs under
-`%AppData%\Horton Press\HomeDeck\icons` while `icons\` itself existed
-(ensureReady) and `library.json` seeded — so the AppData root was correct
-but the first write still never happened. Write-first had awaited
-`generateInitialIcon` (dart:ui `toImage`) before any disk IO; that can
-stall on the handheld. The critical path now writes a canned
-`placeholderPng` with sync dart:io + optional runner `writeFile`
-(CreateFile/FlushFileBuffers), seeds `_homedeck_ready.png` on load, then
-best-effort upgrades (generated art / PE extract) behind short timeouts.
+Ally M2 at b630dc3: `_homedeck_ready.png` PASS (AppData `icons\` is
+writable) but **zero** `icons/<id>.png` after add. Ready used
+`p.join(iconsDir.path, name)`; tile writes used `resolveOwned` /
+`iconFile`, which can disagree on the handheld. Tile PNGs now use that
+same icons-dir join, sync dart:io on the add path (native `writeFile` is
+fire-and-forget), and `_commit` re-asserts missing tile PNGs after
+`library.json` save. Ready marker seed is unchanged.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
 or any Win32 failure), the placeholder / generated tile already on disk

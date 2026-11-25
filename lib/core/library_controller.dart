@@ -212,6 +212,18 @@ class LibraryController extends ChangeNotifier {
     // Persist before publishing state so a failed write cannot leave a
     // tile on screen (and an icon in icons/) with no library.json.
     await _preferences.save(next);
+    // Ally b630dc3: ready marker on disk but no per-tile PNG after add.
+    // Re-assert every record's icon file beside the ready marker.
+    for (final app in next.apps) {
+      final existing = _icons.absoluteFile(app.iconRef ?? 'icons/${app.id}.png');
+      if (existing == null) {
+        try {
+          await _icons.writePng(app.id, placeholderPng);
+        } catch (_) {
+          // Best-effort; library.json already saved.
+        }
+      }
+    }
     _state = next;
     notifyListeners();
   }

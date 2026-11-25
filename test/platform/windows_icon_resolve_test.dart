@@ -234,8 +234,27 @@ void main() {
 
   test('ensureReady seeds a probe PNG Ally can watch under icons/', () async {
     await cache.ensureReady();
-    final probe = File(p.join(tempDir.path, 'icons', '_homedeck_ready.png'));
+    final probe = File(p.join(tempDir.path, 'icons', IconCache.readyProbeName));
     expect(probe.existsSync(), isTrue);
     expect(probe.lengthSync(), greaterThan(0));
+  });
+
+  test('writePng lands beside the ready probe using the same icons-dir join',
+      () async {
+    await cache.ensureReady();
+    final ref = await cache.writePng('tile-abc', fakePng);
+    expect(ref, p.posix.join('icons', 'tile-abc.png'));
+    final dir = Directory(p.join(tempDir.path, 'icons'));
+    final names = dir
+        .listSync()
+        .whereType<File>()
+        .map((f) => p.basename(f.path))
+        .toSet();
+    expect(names, contains(IconCache.readyProbeName));
+    expect(names, contains('tile-abc.png'));
+    expect(
+      File(p.join(tempDir.path, 'icons', 'tile-abc.png')).readAsBytesSync(),
+      fakePng,
+    );
   });
 }
