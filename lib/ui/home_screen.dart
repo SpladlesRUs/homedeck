@@ -108,6 +108,13 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
+      // Ally Enter ShellExecutes natively — mirror the Settings pref so the
+      // runner can enter F11 chrome after a successful launch.
+      unawaited(
+        WindowsNativeBridge.setFullscreenOnLaunch(
+          _library.state.window.fullscreenOnLaunch,
+        ),
+      );
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -435,13 +442,16 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
     // Native WM_KEYDOWN F11 toggles chrome in the runner and only notifies
     // Dart — persist window prefs so library.json mirrors chrome state.
-    unawaited(
-      _library.setWindowPrefs(
-        WindowPrefs(
-          fullscreen: _window.isFullscreen,
-          borderless: _window.isBorderless,
-        ),
-      ),
+    unawaited(_library.setWindowPrefs(_chromeWindowPrefs()));
+  }
+
+  /// Current chrome flags plus the persisted fullscreen-on-launch preference.
+  WindowPrefs _chromeWindowPrefs({bool? fullscreenOnLaunch}) {
+    return WindowPrefs(
+      fullscreen: _window.isFullscreen,
+      borderless: _window.isBorderless,
+      fullscreenOnLaunch:
+          fullscreenOnLaunch ?? _library.state.window.fullscreenOnLaunch,
     );
   }
 
@@ -791,22 +801,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleFullscreen() async {
     await _window.toggleFullscreen();
-    await _library.setWindowPrefs(
-      WindowPrefs(
-        fullscreen: _window.isFullscreen,
-        borderless: _window.isBorderless,
-      ),
-    );
+    await _library.setWindowPrefs(_chromeWindowPrefs());
   }
 
   Future<void> _toggleBorderless() async {
     await _window.toggleBorderless();
+    await _library.setWindowPrefs(_chromeWindowPrefs());
+  }
+
+  Future<void> _setFullscreenOnLaunch(bool enabled) async {
     await _library.setWindowPrefs(
-      WindowPrefs(
-        fullscreen: _window.isFullscreen,
-        borderless: _window.isBorderless,
-      ),
+      _chromeWindowPrefs(fullscreenOnLaunch: enabled),
     );
+    if (Platform.isWindows) {
+      await WindowsNativeBridge.setFullscreenOnLaunch(enabled);
+    }
+  }
+
+  /// Same chrome path as F11 after a successful Home / Library launch.
+  Future<void> _enterFullscreenOnLaunchIfEnabled() async {
+    if (!_library.state.window.fullscreenOnLaunch) {
+      return;
+    }
+    if (_window.isFullscreen) {
+      return;
+    }
+    await _window.apply(true, _window.isBorderless);
+    await _library.setWindowPrefs(_chromeWindowPrefs());
   }
 
   void _handleConfirm() {
@@ -990,6 +1011,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (outcome is LaunchSuccess) {
       await widget.music?.duck();
+      await _enterFullscreenOnLaunchIfEnabled();
       return;
     }
     if (outcome is LaunchFailure) {
@@ -1668,6 +1690,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     SettingsStub(
                       windowMode: _window,
                       scale: metrics.scale,
+                      fullscreenOnLaunch:
+                          _library.state.window.fullscreenOnLaunch,
+                      onFullscreenOnLaunch: (enabled) {
+                        unawaited(_setFullscreenOnLaunch(enabled));
+                      },
                       musicEnabled:
                           widget.music?.musicEnabled ??
                           _library.state.audio.musicEnabled,

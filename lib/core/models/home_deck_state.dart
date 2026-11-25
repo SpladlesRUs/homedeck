@@ -5,27 +5,43 @@ import 'package:homedeck/core/models/tile_layout.dart';
 
 /// Window chrome persisted with the library.
 class WindowPrefs {
-  const WindowPrefs({this.fullscreen = false, this.borderless = false});
+  const WindowPrefs({
+    this.fullscreen = false,
+    this.borderless = false,
+    this.fullscreenOnLaunch = true,
+  });
 
   final bool fullscreen;
   final bool borderless;
 
-  WindowPrefs copyWith({bool? fullscreen, bool? borderless}) {
+  /// When true (default), successful Enter / launchFocused enters the same
+  /// fullscreen chrome path as F11 so the game covers a handheld display.
+  final bool fullscreenOnLaunch;
+
+  WindowPrefs copyWith({
+    bool? fullscreen,
+    bool? borderless,
+    bool? fullscreenOnLaunch,
+  }) {
     return WindowPrefs(
       fullscreen: fullscreen ?? this.fullscreen,
       borderless: borderless ?? this.borderless,
+      fullscreenOnLaunch: fullscreenOnLaunch ?? this.fullscreenOnLaunch,
     );
   }
 
   Map<String, Object?> toJson() => {
     'fullscreen': fullscreen,
     'borderless': borderless,
+    'fullscreenOnLaunch': fullscreenOnLaunch,
   };
 
   factory WindowPrefs.fromJson(Map<String, Object?> json) {
     return WindowPrefs(
       fullscreen: json['fullscreen'] as bool? ?? false,
       borderless: json['borderless'] as bool? ?? false,
+      // Missing key → console-feel default ON.
+      fullscreenOnLaunch: json['fullscreenOnLaunch'] as bool? ?? true,
     );
   }
 
@@ -33,11 +49,13 @@ class WindowPrefs {
   bool operator ==(Object other) {
     return other is WindowPrefs &&
         other.fullscreen == fullscreen &&
-        other.borderless == borderless;
+        other.borderless == borderless &&
+        other.fullscreenOnLaunch == fullscreenOnLaunch;
   }
 
   @override
-  int get hashCode => Object.hash(fullscreen, borderless);
+  int get hashCode =>
+      Object.hash(fullscreen, borderless, fullscreenOnLaunch);
 }
 
 /// Entire persisted HomeDeck library.

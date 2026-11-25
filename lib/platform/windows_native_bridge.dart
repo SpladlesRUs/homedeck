@@ -224,6 +224,25 @@ class WindowsNativeBridge {
     }
   }
 
+  /// Mirror Settings “Fullscreen on launch” so Ally Enter (native ShellExecute
+  /// without a Dart round-trip) can enter the same F11 chrome after launch.
+  static Future<void> setFullscreenOnLaunch(bool enabled) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    _ensureListening();
+    try {
+      await _channel.invokeMethod<void>(
+        'setFullscreenOnLaunch',
+        <String, Object?>{'enabled': enabled},
+      );
+    } on MissingPluginException {
+      // Tests / non-runner.
+    } on PlatformException {
+      // Ignore — Dart launch path still honors the pref.
+    }
+  }
+
   /// Extract a PE / `.lnk` icon as PNG bytes via the runner (WIC).
   /// Returns null when unavailable, missing plugin, or extraction fails.
   static Future<Uint8List?> extractIconPng(

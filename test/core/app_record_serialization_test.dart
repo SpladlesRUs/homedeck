@@ -62,7 +62,11 @@ void main() {
         ),
       ],
       layout: const TileLayout(orderedIds: ['a']),
-      window: const WindowPrefs(fullscreen: true, borderless: true),
+      window: const WindowPrefs(
+        fullscreen: true,
+        borderless: true,
+        fullscreenOnLaunch: false,
+      ),
       audio: const AudioPrefs(
         musicEnabled: false,
         musicVolume: 0.2,
@@ -71,6 +75,22 @@ void main() {
     );
 
     expect(HomeDeckState.fromJson(state.toJson()), state);
+  });
+
+  test('WindowPrefs.fullscreenOnLaunch defaults ON when JSON omits the key', () {
+    final decoded = WindowPrefs.fromJson({
+      'fullscreen': false,
+      'borderless': false,
+    });
+    expect(decoded.fullscreenOnLaunch, isTrue);
+    expect(
+      WindowPrefs.fromJson({
+        'fullscreen': false,
+        'borderless': false,
+        'fullscreenOnLaunch': false,
+      }).fullscreenOnLaunch,
+      isFalse,
+    );
   });
 
   test('emulated tile round-trips kind, ROM path, and args template', () {

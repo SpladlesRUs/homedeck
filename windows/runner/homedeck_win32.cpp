@@ -522,6 +522,21 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(true));
           return;
         }
+        if (method == "setFullscreenOnLaunch") {
+          bool enabled = true;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto it = map->find(flutter::EncodableValue("enabled"));
+            if (it != map->end()) {
+              if (const auto* flag = std::get_if<bool>(&it->second)) {
+                enabled = *flag;
+              }
+            }
+          }
+          SetFullscreenOnLaunch(enabled);
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
         if (method == "writeFile") {
           std::string path;
           std::vector<uint8_t> bytes;
@@ -809,13 +824,25 @@ bool HomedeckWin32::LaunchFocused() {
   if (focused_path_.empty()) {
     return false;
   }
-  return Launch(focused_path_, focused_args_);
+  if (!Launch(focused_path_, focused_args_)) {
+    return false;
+  }
+  // Ally Enter launches here without Dart — enter F11 chrome when Settings
+  // “Fullscreen on launch” is ON (default). Esc/F11 still exit as today.
+  if (fullscreen_on_launch_ && !fullscreen_) {
+    SetFullscreen(true);
+  }
+  return true;
 }
 
 void HomedeckWin32::SetFocusedLaunch(const std::wstring& path,
                                      const std::wstring& args) {
   focused_path_ = path;
   focused_args_ = args;
+}
+
+void HomedeckWin32::SetFullscreenOnLaunch(bool enabled) {
+  fullscreen_on_launch_ = enabled;
 }
 
 void HomedeckWin32::RequestDartLaunch() {
