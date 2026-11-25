@@ -38,7 +38,14 @@ struct PickHookState {
 };
 
 UINT_PTR CALLBACK PickOpenHook(HWND hwnd, UINT msg, WPARAM, LPARAM lparam) {
+  // Ally Phase2: Wait-WindowTitle exact equality (Get-WindowTitle) -eq 'Open'
+  // (8s, visible only; no class filter). Title must be exactly Open — never
+  // the OK label "Add to HomeDeck".
   if (msg == WM_INITDIALOG) {
+    HWND parent = GetParent(hwnd);
+    if (parent != nullptr) {
+      SetWindowTextW(parent, L"Open");
+    }
     return FALSE;
   }
   if (msg == WM_NOTIFY) {
@@ -46,8 +53,6 @@ UINT_PTR CALLBACK PickOpenHook(HWND hwnd, UINT msg, WPARAM, LPARAM lparam) {
     if (notify != nullptr && notify->hdr.code == CDN_INITDONE &&
         notify->lpOFN != nullptr) {
       HWND parent = GetParent(hwnd);
-      // Force the FindWindow title Ally already searches — never rename the
-      // dialog to the OK label ("Add to HomeDeck").
       if (parent != nullptr) {
         SetWindowTextW(parent, L"Open");
       }

@@ -43,10 +43,13 @@ on `A` posts `WM_HOMEDECK_ADD` → UI-thread `GetOpenFileNameW` with
 **window class `#32770`**, **window title exactly `Open`** (OK button
 label only is `Add to HomeDeck`; title is force-set in `CDN_INITDONE`),
 then `addPickedPath` → Dart `addRecord` + `icons/<id>.png`. Optional
-`HOMEDECK_ADD_PATH` bypasses the modal. Ally FindWindow:
-`FindWindow(null, "Open")` or class `#32770` + title `Open`. Ready seed
-and tile adds share `IconCache.writeBytesSync`. `addFromPicker` refuses
-success without a durable tile PNG.
+`HOMEDECK_ADD_PATH` bypasses the modal. Ally Phase2 Open wait (do not change harness):
+`Wait-WindowTitle -Title 'Open' -TimeoutSec 8` with exact
+`(Get-WindowTitle $h) -eq 'Open'` (visible windows; no class filter).
+Dialog title is forced to exact `Open` on WM_INITDIALOG and CDN_INITDONE;
+OK button may still read `Add to HomeDeck`. Ready seed and tile adds share
+`IconCache.writeBytesSync`. `addFromPicker` refuses success without a
+durable tile PNG.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
 or any Win32 failure), the placeholder / generated tile already on disk
