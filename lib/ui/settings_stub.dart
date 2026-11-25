@@ -12,6 +12,8 @@ class SettingsStub extends StatelessWidget {
     required this.onClose,
     required this.onToggleFullscreen,
     required this.onToggleBorderless,
+    this.fullscreenOnLaunch = true,
+    this.onFullscreenOnLaunch,
     this.musicEnabled = true,
     this.musicVolume = 0.35,
     this.uiClicksEnabled = true,
@@ -37,6 +39,8 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onToggleFullscreen;
   final VoidCallback onToggleBorderless;
+  final bool fullscreenOnLaunch;
+  final ValueChanged<bool>? onFullscreenOnLaunch;
   final bool musicEnabled;
   final double musicVolume;
   final bool uiClicksEnabled;
@@ -126,6 +130,14 @@ class SettingsStub extends StatelessWidget {
                             hint: 'Hide the window frame',
                             value: windowMode.isBorderless,
                             onChanged: (_) => onToggleBorderless(),
+                          ),
+                          _ToggleRow(
+                            key: const Key('settings-fullscreen-on-launch'),
+                            label: 'Fullscreen on launch',
+                            hint:
+                                'Enter covers the display when launching a game (same as F11)',
+                            value: fullscreenOnLaunch,
+                            onChanged: onFullscreenOnLaunch ?? (_) {},
                           ),
                           _ToggleRow(
                             key: const Key('settings-music-enabled'),

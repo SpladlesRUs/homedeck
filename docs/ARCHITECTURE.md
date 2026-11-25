@@ -135,9 +135,12 @@ desktop runner are not in this tree.
 Fullscreen and borderless toggling go through `NativeWindowModeController`
 (F11 and Settings). On Windows the runner `homedeck/win32` MethodChannel
 applies chrome on the real `FlutterWindow` HWND (and native WM_KEYDOWN F11
-toggles the same path). Dart FFI `WindowsWindowChrome` / `window_manager`
-remain fallbacks because 0.7 often never binds the stock Flutter runner.
-Widget tests inject `MemoryWindowModeController`.
+toggles the same path). Successful Home / Library launch also enters that
+chrome when `WindowPrefs.fullscreenOnLaunch` is true (default; Settings
+toggle; mirrored to the runner so Ally Enter→ShellExecute does not skip
+it). Dart FFI `WindowsWindowChrome` / `window_manager` remain fallbacks
+because 0.7 often never binds the stock Flutter runner. Widget tests inject
+`MemoryWindowModeController`.
 
 Gamepad and battery follow the same split: `WindowsXInputGamepad` polls XInput
 on Windows; `WindowsBatteryStatus` reads `GetSystemPowerStatus`. Tests inject

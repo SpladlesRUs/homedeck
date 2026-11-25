@@ -199,6 +199,8 @@ Keyboard:
 - R scans the configured ROM folder into Library as emulated tiles (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
+- Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”
+  is ON (default); Esc / F11 still exit
 - Ctrl+, opens the settings stub
 
 Home is a WiiSU-style paged desktop of pinned shortcuts only — no platform

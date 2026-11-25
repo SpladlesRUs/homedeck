@@ -82,6 +82,11 @@ class HomedeckWin32 {
   // Remember the focused tile launch target for the keyboard hook.
   void SetFocusedLaunch(const std::wstring& path, const std::wstring& args);
 
+  // Mirror Dart WindowPrefs.fullscreenOnLaunch (default true).
+  void SetFullscreenOnLaunch(bool enabled);
+
+  bool FullscreenOnLaunch() const { return fullscreen_on_launch_; }
+
   // Ask Dart to launch the focused tile when [focused_path_] is empty.
   void RequestDartLaunch();
 
@@ -147,6 +152,8 @@ class HomedeckWin32 {
   bool has_restore_ = false;
   std::wstring focused_path_;
   std::wstring focused_args_;
+  // Default ON — console feel; Dart mirrors Settings via setFullscreenOnLaunch.
+  bool fullscreen_on_launch_ = true;
   HHOOK keyboard_hook_ = nullptr;
   // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;
