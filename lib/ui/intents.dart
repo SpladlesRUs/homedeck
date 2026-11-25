@@ -80,3 +80,8 @@ class ScanSteamLibraryIntent extends Intent {
 class ScanStartMenuIntent extends Intent {
   const ScanStartMenuIntent();
 }
+
+/// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
+class PinFocusedToHomeIntent extends Intent {
+  const PinFocusedToHomeIntent();
+}

@@ -59,7 +59,11 @@ unchanged). Start Menu Programs discovery walks
 Settings → Scan Start Menu and bare **P** (`WM_HOMEDECK_SCAN_START_MENU` →
 Dart `scanStartMenu`) call `LibraryController.importStartMenu` (same
 discover → import path; no Home pins). Manual Add (**A** / Open) stays
-available. ROM-folder scanning is still not implemented.
+available. Pinning a focused Library tile to Home uses
+`LibraryController.pinToHome`: humans use Menu / Details → Add to Home;
+Ally / harness uses bare **H** (`WM_HOMEDECK_PIN_HOME` → Dart
+`pinFocusedToHome`) because the Add to Home control is not UIA-reachable.
+ROM-folder scanning is still not implemented.
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
@@ -75,9 +79,9 @@ sheet Confirm; Menu → Add game keeps the full sheet for URI/emulated).
 SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
 `WM_HOMEDECK_ADD` → OFN on the UI thread → Dart `addPickedPath` (Flutter
 Shortcuts alone never saw harness `a` @82a5a20). Optional
-`HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome and
+`HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome,
 Enter→focused launch (with a Dart `launchFocused` fallback when the
-mirrored path is empty).
+mirrored path is empty), and bare **H** → `pinFocusedToHome`.
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

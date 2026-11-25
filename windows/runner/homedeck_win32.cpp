@@ -766,6 +766,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
+      // pins the focused Library record onto Home (same as the menu action).
+      if (info->vkCode == 'H' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_PIN_HOME, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -837,6 +848,18 @@ void HomedeckWin32::HandleScanStartMenuKey() {
   OutputDebugStringW(
       L"homedeck: HandleScanStartMenuKey → Dart scanStartMenu\n");
   channel_->InvokeMethod("scanStartMenu", nullptr);
+}
+
+void HomedeckWin32::HandlePinHomeKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandlePinHomeKey → Dart pinFocusedToHome\n");
+  channel_->InvokeMethod("pinFocusedToHome", nullptr);
 }
 
 void HomedeckWin32::NotifyPickedPath(const std::wstring& path) {

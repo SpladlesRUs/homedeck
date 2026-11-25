@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
       WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
+      WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -147,6 +148,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _scanStartMenuFromNative,
       )) {
         WindowsNativeBridge.onScanStartMenu = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onPinFocusedToHome,
+        _pinFocusedToHomeFromNative,
+      )) {
+        WindowsNativeBridge.onPinFocusedToHome = null;
       }
     }
     _clock?.cancel();
@@ -216,6 +223,32 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanStartMenu();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
+  /// Add to Home on the focused Library record (Ally without menu UIA).
+  Future<void> _pinFocusedToHomeFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _pinFocusedToHome();
+  }
+
+  Future<void> _pinFocusedToHome() async {
+    final focused = _focusedRecord;
+    if (focused == null) {
+      return;
+    }
+    await _library.pinToHome(focused.id);
+    if (!mounted) {
+      return;
+    }
+    // Keep the mirrored launch target so Ally Enter can ShellExecute after
+    // navigating to Home (same path as UI Add to Home → focus → Enter).
+    await _syncNativeFocusedLaunchAwait();
   }
 
   Future<void> _focusAddedApp(AppRecord added) async {
@@ -379,6 +412,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanSteamLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyP):
         const ScanStartMenuIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyH):
+        const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
         const OpenSettingsIntent(),
     const SingleActivator(LogicalKeyboardKey.equal): const OpenMenuIntent(),
@@ -452,6 +487,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanStartMenuIntent: CallbackAction<ScanStartMenuIntent>(
         onInvoke: (_) {
           unawaited(_scanStartMenu());
+          return null;
+        },
+      ),
+      PinFocusedToHomeIntent: CallbackAction<PinFocusedToHomeIntent>(
+        onInvoke: (_) {
+          unawaited(_pinFocusedToHome());
           return null;
         },
       ),
