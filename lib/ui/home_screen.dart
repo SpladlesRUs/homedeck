@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
@@ -65,6 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _steamScanMessage;
   bool _startMenuScanBusy = false;
   String? _startMenuScanMessage;
+  bool _romScanBusy = false;
+  String? _romScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -103,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
       WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
+      WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
     }
     _gamepad.start(_onGamepad);
@@ -148,6 +152,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _scanStartMenuFromNative,
       )) {
         WindowsNativeBridge.onScanStartMenu = null;
+      }
+      if (identical(WindowsNativeBridge.onScanRoms, _scanRomsFromNative)) {
+        WindowsNativeBridge.onScanRoms = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -223,6 +230,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanStartMenu();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `R` / WM_HOMEDECK_SCAN_ROMS — same import as
+  /// Settings → Scan ROM folder (Ally without Settings UIA).
+  Future<void> _scanRomsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanRomFolder();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -349,6 +368,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _pickRomRoot() async {
+    final path = await getDirectoryPath(
+      confirmButtonText: 'Use ROM folder',
+    );
+    if (path == null || path.trim().isEmpty || !mounted) {
+      return;
+    }
+    await _library.setRomRoot(path);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _romScanMessage = 'ROM folder set. Scan to import emulated tiles.';
+    });
+  }
+
+  Future<void> _scanRomFolder() async {
+    if (_romScanBusy) {
+      return;
+    }
+    setState(() {
+      _romScanBusy = true;
+      _romScanMessage = null;
+    });
+    try {
+      final added = await _library.importRoms(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _romScanBusy = false;
+        if (added == 0) {
+          _romScanMessage =
+              'No new ROMs found. Set a ROM folder (or HOMEDECK_ROM_ROOT), then scan again.';
+        } else if (added == 1) {
+          _romScanMessage =
+              'Added 1 ROM to Library. Open Library → By console / Emulated. If launch fails, set an emulator via HOMEDECK_EMULATOR or Manual Add.';
+        } else {
+          _romScanMessage =
+              'Added $added ROMs to Library. Open Library → By console / Emulated. If launch fails, set an emulator via HOMEDECK_EMULATOR or Manual Add.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _romScanBusy = false;
+        _romScanMessage = 'ROM scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -415,6 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanSteamLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyP):
         const ScanStartMenuIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyR):
+        const ScanRomFolderIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -490,6 +564,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanStartMenuIntent: CallbackAction<ScanStartMenuIntent>(
         onInvoke: (_) {
           unawaited(_scanStartMenu());
+          return null;
+        },
+      ),
+      ScanRomFolderIntent: CallbackAction<ScanRomFolderIntent>(
+        onInvoke: (_) {
+          unawaited(_scanRomFolder());
           return null;
         },
       ),
@@ -1601,10 +1681,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       startMenuScanBusy: _startMenuScanBusy,
                       startMenuScanMessage: _startMenuScanMessage,
                       onScanStartMenu: _scanStartMenu,
+                      romRoot: _library.state.romRoot,
+                      onPickRomRoot: () {
+                        unawaited(_pickRomRoot());
+                      },
+                      onScanRoms: _scanRomFolder,
+                      romScanBusy: _romScanBusy,
+                      romScanMessage: _romScanMessage,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
                         _startMenuScanMessage = null;
+                        _romScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

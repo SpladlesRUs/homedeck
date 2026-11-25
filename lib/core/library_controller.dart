@@ -16,7 +16,9 @@ import 'package:homedeck/core/models/tile_kind.dart';
 import 'package:homedeck/core/models/tile_layout.dart';
 import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/preferences_repository.dart';
+import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
+import 'package:homedeck/platform/rom_library.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
@@ -127,11 +129,21 @@ class LibraryController extends ChangeNotifier {
   Future<List<DiscoveredApp>> discoverStartMenu() =>
       _adapter.discoverStartMenu();
 
-  /// Adds discovered apps that are not already in the library (by launch
-  /// target value). Does not pin to Home — Library / By app holds them.
+  /// Platform ROM-folder scan on Windows.
+  Future<List<DiscoveredApp>> discoverRoms() => _adapter.discoverRoms(
+        romRoot: _state.romRoot,
+        emulator: resolveRomEmulator(),
+      );
+
+  /// Adds discovered apps that are not already in the library. Does not pin
+  /// to Home — Library / By app holds them.
+  ///
+  /// Dedupes native / URI / shortcut tiles by launch [LaunchTarget.value], and
+  /// emulated tiles by [LaunchTarget.romPath] so multiple ROMs sharing one
+  /// emulator (or an empty emulator) still import.
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
-  /// [importStartMenu] for Start Menu Programs.
+  /// [importStartMenu] / [importRoms] for the other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -143,12 +155,21 @@ class LibraryController extends ChangeNotifier {
     final existing = <String>{};
     for (final app in apps) {
       for (final target in app.targets.values) {
-        existing.add(target.value.trim().toLowerCase());
+        final key = _importDedupeKey(
+          kind: app.kind,
+          target: target,
+        );
+        if (key.isNotEmpty) {
+          existing.add(key);
+        }
       }
     }
     var added = 0;
     for (final discovery in found) {
-      final key = discovery.target.value.trim().toLowerCase();
+      final key = _importDedupeKey(
+        kind: discovery.kind,
+        target: discovery.target,
+      );
       if (key.isEmpty || existing.contains(key)) {
         continue;
       }
@@ -170,6 +191,75 @@ class LibraryController extends ChangeNotifier {
       pinToHome: pinToHome,
       discover: _adapter.discoverStartMenu,
     );
+  }
+
+  /// ROM-folder discover → Library emulated tiles (no Home pins).
+  Future<int> importRoms({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: discoverRoms,
+    );
+  }
+
+  /// Persist the Settings-chosen ROM folder (Ally may override via env).
+  Future<void> setRomRoot(String? path) async {
+    final trimmed = path?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      await _commit((state) => state.copyWith(clearRomRoot: true));
+      return;
+    }
+    await _commit(
+      (state) => state.copyWith(romRoot: WindowsPaths.normalize(trimmed)),
+    );
+  }
+
+  /// Emulator for ROM imports: `HOMEDECK_EMULATOR`, else the single obvious
+  /// emulator `.exe` already on an emulated library tile, else null/empty.
+  String? resolveRomEmulator() {
+    final fromEnv = RomFolderScanner.defaultEmulatorPath();
+    if (fromEnv != null && fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    return _singleLibraryEmulator();
+  }
+
+  /// When exactly one distinct non-empty emulator path exists among emulated
+  /// library tiles, reuse it. No console taxonomy — ambiguous → leave unset.
+  String? _singleLibraryEmulator() {
+    final found = <String, String>{};
+    for (final app in apps) {
+      if (app.kind != TileKind.emulated) {
+        continue;
+      }
+      for (final target in app.targets.values) {
+        if (target.kind != LaunchTargetKind.windowsEmulated) {
+          continue;
+        }
+        final raw = target.value.trim();
+        if (raw.isEmpty) {
+          continue;
+        }
+        final normalized = WindowsPaths.normalize(raw);
+        found.putIfAbsent(normalized.toLowerCase(), () => normalized);
+      }
+    }
+    if (found.length != 1) {
+      return null;
+    }
+    return found.values.single;
+  }
+
+  static String _importDedupeKey({
+    required TileKind kind,
+    required LaunchTarget target,
+  }) {
+    if (kind == TileKind.emulated || target.isEmulated) {
+      final rom = target.romPath?.trim() ?? '';
+      if (rom.isNotEmpty) {
+        return 'rom:${rom.toLowerCase()}';
+      }
+    }
+    return target.value.trim().toLowerCase();
   }
 
   Future<AppRecord> addRecord({

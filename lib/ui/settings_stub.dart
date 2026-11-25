@@ -3,7 +3,7 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Settings: window chrome, audio, Steam / Start Menu scan, open questions.
+/// Settings: window chrome, audio, Steam / Start Menu / ROM scan, open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -24,6 +24,11 @@ class SettingsStub extends StatelessWidget {
     this.onScanStartMenu,
     this.startMenuScanBusy = false,
     this.startMenuScanMessage,
+    this.romRoot,
+    this.onPickRomRoot,
+    this.onScanRoms,
+    this.romScanBusy = false,
+    this.romScanMessage,
     this.onExit,
   });
 
@@ -44,6 +49,11 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanStartMenu;
   final bool startMenuScanBusy;
   final String? startMenuScanMessage;
+  final String? romRoot;
+  final VoidCallback? onPickRomRoot;
+  final VoidCallback? onScanRoms;
+  final bool romScanBusy;
+  final String? romScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -259,9 +269,92 @@ class SettingsStub extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'ROM folder',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports common ROM files (.iso, .nsp, .xci, .gba, .nds, .3ds, .cia, .wbfs, .rvz, .chd, .zip) as emulated Library tiles with {rom} args. Keyboard R (Ally SendKeys r) runs the same scan. Optional HOMEDECK_ROM_ROOT / HOMEDECK_EMULATOR override the folder and emulator for fixtures. If no emulator is configured, tiles still import — finish the emulator path via Manual Add / edit before launch.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (romRoot != null && romRoot!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              romRoot!,
+                              key: const Key('settings-rom-root-path'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 14,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                          if (onPickRomRoot != null || onScanRoms != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(
+                                spacing: 12,
+                                runSpacing: 8,
+                                children: [
+                                  if (onPickRomRoot != null)
+                                    OutlinedButton(
+                                      key: const Key('settings-pick-rom-root'),
+                                      onPressed: romScanBusy
+                                          ? null
+                                          : onPickRomRoot,
+                                      child: const Text(
+                                        'Choose ROM folder',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  if (onScanRoms != null)
+                                    FilledButton(
+                                      key: const Key('settings-scan-roms'),
+                                      onPressed:
+                                          romScanBusy ? null : onScanRoms,
+                                      child: Text(
+                                        romScanBusy
+                                            ? 'Scanning…'
+                                            : 'Scan ROM folder',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (romScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              romScanMessage!,
+                              key: const Key('settings-scan-roms-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question. ROM-folder discovery is not enabled yet.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), and pin to Home (H) stay unchanged.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

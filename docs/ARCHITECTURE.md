@@ -20,12 +20,12 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
   `path_provider`'s `getApplicationSupportDirectory()`, and the icon cache.
   HomeDeck-owned files are referenced with **relative** paths. User-selected
   launch locations stay device-local.
-- **Platform** (`lib/platform`) discovers Steam installs and Start Menu
-  Programs shortcuts on Windows, resolves icons, validates targets, and
-  launches. On Windows, the runner MethodChannel extracts PE / `.lnk` icons
-  (Dart FFI secondary) into `IconCache`; generated tiles on failure.
-  `selectPlatformAdapter()` is the single switch that returns the adapter for
-  this process.
+- **Platform** (`lib/platform`) discovers Steam installs, Start Menu Programs
+  shortcuts, and configured ROM folders on Windows, resolves icons, validates
+  targets, and launches. On Windows, the runner MethodChannel extracts PE /
+  `.lnk` icons (Dart FFI secondary) into `IconCache`; generated tiles on
+  failure. `selectPlatformAdapter()` is the single switch that returns the
+  adapter for this process.
 
 Navigation uses Flutter `Shortcuts`, `Actions`, and `FocusTraversal` intents
 (`LaunchFocusedIntent`, `DirectionalFocusIntent`, and friends) so a later
@@ -63,7 +63,13 @@ available. Pinning a focused Library tile to Home uses
 `LibraryController.pinToHome`: humans use Menu / Details → Add to Home;
 Ally / harness uses bare **H** (`WM_HOMEDECK_PIN_HOME` → Dart
 `pinFocusedToHome`) because the Add to Home control is not UIA-reachable.
-ROM-folder scanning is still not implemented.
+ROM-folder scanning walks a Settings-persisted folder (or
+`HOMEDECK_ROM_ROOT`) for common extensions and emits `emulated` tiles with
+`{rom}` argsTemplate. Optional `HOMEDECK_EMULATOR` or a single obvious
+library emulator `.exe` fills the emulator path; otherwise the path is left
+empty so Manual Add / edit can finish it. Settings → Scan ROM folder and bare
+**R** (`WM_HOMEDECK_SCAN_ROMS` → Dart `scanRoms`) call
+`LibraryController.importRoms`.
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then

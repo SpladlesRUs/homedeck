@@ -4,6 +4,7 @@ import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/audio_prefs.dart';
 import 'package:homedeck/core/models/launch_target.dart';
+import 'package:homedeck/core/models/tile_kind.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -229,6 +230,98 @@ void main() {
       find.byKey(const Key('settings-scan-start-menu-message')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('bare R imports ROM tiles without opening Settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverRomsResult: [
+          DiscoveredApp(
+            displayName: 'Zelda',
+            kind: TileKind.emulated,
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsEmulated,
+              value: r'C:\Emus\yuzu.exe',
+              romPath: r'D:\Roms\Zelda.nsp',
+              argsTemplate: '{rom}',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('settings-scan-roms')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Zelda');
+    expect(harness.controller.apps.single.kind, TileKind.emulated);
+  });
+
+  testWidgets('settings ROM scan imports discovered ROMs', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverRomsResult: [
+          DiscoveredApp(
+            displayName: 'Mario',
+            kind: TileKind.emulated,
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsEmulated,
+              value: '',
+              romPath: r'D:\Roms\Mario.gba',
+              argsTemplate: '{rom}',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-settings')));
+    await tester.pump();
+
+    final scan = find.byKey(const Key('settings-scan-roms'));
+    expect(scan, findsOneWidget);
+    await tester.ensureVisible(scan);
+    await tester.pump();
+    await tester.tap(scan);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Mario');
+    expect(find.byKey(const Key('settings-scan-roms-message')), findsOneWidget);
   });
 
   testWidgets('window blur ducks menu music and focus restores it', (
