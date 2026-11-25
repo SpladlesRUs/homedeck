@@ -242,18 +242,18 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
             }
             auto ext_it = map->find(flutter::EncodableValue("extensions"));
             if (ext_it != map->end()) {
-              if (const auto* value =
+              if (const auto* ext_csv =
                       std::get_if<std::string>(&ext_it->second)) {
-                extensions = *value;
+                extensions = *ext_csv;
               } else if (const auto* list = std::get_if<flutter::EncodableList>(
                              &ext_it->second)) {
                 extensions.clear();
                 for (const auto& entry : *list) {
-                  if (const auto* value = std::get_if<std::string>(&entry)) {
+                  if (const auto* ext = std::get_if<std::string>(&entry)) {
                     if (!extensions.empty()) {
                       extensions.push_back(',');
                     }
-                    extensions.append(*value);
+                    extensions.append(*ext);
                   }
                 }
               }
