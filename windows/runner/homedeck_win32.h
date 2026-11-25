@@ -15,6 +15,11 @@
 #define WM_HOMEDECK_ADD (WM_APP + 0x41)
 #endif
 
+// One-shot timer id: push HOMEDECK_ADD_PATH into Dart after UI is listening.
+#ifndef HOMEDECK_ADD_PATH_TIMER_ID
+#define HOMEDECK_ADD_PATH_TIMER_ID 0x48444150u /* 'HDAP' */
+#endif
+
 // Native Win32 helpers for Ally Phase2.
 //
 // Ally's harness drives keys with WScript.Shell SendKeys after AppActivate —
@@ -22,6 +27,10 @@
 // sees WM_KEYDOWN and Flutter Shortcuts often never see `a`. A low-level
 // keyboard hook catches F11 / Enter / A while our process is foreground:
 // chrome, ShellExecute, and classic GetOpenFileName without waiting on Dart.
+//
+// HOMEDECK_ADD_PATH: honored at startup (timer → addPickedPath) and on A
+// (skips OFN). Ally @82a5a20 set the env but never reached PickOpenFile, so
+// the bypass never ran — startup seed fixes that diagnostic path.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -54,8 +63,15 @@ class HomedeckWin32 {
   // HOMEDECK_ADD_PATH) then notify Dart via addPickedPath.
   void HandleAddKey();
 
-  // Classic GetOpenFileName titled "Open" (Ally FindWindow) with optional
-  // OK label "Add to HomeDeck". Returns empty string when cancelled.
+  // If HOMEDECK_ADD_PATH is set, notify Dart without showing Open.
+  // Returns true when a path was pushed.
+  bool SeedAutomationAddPath();
+
+  // Absolute path from HOMEDECK_ADD_PATH, or empty when unset.
+  static std::wstring ReadAutomationAddPath();
+
+  // Classic GetOpenFileName titled "Open" (Ally EnumWindows exact title) with
+  // optional OK label "Add to HomeDeck". Returns empty string when cancelled.
   std::wstring PickOpenFile(const std::wstring& filter_label,
                             const std::wstring& extensions,
                             const std::wstring& ok_label);
@@ -63,6 +79,7 @@ class HomedeckWin32 {
  private:
   void NotifyFullscreen();
   void NotifyPickedPath(const std::wstring& path);
+  void ScheduleAutomationSeed();
   void InstallHook();
   void RemoveHook();
   bool IsOurForeground() const;
@@ -82,6 +99,7 @@ class HomedeckWin32 {
   HHOOK keyboard_hook_ = nullptr;
   // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;
+  bool automation_seeded_ = false;
 
   static HomedeckWin32* instance_;
 };

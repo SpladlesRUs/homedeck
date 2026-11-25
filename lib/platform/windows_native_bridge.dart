@@ -179,4 +179,25 @@ class WindowsNativeBridge {
     }
     return result;
   }
+
+  /// Absolute path from process env `HOMEDECK_ADD_PATH` (runner
+  /// `GetEnvironmentVariableW`), or `null` when unset / unavailable.
+  static Future<String?> automationAddPath() async {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    _ensureListening();
+    try {
+      final result = await _channel.invokeMethod<String>('getAutomationAddPath');
+      if (result != null && result.trim().isNotEmpty) {
+        return result.trim();
+      }
+    } on MissingPluginException {
+      // Fall through to Dart env.
+    } on PlatformException {
+      // Fall through to Dart env.
+    }
+    final env = Platform.environment['HOMEDECK_ADD_PATH']?.trim() ?? '';
+    return env.isEmpty ? null : env;
+  }
 }

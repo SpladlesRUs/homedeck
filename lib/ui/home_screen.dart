@@ -108,13 +108,40 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _focusedId != null) {
+      unawaited(_bootstrapFocusAndAutomation());
+    });
+  }
+
+  /// Prefer HOMEDECK_ADD_PATH tile (pin+Enter), else default Home focus.
+  Future<void> _bootstrapFocusAndAutomation() async {
+    if (!mounted) {
+      return;
+    }
+    if (Platform.isWindows) {
+      final applied = await _applyAutomationAddPath();
+      if (!mounted || applied) {
         return;
       }
-      if (_tab == HomeTab.home) {
-        _focusId(nowPlayingId, click: false);
-      }
-    });
+    }
+    if (_focusedId != null) {
+      return;
+    }
+    if (_tab == HomeTab.home) {
+      _focusId(nowPlayingId, click: false);
+    }
+  }
+
+  /// Consume HOMEDECK_ADD_PATH (native env and/or Dart env) so Ally diagnostics
+  /// get apps[] + Enter without needing an Open dialog.
+  Future<bool> _applyAutomationAddPath() async {
+    final native = await WindowsNativeBridge.automationAddPath();
+    final env = Platform.environment['HOMEDECK_ADD_PATH']?.trim() ?? '';
+    final path = (native != null && native.isNotEmpty) ? native : env;
+    if (path.isEmpty) {
+      return false;
+    }
+    await _addPickedPathFromNative(path);
+    return mounted;
   }
 
   @override
@@ -155,13 +182,25 @@ class _HomeScreenState extends State<HomeScreen> {
     _handleConfirm();
   }
 
-  /// Runner WH_KEYBOARD_LL `A` opened classic Open (or HOMEDECK_ADD_PATH) and
-  /// returned a path — persist + pin so Ally Enter can ShellExecute.
+  /// Runner WH_KEYBOARD_LL `A` / startup seed / HOMEDECK_ADD_PATH — persist +
+  /// pin so Ally Enter can ShellExecute.
   Future<void> _addPickedPathFromNative(String path) async {
     if (!mounted || _overlayOpen) {
       return;
     }
-    final picked = WindowsAdapter.pickedLaunchFromPath(path);
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    for (final app in _library.apps) {
+      for (final target in app.targets.values) {
+        if (target.value == trimmed) {
+          await _focusAddedApp(app);
+          return;
+        }
+      }
+    }
+    final picked = WindowsAdapter.pickedLaunchFromPath(trimmed);
     if (picked == null) {
       return;
     }
