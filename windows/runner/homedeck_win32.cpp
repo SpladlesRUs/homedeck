@@ -499,25 +499,25 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
                   std::get_if<flutter::EncodableMap>(call.arguments())) {
             auto label_it = map->find(flutter::EncodableValue("label"));
             if (label_it != map->end()) {
-              if (const auto* value =
+              if (const auto* label_val =
                       std::get_if<std::string>(&label_it->second)) {
-                label = *value;
+                label = *label_val;
               }
             }
             auto ext_it = map->find(flutter::EncodableValue("extensions"));
             if (ext_it != map->end()) {
-              if (const auto* value =
+              if (const auto* ext_str =
                       std::get_if<std::string>(&ext_it->second)) {
-                extensions = *value;
+                extensions = *ext_str;
               } else if (const auto* list = std::get_if<flutter::EncodableList>(
                              &ext_it->second)) {
                 extensions.clear();
                 for (const auto& entry : *list) {
-                  if (const auto* value = std::get_if<std::string>(&entry)) {
+                  if (const auto* ext_item = std::get_if<std::string>(&entry)) {
                     if (!extensions.empty()) {
                       extensions.push_back(',');
                     }
-                    extensions.append(*value);
+                    extensions.append(*ext_item);
                   }
                 }
               }
@@ -525,8 +525,9 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
             auto ok_it =
                 map->find(flutter::EncodableValue("confirmButtonText"));
             if (ok_it != map->end()) {
-              if (const auto* value = std::get_if<std::string>(&ok_it->second)) {
-                ok_label = *value;
+              if (const auto* ok_val =
+                      std::get_if<std::string>(&ok_it->second)) {
+                ok_label = *ok_val;
               }
             }
           }
