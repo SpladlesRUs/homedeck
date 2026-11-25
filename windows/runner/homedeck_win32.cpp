@@ -757,7 +757,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       // Ally M4: bare SendKeys `p` -> Start Menu Programs scan (Settings ->
       // Scan Start Menu) without Settings UIA. M stays move-mode in Dart.
-      if (info->vkCode == 'P' && !modifierHeld()) {
+      if (info->vkCode == 'P' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
