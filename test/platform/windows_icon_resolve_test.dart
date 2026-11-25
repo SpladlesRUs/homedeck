@@ -79,8 +79,16 @@ void main() {
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
+    // Background resolveIcon upgrades may still be writing .tmp icons.
+    for (var i = 0; i < 20; i++) {
+      try {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+        return;
+      } on FileSystemException {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
     }
   });
 
