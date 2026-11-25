@@ -3,7 +3,7 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Settings: window chrome, audio, Steam scan, and open product questions.
+/// Settings: window chrome, audio, Steam / Start Menu scan, open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -21,6 +21,9 @@ class SettingsStub extends StatelessWidget {
     this.onScanSteam,
     this.steamScanBusy = false,
     this.steamScanMessage,
+    this.onScanStartMenu,
+    this.startMenuScanBusy = false,
+    this.startMenuScanMessage,
     this.onExit,
   });
 
@@ -38,6 +41,9 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanSteam;
   final bool steamScanBusy;
   final String? steamScanMessage;
+  final VoidCallback? onScanStartMenu;
+  final bool startMenuScanBusy;
+  final String? startMenuScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -194,6 +200,58 @@ class SettingsStub extends StatelessWidget {
                             Text(
                               steamScanMessage!,
                               key: const Key('settings-scan-steam-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Start Menu',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports Start Menu Programs shortcuts into Library (By app → Other / matching store). Keyboard P (Ally SendKeys p) runs the same scan without opening Settings. Manual Add and Steam Scan (S) stay unchanged.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (onScanStartMenu != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-start-menu'),
+                                onPressed:
+                                    startMenuScanBusy ? null : onScanStartMenu,
+                                child: Text(
+                                  startMenuScanBusy
+                                      ? 'Scanning…'
+                                      : 'Scan Start Menu',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (startMenuScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              startMenuScanMessage!,
+                              key: const Key(
+                                'settings-scan-start-menu-message',
+                              ),
                               style: const TextStyle(
                                 color: HomeDeckColors.muted,
                                 fontSize: 16,

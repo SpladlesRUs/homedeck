@@ -45,7 +45,9 @@ Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
 `steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`
 arguments). New games go to the **Library**; optionally pin them to **Home**.
 Settings → **Scan Steam library** (or keyboard **S**) imports installed Steam
-games as `steam://rungameid/…` tiles. ROM-folder auto-scan is a later milestone.
+games as `steam://rungameid/…` tiles. Settings → **Scan Start Menu** (or
+keyboard **P**) imports Start Menu Programs shortcuts (resolved `.exe` /
+URI / `.lnk`). ROM-folder auto-scan is a later milestone.
 
 Release defaults to an empty library. To preview a full grid in debug only:
 

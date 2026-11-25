@@ -120,13 +120,23 @@ class LibraryController extends ChangeNotifier {
     return _adapter.pickFile(label: label, extensions: extensions);
   }
 
-  /// Platform installed-app scan (Steam library folders on Windows).
+  /// Platform Steam library scan on Windows.
   Future<List<DiscoveredApp>> discoverInstalled() => _adapter.discover();
 
+  /// Platform Start Menu Programs scan on Windows.
+  Future<List<DiscoveredApp>> discoverStartMenu() =>
+      _adapter.discoverStartMenu();
+
   /// Adds discovered apps that are not already in the library (by launch
-  /// target value). Does not pin to Home — Library / By app → Steam holds them.
-  Future<int> importDiscovered({bool pinToHome = false}) async {
-    final found = await _adapter.discover();
+  /// target value). Does not pin to Home — Library / By app holds them.
+  ///
+  /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
+  /// [importStartMenu] for Start Menu Programs.
+  Future<int> importDiscovered({
+    bool pinToHome = false,
+    Future<List<DiscoveredApp>> Function()? discover,
+  }) async {
+    final found = await (discover ?? _adapter.discover)();
     if (found.isEmpty) {
       return 0;
     }
@@ -152,6 +162,14 @@ class LibraryController extends ChangeNotifier {
       added++;
     }
     return added;
+  }
+
+  /// Start Menu Programs discover → same import path as Steam (no Home pins).
+  Future<int> importStartMenu({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverStartMenu,
+    );
   }
 
   Future<AppRecord> addRecord({

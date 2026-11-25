@@ -63,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _settingsOpen = false;
   bool _steamScanBusy = false;
   String? _steamScanMessage;
+  bool _startMenuScanBusy = false;
+  String? _startMenuScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -100,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onLaunchFocused = _launchFocusedFromNative;
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
       WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
+      WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -138,6 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onScanSteam, _scanSteamFromNative)) {
         WindowsNativeBridge.onScanSteam = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onScanStartMenu,
+        _scanStartMenuFromNative,
+      )) {
+        WindowsNativeBridge.onScanStartMenu = null;
       }
     }
     _clock?.cancel();
@@ -197,6 +206,18 @@ class _HomeScreenState extends State<HomeScreen> {
     await _scanSteamLibrary();
   }
 
+  /// Runner WH_KEYBOARD_LL bare `P` / WM_HOMEDECK_SCAN_START_MENU — same
+  /// import as Settings → Scan Start Menu (Ally without Settings UIA).
+  Future<void> _scanStartMenuFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanStartMenu();
+  }
+
   Future<void> _focusAddedApp(AppRecord added) async {
     setState(() {
       _tab = HomeTab.home;
@@ -251,6 +272,43 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _steamScanBusy = false;
         _steamScanMessage = 'Steam scan failed: $error';
+      });
+    }
+  }
+
+  Future<void> _scanStartMenu() async {
+    if (_startMenuScanBusy) {
+      return;
+    }
+    setState(() {
+      _startMenuScanBusy = true;
+      _startMenuScanMessage = null;
+    });
+    try {
+      final added = await _library.importStartMenu(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _startMenuScanBusy = false;
+        if (added == 0) {
+          _startMenuScanMessage =
+              'No new Start Menu apps found. Check Programs shortcuts, then scan again.';
+        } else if (added == 1) {
+          _startMenuScanMessage =
+              'Added 1 Start Menu app to Library. Open Library → By app.';
+        } else {
+          _startMenuScanMessage =
+              'Added $added Start Menu apps to Library. Open Library → By app.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _startMenuScanBusy = false;
+        _startMenuScanMessage = 'Start Menu scan failed: $error';
       });
     }
   }
@@ -319,6 +377,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const SingleActivator(LogicalKeyboardKey.keyA): const AddAppIntent(),
     const SingleActivator(LogicalKeyboardKey.keyS):
         const ScanSteamLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyP):
+        const ScanStartMenuIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
         const OpenSettingsIntent(),
     const SingleActivator(LogicalKeyboardKey.equal): const OpenMenuIntent(),
@@ -386,6 +446,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanSteamLibraryIntent: CallbackAction<ScanSteamLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanSteamLibrary());
+          return null;
+        },
+      ),
+      ScanStartMenuIntent: CallbackAction<ScanStartMenuIntent>(
+        onInvoke: (_) {
+          unawaited(_scanStartMenu());
           return null;
         },
       ),
@@ -1477,9 +1543,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       steamScanBusy: _steamScanBusy,
                       steamScanMessage: _steamScanMessage,
                       onScanSteam: _scanSteamLibrary,
+                      startMenuScanBusy: _startMenuScanBusy,
+                      startMenuScanMessage: _startMenuScanMessage,
+                      onScanStartMenu: _scanStartMenu,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
+                        _startMenuScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

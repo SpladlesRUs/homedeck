@@ -20,11 +20,12 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
   `path_provider`'s `getApplicationSupportDirectory()`, and the icon cache.
   HomeDeck-owned files are referenced with **relative** paths. User-selected
   launch locations stay device-local.
-- **Platform** (`lib/platform`) discovers Steam installs on Windows, resolves
-  icons, validates targets, and launches. On Windows, the runner MethodChannel
-  extracts PE / `.lnk` icons (Dart FFI secondary) into `IconCache`; generated
-  tiles on failure. `selectPlatformAdapter()` is the single switch that returns
-  the adapter for this process.
+- **Platform** (`lib/platform`) discovers Steam installs and Start Menu
+  Programs shortcuts on Windows, resolves icons, validates targets, and
+  launches. On Windows, the runner MethodChannel extracts PE / `.lnk` icons
+  (Dart FFI secondary) into `IconCache`; generated tiles on failure.
+  `selectPlatformAdapter()` is the single switch that returns the adapter for
+  this process.
 
 Navigation uses Flutter `Shortcuts`, `Actions`, and `FocusTraversal` intents
 (`LaunchFocusedIntent`, `DirectionalFocusIntent`, and friends) so a later
@@ -49,8 +50,16 @@ finds Steam via registry / common `ProgramFiles` candidates (optional
 `steam://rungameid/{appid}`. Settings → Scan Steam library and bare keyboard
 **S** (runner `WH_KEYBOARD_LL` → `WM_HOMEDECK_SCAN_STEAM` → Dart `scanSteam`)
 both call `LibraryController.importDiscovered` (Library only; Home pins
-unchanged). Manual Add (**A** / Open) stays available. ROM-folder scanning is
-still not implemented.
+unchanged). Start Menu Programs discovery walks
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs` and
+`%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs` (optional
+`HOMEDECK_START_MENU_ROOT` fixture), resolves `.lnk` via runner
+`resolveShortcut` (IShellLink GetPath), and emits
+`windowsExecutable` / `windowsUri` / `windowsShortcut` targets.
+Settings → Scan Start Menu and bare **P** (`WM_HOMEDECK_SCAN_START_MENU` →
+Dart `scanStartMenu`) call `LibraryController.importStartMenu` (same
+discover → import path; no Home pins). Manual Add (**A** / Open) stays
+available. ROM-folder scanning is still not implemented.
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
