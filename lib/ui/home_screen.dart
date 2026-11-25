@@ -13,6 +13,9 @@ import 'package:homedeck/core/models/home_deck_state.dart';
 import 'package:homedeck/core/models/launch_outcome.dart';
 import 'package:homedeck/core/ui_clicks.dart';
 import 'package:homedeck/core/window_mode.dart';
+import 'package:homedeck/core/models/app_platform.dart';
+import 'package:homedeck/platform/windows_adapter.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
@@ -24,8 +27,6 @@ import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
-import 'package:homedeck/platform/windows_adapter.dart';
-import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/tile_menu.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -94,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     if (Platform.isWindows) {
       WindowsNativeBridge.ensureInitialized();
+      WindowsNativeBridge.onLaunchFocused = _launchFocusedFromNative;
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
     }
     _gamepad.start(_onGamepad);
@@ -120,6 +122,12 @@ class _HomeScreenState extends State<HomeScreen> {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     if (Platform.isWindows) {
       if (identical(
+        WindowsNativeBridge.onLaunchFocused,
+        _launchFocusedFromNative,
+      )) {
+        WindowsNativeBridge.onLaunchFocused = null;
+      }
+      if (identical(
         WindowsNativeBridge.onAddPickedPath,
         _addPickedPathFromNative,
       )) {
@@ -139,8 +147,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// Runner WH_KEYBOARD_LL / WM_KEYDOWN Enter when mirrored path was empty.
+  Future<void> _launchFocusedFromNative() async {
+    if (!mounted || _overlayOpen) {
+      return;
+    }
+    _handleConfirm();
+  }
+
   /// Runner WH_KEYBOARD_LL `A` opened classic Open (or HOMEDECK_ADD_PATH) and
-  /// returned a path — persist + write icons/<id>.png for Ally.
+  /// returned a path — persist + pin so Ally Enter can ShellExecute.
   Future<void> _addPickedPathFromNative(String path) async {
     if (!mounted || _overlayOpen) {
       return;
@@ -158,10 +174,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
+    await _focusAddedApp(added);
+  }
+
+  Future<void> _focusAddedApp(AppRecord added) async {
     setState(() {
       _tab = HomeTab.home;
       _focusedId = added.id;
     });
+    await _syncNativeFocusedLaunchAwait();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -172,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return;
         }
         _nodeFor(added.id).requestFocus();
+        unawaited(_syncNativeFocusedLaunchAwait());
       });
     });
   }
@@ -179,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onLibrary() {
     if (mounted) {
       setState(() {});
+      _syncNativeFocusedLaunch();
     }
   }
 
@@ -716,33 +739,21 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (Platform.isWindows) {
-      // Ally Phase2: SendKeys 'a' waits for the native Open dialog
-      // ("Add to HomeDeck") and checks icons\ + library.json after it
-      // closes — it never Confirms the in-app Add sheet. Opening only
-      // the sheet left apps=[] and only _homedeck_ready.png (43e9da7).
+      // Ally Phase2: SendKeys 'a' is handled by WH_KEYBOARD_LL → WM_HOMEDECK_ADD
+      // → runner GetOpenFileName → addPickedPath (see _addPickedPathFromNative).
+      // Empty Add slots / Menu paths still one-shot pick here so tiles land
+      // without Confirm on an in-app sheet. @82a5a20 failed because Shortcuts
+      // never saw `a`, so this path never ran under the harness.
       final added = await _library.addFromPicker();
       if (!mounted || added == null) {
         return;
       }
-      setState(() {
-        _tab = HomeTab.home;
-        _focusedId = added.id;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        _focusId(added.id);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
-            return;
-          }
-          _nodeFor(added.id).requestFocus();
-        });
-      });
+      await _focusAddedApp(added);
       return;
     }
     setState(() => _addOpen = true);
+    // Clear runner Enter target while the Add sheet owns Enter / Confirm.
+    _syncNativeFocusedLaunch();
   }
 
   void _requestRemove() {
@@ -949,6 +960,58 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _nodeFor(id).requestFocus();
+    _syncNativeFocusedLaunch();
+  }
+
+  /// Mirror the focused exe/lnk/URI into the runner so Ally SendKeys Enter
+  /// can ShellExecute without a Flutter KeyEvent (WH_KEYBOARD_LL path).
+  void _syncNativeFocusedLaunch() {
+    if (!Platform.isWindows) {
+      return;
+    }
+    if (_overlayOpen) {
+      // Clear so Add-sheet Enter confirms instead of re-launching a prior tile.
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    final app = _focusedRecord;
+    if (app == null) {
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    final target =
+        app.targetFor(AppPlatform.windows) ?? app.targets[AppPlatform.windows];
+    if (target == null) {
+      unawaited(WindowsNativeBridge.setFocusedLaunch(null));
+      return;
+    }
+    unawaited(
+      WindowsNativeBridge.setFocusedLaunch(
+        target.value,
+        arguments: target.resolvedArguments,
+      ),
+    );
+  }
+
+  Future<void> _syncNativeFocusedLaunchAwait() async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    final app = _focusedRecord;
+    if (app == null) {
+      await WindowsNativeBridge.setFocusedLaunch(null);
+      return;
+    }
+    final target =
+        app.targetFor(AppPlatform.windows) ?? app.targets[AppPlatform.windows];
+    if (target == null) {
+      await WindowsNativeBridge.setFocusedLaunch(null);
+      return;
+    }
+    await WindowsNativeBridge.setFocusedLaunch(
+      target.value,
+      arguments: target.resolvedArguments,
+    );
   }
 
   void _goToPage(int page, {int? row, bool fromRight = false}) {
@@ -1215,6 +1278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _menuOpen = false;
                           _addOpen = true;
                         });
+                        _syncNativeFocusedLaunch();
                       },
                       onSearch: () {
                         setState(() {
@@ -1289,12 +1353,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       onClose: () => setState(() => _addOpen = false),
                       onAdded: (id) {
                         // Set focused id synchronously so Enter via
-                        // HardwareKeyboard launches even if FocusNode is not
-                        // attached yet (Ally: Enter sent, no notepad).
+                        // HardwareKeyboard / runner hook launches even if
+                        // FocusNode is not attached yet. Await the mirror so
+                        // Ally SendKeys Enter cannot race an empty path.
                         setState(() {
                           _addOpen = false;
                           _focusedId = id;
                         });
+                        unawaited(_syncNativeFocusedLaunchAwait());
                         // Focus after the sheet leaves the tree and the new
                         // Home pin is built; requestFocus on a detached node
                         // was leaving keyboard focus on Now Playing.
@@ -1308,6 +1374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               return;
                             }
                             _nodeFor(id).requestFocus();
+                            unawaited(_syncNativeFocusedLaunchAwait());
                           });
                         });
                       },

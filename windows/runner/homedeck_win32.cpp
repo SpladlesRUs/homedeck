@@ -421,6 +421,33 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(ok));
           return;
         }
+        if (method == "setFocusedLaunch") {
+          std::string path;
+          std::string args;
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto path_it = map->find(flutter::EncodableValue("path"));
+            if (path_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&path_it->second)) {
+                path = *value;
+              }
+            }
+            auto args_it = map->find(flutter::EncodableValue("arguments"));
+            if (args_it != map->end()) {
+              if (const auto* list =
+                      std::get_if<flutter::EncodableList>(&args_it->second)) {
+                args = JoinArgs(*list);
+              } else if (const auto* value =
+                             std::get_if<std::string>(&args_it->second)) {
+                args = *value;
+              }
+            }
+          }
+          SetFocusedLaunch(Utf8ToWide(path), Utf8ToWide(args));
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
         if (method == "writeFile") {
           std::string path;
           std::vector<uint8_t> bytes;
@@ -618,12 +645,18 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
   if (n_code == HC_ACTION && instance_ != nullptr &&
       (w_param == WM_KEYDOWN || w_param == WM_SYSKEYDOWN)) {
     const auto* info = reinterpret_cast<KBDLLHOOKSTRUCT*>(l_param);
-    // While classic Open is up, let OFN own keys (Enter confirms the file).
+    // While classic Open is up, let OFN own keys (Enter confirms the file);
+    // do not ShellExecute a mirrored path (same PID looks "foreground").
     if (info != nullptr && instance_->IsOurForeground() &&
         !instance_->picking_file_) {
       if (info->vkCode == VK_F11) {
         instance_->SetFullscreen(!instance_->IsFullscreen());
         return 1;
+      }
+      if (info->vkCode == VK_RETURN) {
+        if (instance_->HandleEnter()) {
+          return 1;
+        }
       }
       // Ally @1676362: SendKeys `a` never reached Flutter Shortcuts /
       // MethodChannel pickOpenFile → "Open dialog not found" / apps=[].
@@ -640,6 +673,38 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
+}
+
+bool HomedeckWin32::HandleEnter() {
+  // Prefer the mirrored path (no Dart round-trip). When a path is mirrored,
+  // always ShellExecute and consume Enter. When empty, ask Dart (focus may
+  // exist but mirror raced) and do *not* consume so Add-sheet Confirm / OFN
+  // Enter still receive the key.
+  if (LaunchFocused()) {
+    return true;
+  }
+  RequestDartLaunch();
+  return false;
+}
+
+bool HomedeckWin32::LaunchFocused() {
+  if (focused_path_.empty()) {
+    return false;
+  }
+  return Launch(focused_path_, focused_args_);
+}
+
+void HomedeckWin32::SetFocusedLaunch(const std::wstring& path,
+                                     const std::wstring& args) {
+  focused_path_ = path;
+  focused_args_ = args;
+}
+
+void HomedeckWin32::RequestDartLaunch() {
+  if (channel_ == nullptr) {
+    return;
+  }
+  channel_->InvokeMethod("launchFocused", nullptr);
 }
 
 void HomedeckWin32::HandleAddKey() {

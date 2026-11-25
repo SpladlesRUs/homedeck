@@ -50,7 +50,20 @@ launch). Steam library and ROM-folder auto-discovery are **not** implemented;
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
 re-reads to verify `apps.length` matches the in-memory state so an
-empty-file-only result cannot look like a successful add.
+empty-file-only result cannot look like a successful add. It also refuses
+to overwrite a non-empty on-disk library with an empty `apps[]` (stale
+window/audio prefs snapshot). `LibraryController` queues commits and
+persists the live `_state` at write time so a prefs write queued before an
+add cannot land empty after the add. On Windows, keyboard **A** / empty Add slots one-shot open a classic
+`GetOpenFileName` **Open** dialog and pin on confirm (Ally Phase2 expects
+FindWindow-able `Open` after SendKeys `a`, then non-empty `apps` with no
+sheet Confirm; Menu → Add game keeps the full sheet for URI/emulated).
+SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
+`WM_HOMEDECK_ADD` → OFN on the UI thread → Dart `addPickedPath` (Flutter
+Shortcuts alone never saw harness `a` @82a5a20). Optional
+`HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome and
+Enter→focused launch (with a Dart `launchFocused` fallback when the
+mirrored path is empty).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

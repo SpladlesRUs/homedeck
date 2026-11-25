@@ -112,6 +112,7 @@ void main() {
     );
     final added = await harness.controller.addFromPicker();
     expect(added, isNotNull);
+    expect(harness.controller.apps, isNotEmpty);
     expect(harness.controller.isOnHome(added!.id), isTrue);
     final icon = File(p.join(harness.directory.path, 'icons', '${added.id}.png'));
     expect(icon.existsSync(), isTrue);
@@ -119,6 +120,56 @@ void main() {
     final decoded =
         jsonDecode(harness.paths.libraryJsonFile().readAsStringSync()) as Map;
     expect(decoded['apps'] as List, isNotEmpty);
+  });
+
+  test('overlapping window prefs cannot wipe a concurrent add', () async {
+    final harness = await createHarness();
+    // Slow the first prefs write so add finishes building first but prefs
+    // was the race that emptied apps[] on Ally after add_exe PASS.
+    final add = harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final prefs = harness.controller.setWindowPrefs(
+      const WindowPrefs(fullscreen: true),
+    );
+    await Future.wait([add, prefs]);
+    final file = harness.paths.libraryJsonFile();
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
+    expect(harness.controller.apps, isNotEmpty);
+    expect(harness.controller.state.window.fullscreen, isTrue);
+  });
+
+  test('stale empty prefs snapshot cannot clobber apps on disk', () async {
+    final harness = await createHarness();
+    await harness.controller.addRecord(
+      displayName: 'Notepad',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: p.join(harness.directory.path, 'notepad.exe'),
+      ),
+      pinToHome: true,
+    );
+    final file = harness.paths.libraryJsonFile();
+    expect((jsonDecode(file.readAsStringSync()) as Map)['apps'] as List,
+        isNotEmpty);
+
+    // Simulate a stale empty snapshot write (Ally @9800850 close-time fail).
+    await PreferencesRepository(harness.paths).save(
+      const HomeDeckState(window: WindowPrefs(fullscreen: true)),
+    );
+    final decoded = jsonDecode(file.readAsStringSync()) as Map;
+    expect(decoded['apps'] as List, isNotEmpty);
+    final home = decoded['home'] as Map;
+    expect((home['slots'] as List).where((s) => s != null), isNotEmpty);
+    expect(decoded['window'], containsPair('fullscreen', true));
   });
 
   test('addFromPicker with missing .exe still writes icons/<id>.png', () async {

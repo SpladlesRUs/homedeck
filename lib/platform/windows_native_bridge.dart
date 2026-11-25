@@ -10,7 +10,10 @@ import 'package:flutter/services.dart';
 /// never see `a`, so MethodChannel `pickOpenFile` never ran and the harness
 /// logged "Open dialog not found". The runner WH_KEYBOARD_LL hook posts
 /// `WM_HOMEDECK_ADD`, shows classic `GetOpenFileName` titled **Open**
-/// (class `#32770`), then invokes [onAddPickedPath].
+/// (class `#32770`), then invokes [onAddPickedPath]. The same hook handles
+/// F11 chrome and Enter→focused path; Dart mirrors the target via
+/// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
+/// the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -20,6 +23,10 @@ class WindowsNativeBridge {
       StreamController<bool>.broadcast();
 
   static bool _listening = false;
+
+  /// Runner asks Dart to launch the focused tile when the mirrored path is
+  /// empty (Enter via WH_KEYBOARD_LL / top-level WM_KEYDOWN).
+  static Future<void> Function()? onLaunchFocused;
 
   /// Runner finished a native Open pick (WH_KEYBOARD_LL `A` / WM_HOMEDECK_ADD)
   /// and wants Dart to persist + write `icons/<id>.png`.
@@ -45,6 +52,13 @@ class WindowsNativeBridge {
         final value = call.arguments;
         if (value is bool) {
           _fullscreenChanges.add(value);
+        }
+        return;
+      }
+      if (call.method == 'launchFocused') {
+        final handler = onLaunchFocused;
+        if (handler != null) {
+          await handler();
         }
         return;
       }
@@ -104,6 +118,30 @@ class WindowsNativeBridge {
       return false;
     } on PlatformException {
       return false;
+    }
+  }
+
+  /// Tell the runner which path Enter should ShellExecute (keyboard hook).
+  static Future<void> setFocusedLaunch(
+    String? path, {
+    List<String> arguments = const [],
+  }) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    _ensureListening();
+    try {
+      await _channel.invokeMethod<void>(
+        'setFocusedLaunch',
+        <String, Object?>{
+          'path': path ?? '',
+          'arguments': arguments,
+        },
+      );
+    } on MissingPluginException {
+      // Tests / non-runner.
+    } on PlatformException {
+      // Ignore — Dart Enter path remains.
     }
   }
 

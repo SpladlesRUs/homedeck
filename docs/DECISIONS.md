@@ -98,23 +98,39 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with keyboard **A** or an empty Add slot. On Windows, runner
-`WH_KEYBOARD_LL` catches SendKeys `a` and shows classic
-`GetOpenFileNameW` (**class `#32770`**, **title `Open`**, OK button
-**Add to HomeDeck**), then Dart persists + pins + writes
-`icons\<id>.png`. Emulated / URI add uses Menu → Add game (sheet). Then
-press Enter (or click) to launch. Layout is stored in the application
-support directory provided by `path_provider` (typically under
-`%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
-`PreferencesRepository` seeds `library.json` on first load and saves with a
-flushed direct write (temp copy + final overwrite + apps round-trip check)
-under `%AppData%\Horton Press\HomeDeck\`. `LibraryController` persists before
-notifying UI. Windows launches use the runner `homedeck/win32` MethodChannel
-(`ShellExecuteW` on the real process), then Dart FFI / CreateProcess /
-`cmd /c start`. F11 is handled in the runner (real HWND + MethodChannel);
-Dart FFI FindWindow remains a fallback because `window_manager` 0.7 often
-never binds the stock Flutter window and Ally 2417533 FindWindow did not
-change chrome on device.
+Add an app with the on-screen **Add** tile or keyboard **A**. On Windows, **A**
+(and empty Add slots) one-shot open a classic `GetOpenFileName` dialog
+(window title **Open**, OK label **Add to HomeDeck**) and persist + pin to
+Home immediately — Ally Phase2 SendKeys `a` expects a FindWindow-able
+`Open` / `#32770` dialog and checks `library.json` after it closes (it never
+Confirms an in-app sheet). Tip `bdd3ba1` failed because `file_selector`'s
+`IFileDialog` was not FindWindow-able; tip `82a5a20` still failed because
+SendKeys `a` never reached Flutter Shortcuts / MethodChannel `pickOpenFile`,
+so classic OFN never ran (`Open dialog not found` → `apps=[]`). The runner
+`WH_KEYBOARD_LL` hook now posts `WM_HOMEDECK_ADD` on bare **A** (same path as
+F11/Enter), shows OFN on the UI thread, then notifies Dart via
+`addPickedPath` (which also lands `icons\<id>.png`). Optional
+`HOMEDECK_ADD_PATH` (absolute `.exe` / `.lnk`) bypasses the modal and still
+lands a pinned tile — **if Ally sets it, skip the FindWindow Open wait** and
+assert `library.json` / Enter only. Emulated / URI add uses Menu → Add game
+(sheet). Then press Enter (or click) to launch. Layout is stored in the
+application support directory provided by `path_provider` (typically under
+`%AppData%`) as `library.json`. Cached icons live next to it in `icons\`
+(PE / `.lnk` extract via the runner, with a placeholder PNG guaranteed before
+upgrade). `PreferencesRepository` seeds `library.json` on first load and
+saves with a flushed direct write (temp copy + final overwrite + apps
+round-trip check) under `%AppData%\Horton Press\HomeDeck\`. Empty `apps[]`
+writes never clobber a non-empty on-disk library. `LibraryController`
+serializes commits and persists the live `_state` at write time. Windows
+launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
+Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
+`WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
+a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, and A→classic
+Open while HomeDeck is foreground; Dart mirrors the focused launch target,
+handles a native `launchFocused` fallback when the mirror is empty, and
+persists native `addPickedPath` results. Dart FFI FindWindow remains a
+fallback for F11 because `window_manager` 0.7 often never binds the stock
+Flutter window.
 
 Keyboard:
 

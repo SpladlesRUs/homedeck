@@ -22,13 +22,15 @@
 #define WM_HOMEDECK_ADD (WM_APP + 0x41)
 #endif
 
-// Native Win32 helpers for Ally: launch, F11 chrome, PE/.lnk icon extraction,
-// and classic GetOpenFileName for Phase2 FindWindow.
+// Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
+// PE/.lnk icon extraction, and classic GetOpenFileName for Phase2 FindWindow.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
 // found". WH_KEYBOARD_LL posts WM_HOMEDECK_ADD; the UI thread shows OFN titled
-// exactly "Open" (class #32770), then notifies Dart via addPickedPath.
+// exactly "Open" (class #32770), then notifies Dart via addPickedPath. The same
+// hook handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
+// fallback when the mirror is empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -43,6 +45,19 @@ class HomedeckWin32 {
 
   // ShellExecuteW the path (.exe / .lnk / URI). Returns true on success.
   static bool Launch(const std::wstring& path, const std::wstring& args);
+
+  // Launch the path Dart last reported as focused (Enter / A).
+  bool LaunchFocused();
+
+  // Remember the focused tile launch target for the keyboard hook.
+  void SetFocusedLaunch(const std::wstring& path, const std::wstring& args);
+
+  // Ask Dart to launch the focused tile when [focused_path_] is empty.
+  void RequestDartLaunch();
+
+  // Enter: ShellExecute mirrored path, else ask Dart. Always returns true
+  // while HomeDeck should own the key (caller still checks foreground).
+  bool HandleEnter();
 
   // Extract associated / PE icon as PNG bytes (empty optional on failure).
   static std::optional<std::vector<uint8_t>> ExtractIconPng(
@@ -84,8 +99,10 @@ class HomedeckWin32 {
   LONG_PTR restore_style_ = 0;
   RECT restore_rect_{};
   bool has_restore_ = false;
+  std::wstring focused_path_;
+  std::wstring focused_args_;
   HHOOK keyboard_hook_ = nullptr;
-  // True while GetOpenFileName is modal — do not steal A from OFN.
+  // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;
 
   static HomedeckWin32* instance_;

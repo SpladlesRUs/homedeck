@@ -55,8 +55,33 @@ class PreferencesRepository {
     final file = paths.libraryJsonFile();
     final dir = file.parent;
     dir.createSync(recursive: true);
+    // Ally @9800850: refuse to clobber a non-empty on-disk library with an
+    // empty apps[] write (stale window/audio prefs snapshot, or close-time
+    // race). Keep existing apps/layout/home; still apply window/audio.
+    var toWrite = state;
+    if (state.apps.isEmpty && file.existsSync() && file.lengthSync() > 0) {
+      try {
+        final raw = file.readAsStringSync();
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          final existing = HomeDeckState.fromJson(
+            decoded.map((key, value) => MapEntry('$key', value)),
+          );
+          if (existing.apps.isNotEmpty) {
+            toWrite = existing.copyWith(
+              window: state.window,
+              audio: state.audio,
+            );
+          }
+        }
+      } on FormatException {
+        // Fall through — write [state] as given.
+      } on FileSystemException {
+        // Fall through.
+      }
+    }
     const encoder = JsonEncoder.withIndent('  ');
-    final payload = encoder.convert(state.toJson());
+    final payload = encoder.convert(toWrite.toJson());
     // Write via temp then copy+replace so a half-written file is never left
     // as library.json, but always finish with a direct overwrite as well so
     // Windows rename quirks cannot hide the file from Ally.
@@ -82,7 +107,7 @@ class PreferencesRepository {
         file.path,
       );
     }
-    _verifyRoundTrip(file, state);
+    _verifyRoundTrip(file, toWrite);
   }
 
   void _verifyRoundTrip(File file, HomeDeckState state) {
