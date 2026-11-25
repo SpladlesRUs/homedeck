@@ -768,7 +768,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       // Ally M6: bare SendKeys `r` -> ROM-folder scan (Settings -> Scan ROM
       // folder) without Settings UIA.
-      if (info->vkCode == 'R' && !modifierHeld()) {
+      if (info->vkCode == 'R' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
