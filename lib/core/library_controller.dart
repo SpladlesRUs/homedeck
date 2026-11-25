@@ -85,12 +85,26 @@ class LibraryController extends ChangeNotifier {
     }
     // pinToHome defaults true so Ally Phase2 (SendKeys 'a' → Open → Add to
     // HomeDeck) leaves a Home pin without a second Confirm.
-    return addRecord(
+    final record = await addRecord(
       displayName: picked.displayName,
       target: picked.target,
       kind: picked.kind,
       pinToHome: pinToHome,
     );
+    // Refuse "success" without a durable tile PNG (Ally false PASS with
+    // apps=[] / only _homedeck_ready.png).
+    final tile = _icons.absoluteFile(record.iconRef) ??
+        _icons.absoluteFile('icons/${record.id}.png');
+    if (tile == null) {
+      await _icons.writePng(record.id, placeholderPng);
+      final again = _icons.absoluteFile('icons/${record.id}.png');
+      if (again == null) {
+        throw StateError(
+          'addFromPicker produced no icons/${record.id}.png',
+        );
+      }
+    }
+    return record;
   }
 
   Future<String?> pickFile({

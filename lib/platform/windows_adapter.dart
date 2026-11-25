@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:homedeck/core/generated_icon.dart';
 import 'package:homedeck/core/icon_cache.dart';
 import 'package:homedeck/core/models/app_platform.dart';
@@ -13,6 +14,7 @@ import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:homedeck/platform/windows_icon_extractor.dart';
 import 'package:homedeck/platform/windows_io.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 
 typedef FilePickerFn = Future<String?> Function({
   required String label,
@@ -41,6 +43,21 @@ class WindowsAdapter implements PlatformAdapter {
     required String label,
     required List<String> extensions,
   }) async {
+    // Prefer classic GetOpenFileName via the runner. Ally Phase2 @bdd3ba1 /
+    // c8a379f: file_selector's IFileDialog is not FindWindow-able as "Open"
+    // → harness false-PASS add_exe_tile while Dart never got a path
+    // (apps=[], only _homedeck_ready.png). OFN is #32770 titled "Open".
+    try {
+      return await WindowsNativeBridge.pickOpenFile(
+        label: label,
+        extensions: extensions,
+        confirmButtonText: 'Add to HomeDeck',
+      );
+    } on MissingPluginException {
+      // Widget tests / non-runner hosts.
+    } on PlatformException {
+      // Fall through to file_selector.
+    }
     final file = await openFile(
       acceptedTypeGroups: [
         XTypeGroup(label: label, extensions: extensions),

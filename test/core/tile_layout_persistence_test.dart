@@ -121,6 +121,24 @@ void main() {
     expect(decoded['apps'] as List, isNotEmpty);
   });
 
+  test('addFromPicker with missing .exe still writes icons/<id>.png', () async {
+    final harness = await createHarness();
+    final missing = p.join(harness.directory.path, 'Gone.exe');
+    harness.adapter.pick = PickedLaunch(
+      displayName: 'Gone',
+      target: LaunchTarget(
+        platform: AppPlatform.windows,
+        kind: LaunchTargetKind.windowsExecutable,
+        value: missing,
+      ),
+    );
+    final added = await harness.controller.addFromPicker();
+    expect(added, isNotNull);
+    final icon = File(p.join(harness.directory.path, 'icons', '${added!.id}.png'));
+    expect(icon.existsSync(), isTrue);
+    expect(icon.lengthSync(), greaterThan(0));
+  });
+
   test('library layout persists across repository instances', () async {
     final harness = await createHarness();
     await harness.controller.addRecord(

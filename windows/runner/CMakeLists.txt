@@ -40,6 +40,7 @@ target_link_libraries(${BINARY_NAME} PRIVATE
   "ole32.lib"
   "user32.lib"
   "gdi32.lib"
+  "comdlg32.lib"
   "windowscodecs.lib"
 )
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")

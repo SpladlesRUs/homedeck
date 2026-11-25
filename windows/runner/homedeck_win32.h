@@ -42,6 +42,13 @@ class HomedeckWin32 {
   static bool WriteFileBytes(const std::wstring& path,
                              const std::vector<uint8_t>& bytes);
 
+  // Classic GetOpenFileName titled "Open" (Ally FindWindow / SendKeys) with
+  // optional OK label "Add to HomeDeck". Empty string when cancelled.
+  // HOMEDECK_ADD_PATH env bypasses the modal with a fixed path.
+  std::wstring PickOpenFile(const std::wstring& filter_label,
+                            const std::wstring& extensions,
+                            const std::wstring& ok_label);
+
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.
   bool HandleIconDone(LPARAM lparam);
