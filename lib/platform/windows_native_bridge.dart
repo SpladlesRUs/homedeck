@@ -129,4 +129,32 @@ class WindowsNativeBridge {
       // Ignore — Dart Enter path remains.
     }
   }
+
+  /// Classic GetOpenFileName titled `Open` (Ally FindWindow / SendKeys).
+  ///
+  /// Returns the selected path, `null` when cancelled, or throws
+  /// [MissingPluginException] when the runner channel is absent (tests).
+  /// Optional `HOMEDECK_ADD_PATH` env bypasses the modal with a fixed path.
+  static Future<String?> pickOpenFile({
+    required String label,
+    required List<String> extensions,
+    String confirmButtonText = 'Add to HomeDeck',
+  }) async {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    _ensureListening();
+    final result = await _channel.invokeMethod<String>(
+      'pickOpenFile',
+      <String, Object?>{
+        'label': label,
+        'extensions': extensions,
+        'confirmButtonText': confirmButtonText,
+      },
+    );
+    if (result == null || result.trim().isEmpty) {
+      return null;
+    }
+    return result;
+  }
 }

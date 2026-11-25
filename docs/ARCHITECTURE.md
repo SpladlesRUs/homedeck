@@ -52,10 +52,11 @@ empty-file-only result cannot look like a successful add. It also refuses
 to overwrite a non-empty on-disk library with an empty `apps[]` (stale
 window/audio prefs snapshot). `LibraryController` queues commits and
 persists the live `_state` at write time so a prefs write queued before an
-add cannot land empty after the add. On Windows, keyboard **A** / empty Add slots one-shot open the native
-file picker and pin on confirm (Ally Phase2 expects `Open` after SendKeys
-`a`, then non-empty `apps` with no sheet Confirm; Menu → Add game keeps
-the full sheet for URI/emulated). The runner `homedeck/win32` channel plus
+add cannot land empty after the add. On Windows, keyboard **A** / empty Add slots one-shot open a classic
+`GetOpenFileName` **Open** dialog (runner `pickOpenFile`) and pin on
+confirm (Ally Phase2 expects FindWindow-able `Open` after SendKeys `a`,
+then non-empty `apps` with no sheet Confirm; Menu → Add game keeps the
+full sheet for URI/emulated). The runner `homedeck/win32` channel plus
 a low-level keyboard hook handle F11 chrome and Enter→focused launch
 (with a Dart `launchFocused` fallback when the mirrored path is empty).
 `IconCache` writes PNG tiles under `icons/` in that same tree.

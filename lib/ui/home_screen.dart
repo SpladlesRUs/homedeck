@@ -684,13 +684,12 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (Platform.isWindows) {
-      // Ally Phase2 harness: SendKeys 'a' then waits for a native "Open"
-      // dialog titled with confirm "Add to HomeDeck", and expects
-      // library.json to contain the target after that dialog closes — it
-      // never Confirm-s an in-app Add sheet. One-shot pick+add matches that.
-      // (Prior tips left apps=[] because the sheet opened and no Open dialog
-      // appeared; the harness still logged add PASS due to PowerShell
-      // Write-Output pollution on a false return.)
+      // Ally Phase2 harness: SendKeys 'a' then waits for FindWindow-able
+      // classic Open (#32770 / title "Open", OK "Add to HomeDeck"). One-shot
+      // pick+add matches that — never Confirm an in-app Add sheet.
+      // @bdd3ba1 still failed: file_selector IFileDialog was not FindWindow-
+      // able ("Open dialog not found") so apps=[] and Enter had no path.
+      // Picker now uses runner GetOpenFileName (see WindowsAdapter).
       final added = await _library.addFromPicker();
       if (!mounted || added == null) {
         return;

@@ -43,6 +43,12 @@ class HomedeckWin32 {
   // while HomeDeck should own the key (caller still checks foreground).
   bool HandleEnter();
 
+  // Classic GetOpenFileName titled "Open" (Ally FindWindow) with optional
+  // OK label "Add to HomeDeck". Returns empty string when cancelled.
+  std::wstring PickOpenFile(const std::wstring& filter_label,
+                            const std::wstring& extensions,
+                            const std::wstring& ok_label);
+
  private:
   void NotifyFullscreen();
   void InstallHook();
@@ -61,6 +67,8 @@ class HomedeckWin32 {
   std::wstring focused_path_;
   std::wstring focused_args_;
   HHOOK keyboard_hook_ = nullptr;
+  // True while GetOpenFileName is modal — do not steal Enter/F11 from OFN.
+  bool picking_file_ = false;
 
   static HomedeckWin32* instance_;
 };

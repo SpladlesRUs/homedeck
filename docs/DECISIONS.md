@@ -79,13 +79,16 @@ flutter build windows --release
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
 Add an app with the on-screen **Add** tile or keyboard **A**. On Windows, **A**
-(and empty Add slots) one-shot open the native file picker (`Open` / **Add to
-HomeDeck**) and persist + pin to Home immediately — Ally Phase2 SendKeys `a`
-expects that dialog and checks `library.json` after it closes (it never
-Confirms an in-app sheet). Prior tips left `apps=[]` because only the Add
-sheet opened (no Open dialog); the harness still logged add PASS due to
-PowerShell `Write-Output` polluting a `$false` return. Emulated / URI add
-uses Menu → Add game (sheet). Then press Enter (or click) to launch.
+(and empty Add slots) one-shot open a classic `GetOpenFileName` dialog
+(window title **Open**, OK label **Add to HomeDeck**) via the runner
+`homedeck/win32` channel and persist + pin to Home immediately — Ally Phase2
+SendKeys `a` expects a FindWindow-able `Open` / `#32770` dialog and checks
+`library.json` after it closes (it never Confirms an in-app sheet). Tip
+`bdd3ba1` still failed because `file_selector`'s `IFileDialog` never produced
+a harness-visible Open window (`Open dialog not found` → `apps=[]`). Optional
+`HOMEDECK_ADD_PATH` bypasses the modal with a fixed exe/lnk for automation.
+Emulated / URI add uses Menu → Add game (sheet). Then press Enter (or click)
+to launch.
 Layout is stored in the application support directory provided by
 `path_provider` (typically under `%AppData%`) as `library.json`. Cached icons
 live next to it in `icons\`. `PreferencesRepository` seeds `library.json` on

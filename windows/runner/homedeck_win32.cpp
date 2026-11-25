@@ -1,11 +1,40 @@
 #include "homedeck_win32.h"
 
 #include <flutter/standard_method_codec.h>
+#include <commdlg.h>
 #include <shellapi.h>
+
+#include "utils.h"
 
 namespace {
 
 constexpr char kChannel[] = "homedeck/win32";
+
+// CDN_INITDONE hook: rename OK so Ally/SendKeys can target "Add to HomeDeck"
+// while the window title stays the classic FindWindow-able "Open".
+struct PickHookState {
+  const wchar_t* ok_label = nullptr;
+};
+
+UINT_PTR CALLBACK PickOpenHook(HWND hwnd, UINT msg, WPARAM, LPARAM lparam) {
+  if (msg == WM_INITDIALOG) {
+    // Explorer-style OFN: hook owns the child; parent is the "#32770" "Open".
+    return FALSE;
+  }
+  if (msg == WM_NOTIFY) {
+    const auto* notify = reinterpret_cast<LPOFNOTIFY>(lparam);
+    if (notify != nullptr && notify->hdr.code == CDN_INITDONE &&
+        notify->lpOFN != nullptr) {
+      const auto* state =
+          reinterpret_cast<PickHookState*>(notify->lpOFN->lCustData);
+      if (state != nullptr && state->ok_label != nullptr &&
+          state->ok_label[0] != L'\0') {
+        CommDlg_OpenSave_SetControlText(GetParent(hwnd), IDOK, state->ok_label);
+      }
+    }
+  }
+  return FALSE;
+}
 
 std::wstring Utf8ToWide(const std::string& utf8) {
   if (utf8.empty()) {
@@ -48,6 +77,52 @@ std::string JoinArgs(const flutter::EncodableList& args) {
     }
   }
   return joined;
+}
+
+// Build OPENFILENAME filter: "Label\0*.exe;*.lnk\0All files\0*.*\0\0"
+std::wstring BuildFilter(const std::wstring& label,
+                         const std::wstring& extensions) {
+  std::wstring filter;
+  filter.append(label.empty() ? L"Files" : label);
+  filter.push_back(L'\0');
+  if (extensions.empty()) {
+    filter.append(L"*.*");
+  } else {
+    bool first = true;
+    size_t start = 0;
+    while (start <= extensions.size()) {
+      size_t comma = extensions.find(L',', start);
+      if (comma == std::wstring::npos) {
+        comma = extensions.size();
+      }
+      std::wstring ext = extensions.substr(start, comma - start);
+      while (!ext.empty() && ext.front() == L'.') {
+        ext.erase(ext.begin());
+      }
+      if (!ext.empty()) {
+        if (!first) {
+          filter.push_back(L';');
+        }
+        first = false;
+        filter.append(L"*.");
+        filter.append(ext);
+      }
+      if (comma >= extensions.size()) {
+        break;
+      }
+      start = comma + 1;
+    }
+    if (first) {
+      filter.append(L"*.*");
+    }
+  }
+  filter.push_back(L'\0');
+  filter.append(L"All files");
+  filter.push_back(L'\0');
+  filter.append(L"*.*");
+  filter.push_back(L'\0');
+  filter.push_back(L'\0');
+  return filter;
 }
 
 }  // namespace
@@ -149,6 +224,59 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(fullscreen_));
           return;
         }
+        if (method == "pickOpenFile") {
+          // Ally Phase2 @bdd3ba1: file_selector IFileDialog never produced a
+          // FindWindow-able "Open" dialog after SendKeys a → apps=[] / no Enter
+          // target. Classic GetOpenFileName is #32770 titled "Open".
+          std::string label = "Windows apps";
+          std::string extensions = "exe,lnk";
+          std::string ok_label = "Add to HomeDeck";
+          if (const auto* map =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto label_it = map->find(flutter::EncodableValue("label"));
+            if (label_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&label_it->second)) {
+                label = *value;
+              }
+            }
+            auto ext_it = map->find(flutter::EncodableValue("extensions"));
+            if (ext_it != map->end()) {
+              if (const auto* value =
+                      std::get_if<std::string>(&ext_it->second)) {
+                extensions = *value;
+              } else if (const auto* list = std::get_if<flutter::EncodableList>(
+                             &ext_it->second)) {
+                extensions.clear();
+                for (const auto& entry : *list) {
+                  if (const auto* value = std::get_if<std::string>(&entry)) {
+                    if (!extensions.empty()) {
+                      extensions.push_back(',');
+                    }
+                    extensions.append(*value);
+                  }
+                }
+              }
+            }
+            auto ok_it =
+                map->find(flutter::EncodableValue("confirmButtonText"));
+            if (ok_it != map->end()) {
+              if (const auto* value = std::get_if<std::string>(&ok_it->second)) {
+                ok_label = *value;
+              }
+            }
+          }
+          const std::wstring path =
+              PickOpenFile(Utf8ToWide(label), Utf8ToWide(extensions),
+                           Utf8ToWide(ok_label));
+          if (path.empty()) {
+            result->Success(flutter::EncodableValue());
+          } else {
+            result->Success(
+                flutter::EncodableValue(Utf8FromUtf16(path.c_str())));
+          }
+          return;
+        }
         result->NotImplemented();
       });
   InstallHook();
@@ -197,7 +325,10 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
   if (n_code == HC_ACTION && instance_ != nullptr &&
       (w_param == WM_KEYDOWN || w_param == WM_SYSKEYDOWN)) {
     const auto* info = reinterpret_cast<KBDLLHOOKSTRUCT*>(l_param);
-    if (info != nullptr && instance_->IsOurForeground()) {
+    // While classic Open is up, Enter confirms the file — do not ShellExecute
+    // a mirrored path (same PID would otherwise look "foreground" to us).
+    if (info != nullptr && instance_->IsOurForeground() &&
+        !instance_->picking_file_) {
       if (info->vkCode == VK_F11) {
         instance_->SetFullscreen(!instance_->IsFullscreen());
         return 1;
@@ -276,6 +407,61 @@ bool HomedeckWin32::SetFullscreen(bool fullscreen) {
   fullscreen_ = false;
   NotifyFullscreen();
   return true;
+}
+
+std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
+                                         const std::wstring& extensions,
+                                         const std::wstring& ok_label) {
+  // Automation bypass: Ally / CI can set HOMEDECK_ADD_PATH to a real
+  // notepad.exe / .lnk and skip the modal when SendKeys cannot drive OFN.
+  wchar_t env_path[32768];
+  const DWORD env_len =
+      GetEnvironmentVariableW(L"HOMEDECK_ADD_PATH", env_path, ARRAYSIZE(env_path));
+  if (env_len > 0 && env_len < ARRAYSIZE(env_path)) {
+    OutputDebugStringW(
+        L"homedeck: pickOpenFile using HOMEDECK_ADD_PATH bypass\n");
+    return std::wstring(env_path, env_len);
+  }
+
+  std::wstring filter = BuildFilter(filter_label, extensions);
+  wchar_t file[32768] = {};
+  PickHookState hook_state;
+  hook_state.ok_label = ok_label.c_str();
+
+  OPENFILENAMEW ofn{};
+  ofn.lStructSize = sizeof(ofn);
+  ofn.hwndOwner = window_ != nullptr ? window_->GetHandle() : nullptr;
+  ofn.lpstrFilter = filter.c_str();
+  ofn.nFilterIndex = 1;
+  ofn.lpstrFile = file;
+  ofn.nMaxFile = ARRAYSIZE(file);
+  // Explicit title — Ally Phase2 FindWindow(null, "Open") / class #32770.
+  ofn.lpstrTitle = L"Open";
+  ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST |
+              OFN_HIDEREADONLY | OFN_NOCHANGEDIR | OFN_ENABLEHOOK |
+              OFN_ENABLESIZING;
+  ofn.lpfnHook = PickOpenHook;
+  ofn.lCustData = reinterpret_cast<LPARAM>(&hook_state);
+
+  if (ofn.hwndOwner != nullptr) {
+    SetForegroundWindow(ofn.hwndOwner);
+  }
+
+  OutputDebugStringW(L"homedeck: GetOpenFileNameW showing classic Open\n");
+  picking_file_ = true;
+  const BOOL ok = GetOpenFileNameW(&ofn);
+  picking_file_ = false;
+  if (!ok) {
+    const DWORD err = CommDlgExtendedError();
+    if (err != 0) {
+      OutputDebugStringW(L"homedeck: GetOpenFileNameW failed (CommDlg error)\n");
+    } else {
+      OutputDebugStringW(L"homedeck: GetOpenFileNameW cancelled\n");
+    }
+    return std::wstring();
+  }
+  OutputDebugStringW(L"homedeck: GetOpenFileNameW accepted path\n");
+  return std::wstring(file);
 }
 
 bool HomedeckWin32::Launch(const std::wstring& path,
