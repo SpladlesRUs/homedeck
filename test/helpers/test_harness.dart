@@ -37,19 +37,46 @@ class SequentialIds {
 class MemoryWindowsIo implements WindowsIo {
   MemoryWindowsIo({
     Set<String>? existing,
+    Set<String>? directories,
     Set<String>? readyVolumes,
+    Map<String, String>? textFiles,
+    Map<String, List<String>>? directoryEntries,
     this.permissionDenied = const {},
   }) : existing = existing ?? {},
-       readyVolumes = readyVolumes ?? {};
+       directories = directories ?? {},
+       readyVolumes = readyVolumes ?? {},
+       textFiles = textFiles ?? {},
+       directoryEntries = directoryEntries ?? {};
 
   final Set<String> existing;
+  final Set<String> directories;
   final Set<String> readyVolumes;
+  final Map<String, String> textFiles;
+  final Map<String, List<String>> directoryEntries;
   final Set<String> permissionDenied;
   final launches =
       <({String executable, List<String> arguments, bool shortcut})>[];
 
   @override
-  Future<bool> fileExists(String path) async => existing.contains(path);
+  Future<bool> fileExists(String path) async =>
+      existing.contains(path) || textFiles.containsKey(path);
+
+  @override
+  Future<bool> directoryExists(String path) async =>
+      directories.contains(path) || directoryEntries.containsKey(path);
+
+  @override
+  Future<List<String>> listDirectory(String path) async =>
+      List<String>.from(directoryEntries[path] ?? const []);
+
+  @override
+  Future<String> readTextFile(String path) async {
+    final text = textFiles[path];
+    if (text == null) {
+      throw FileSystemException('File not found', path);
+    }
+    return text;
+  }
 
   @override
   Future<bool> volumeReady(String rootPrefix) async =>

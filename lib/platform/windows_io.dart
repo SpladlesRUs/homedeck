@@ -7,9 +7,16 @@ import 'package:homedeck/platform/windows_shell.dart';
 /// Filesystem and process operations used by [WindowsAdapter].
 ///
 /// Injected so path handling (spaces, Unicode, missing files, removed
-/// volumes) can be tested without a real Windows box.
+/// volumes) and Steam discovery can be tested without a real Windows box.
 abstract class WindowsIo {
   Future<bool> fileExists(String path);
+
+  Future<bool> directoryExists(String path);
+
+  /// Basename entries only (files and subdirectories).
+  Future<List<String>> listDirectory(String path);
+
+  Future<String> readTextFile(String path);
 
   Future<bool> volumeReady(String rootPrefix);
 
@@ -28,6 +35,25 @@ class DartWindowsIo implements WindowsIo {
 
   @override
   Future<bool> fileExists(String path) => File(path).exists();
+
+  @override
+  Future<bool> directoryExists(String path) => Directory(path).exists();
+
+  @override
+  Future<List<String>> listDirectory(String path) async {
+    final dir = Directory(path);
+    if (!await dir.exists()) {
+      return const [];
+    }
+    final names = <String>[];
+    await for (final entity in dir.list(followLinks: false)) {
+      names.add(WindowsPaths.basename(entity.path));
+    }
+    return names;
+  }
+
+  @override
+  Future<String> readTextFile(String path) => File(path).readAsString();
 
   @override
   Future<bool> volumeReady(String rootPrefix) => Directory(rootPrefix).exists();

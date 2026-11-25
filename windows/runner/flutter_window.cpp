@@ -59,6 +59,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleAddKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_SCAN_STEAM) {
+    win32_.HandleScanSteamKey();
+    return 0;
+  }
   // Ally Phase2: F11 posted to the top-level HWND never changed chrome when
   // Dart only used FindWindow / window_manager. Toggle via the real HWND and
   // let Dart sync badge/prefs over the method channel event.
@@ -80,6 +84,16 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                       (GetKeyState(VK_RWIN) & 0x8000) != 0;
     if (!mods) {
       win32_.HandleAddKey();
+      return 0;
+    }
+  }
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) && wparam == 'S') {
+    const bool mods = (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
+                      (GetKeyState(VK_MENU) & 0x8000) != 0 ||
+                      (GetKeyState(VK_LWIN) & 0x8000) != 0 ||
+                      (GetKeyState(VK_RWIN) & 0x8000) != 0;
+    if (!mods) {
+      win32_.HandleScanSteamKey();
       return 0;
     }
   }

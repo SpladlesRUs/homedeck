@@ -20,11 +20,11 @@ lib/platform    PlatformAdapter, WindowsAdapter, selectPlatformAdapter()
   `path_provider`'s `getApplicationSupportDirectory()`, and the icon cache.
   HomeDeck-owned files are referenced with **relative** paths. User-selected
   launch locations stay device-local.
-- **Platform** (`lib/platform`) discovers (later), resolves icons, validates
-  targets, and launches. On Windows, the runner MethodChannel extracts PE /
-  `.lnk` icons (Dart FFI secondary) into `IconCache`; generated tiles on
-  failure. `selectPlatformAdapter()` is the single switch that returns the
-  adapter for this process.
+- **Platform** (`lib/platform`) discovers Steam installs on Windows, resolves
+  icons, validates targets, and launches. On Windows, the runner MethodChannel
+  extracts PE / `.lnk` icons (Dart FFI secondary) into `IconCache`; generated
+  tiles on failure. `selectPlatformAdapter()` is the single switch that returns
+  the adapter for this process.
 
 Navigation uses Flutter `Shortcuts`, `Actions`, and `FocusTraversal` intents
 (`LaunchFocusedIntent`, `DirectionalFocusIntent`, and friends) so a later
@@ -42,10 +42,15 @@ the library entry.
 Native Windows targets are a `.exe`, a `.lnk`, or a store URI
 (`steam://rungameid/…`, Epic, GOG, Xbox). Emulated targets are an emulator
 executable plus a `romPath` and an `argsTemplate` (`{rom}` is replaced at
-launch). Steam library and ROM-folder auto-discovery are **not** implemented;
-`PlatformAdapter.discover()` is the extension point and currently returns
-`[]`. A later scanner should emit `DiscoveredApp` (with `TileKind`) and call
-`LibraryController.addRecord` without changing the home widgets.
+launch). Windows Steam discovery is implemented: `WindowsAdapter.discover()`
+finds Steam via registry / common `ProgramFiles` candidates (optional
+`HOMEDECK_STEAM_ROOT` fixture), reads `steamapps/libraryfolders.vdf` and
+`appmanifest_*.acf`, and emits `DiscoveredApp` rows with
+`steam://rungameid/{appid}`. Settings → Scan Steam library and bare keyboard
+**S** (runner `WH_KEYBOARD_LL` → `WM_HOMEDECK_SCAN_STEAM` → Dart `scanSteam`)
+both call `LibraryController.importDiscovered` (Library only; Home pins
+unchanged). Manual Add (**A** / Open) stays available. ROM-folder scanning is
+still not implemented.
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then

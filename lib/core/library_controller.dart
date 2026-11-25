@@ -120,6 +120,40 @@ class LibraryController extends ChangeNotifier {
     return _adapter.pickFile(label: label, extensions: extensions);
   }
 
+  /// Platform installed-app scan (Steam library folders on Windows).
+  Future<List<DiscoveredApp>> discoverInstalled() => _adapter.discover();
+
+  /// Adds discovered apps that are not already in the library (by launch
+  /// target value). Does not pin to Home — Library / By app → Steam holds them.
+  Future<int> importDiscovered({bool pinToHome = false}) async {
+    final found = await _adapter.discover();
+    if (found.isEmpty) {
+      return 0;
+    }
+    final existing = <String>{};
+    for (final app in apps) {
+      for (final target in app.targets.values) {
+        existing.add(target.value.trim().toLowerCase());
+      }
+    }
+    var added = 0;
+    for (final discovery in found) {
+      final key = discovery.target.value.trim().toLowerCase();
+      if (key.isEmpty || existing.contains(key)) {
+        continue;
+      }
+      await addRecord(
+        displayName: discovery.displayName,
+        target: discovery.target,
+        kind: discovery.kind,
+        pinToHome: pinToHome,
+      );
+      existing.add(key);
+      added++;
+    }
+    return added;
+  }
+
   Future<AppRecord> addRecord({
     required String displayName,
     required LaunchTarget target,
