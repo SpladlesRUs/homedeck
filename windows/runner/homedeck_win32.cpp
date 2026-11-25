@@ -213,12 +213,15 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
 }
 
 bool HomedeckWin32::HandleEnter() {
-  // Prefer the mirrored path (no Dart round-trip). When empty — Add sheet
-  // open, or Ally Enter racing setFocusedLaunch — ask Dart and do *not*
-  // consume the key so Add Confirm still receives Enter.
+  // Prefer the mirrored path (no Dart round-trip). Ally @ed8669d still saw
+  // no notepad because adds never landed (Open dialog never opened), so
+  // focused_path_ stayed empty — LaunchFocused could not run. When a path
+  // is mirrored, always ShellExecute and consume Enter.
   if (LaunchFocused()) {
     return true;
   }
+  // Path empty: ask Dart (focus may exist but mirror raced). Do *not*
+  // consume so Add-sheet Confirm / file-dialog Enter still receive the key.
   RequestDartLaunch();
   return false;
 }

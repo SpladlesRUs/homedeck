@@ -52,10 +52,12 @@ empty-file-only result cannot look like a successful add. It also refuses
 to overwrite a non-empty on-disk library with an empty `apps[]` (stale
 window/audio prefs snapshot). `LibraryController` queues commits and
 persists the live `_state` at write time so a prefs write queued before an
-add cannot land empty after the add. On Windows the runner
-`homedeck/win32` channel plus a low-level keyboard hook handle F11 chrome
-and Enter→focused launch (with a Dart `launchFocused` fallback when the
-mirrored path is empty) for Ally's SendKeys harness.
+add cannot land empty after the add. On Windows, keyboard **A** / Add tile
+one-shot opens the native file picker and pins on confirm (Ally Phase2
+expects `Open` after SendKeys `a`, then non-empty `apps` with no sheet
+Confirm). The runner `homedeck/win32` channel plus a low-level keyboard
+hook handle F11 chrome and Enter→focused launch (with a Dart
+`launchFocused` fallback when the mirrored path is empty).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

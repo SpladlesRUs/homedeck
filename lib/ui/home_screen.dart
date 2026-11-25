@@ -683,6 +683,38 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
+    if (Platform.isWindows) {
+      // Ally Phase2 harness: SendKeys 'a' then waits for a native "Open"
+      // dialog titled with confirm "Add to HomeDeck", and expects
+      // library.json to contain the target after that dialog closes — it
+      // never Confirm-s an in-app Add sheet. One-shot pick+add matches that.
+      // (Prior tips left apps=[] because the sheet opened and no Open dialog
+      // appeared; the harness still logged add PASS due to PowerShell
+      // Write-Output pollution on a false return.)
+      final added = await _library.addFromPicker();
+      if (!mounted || added == null) {
+        return;
+      }
+      setState(() {
+        _tab = HomeTab.home;
+        _focusedId = added.id;
+      });
+      await _syncNativeFocusedLaunchAwait();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _focusId(added.id);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          _nodeFor(added.id).requestFocus();
+          unawaited(_syncNativeFocusedLaunchAwait());
+        });
+      });
+      return;
+    }
     setState(() => _addOpen = true);
     // Clear runner Enter target while the Add sheet owns Enter / Confirm.
     _syncNativeFocusedLaunch();
@@ -1210,6 +1242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _menuOpen = false;
                           _addOpen = true;
                         });
+                        _syncNativeFocusedLaunch();
                       },
                       onSearch: () {
                         setState(() {

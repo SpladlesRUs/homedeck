@@ -78,24 +78,27 @@ flutter build windows --release
 
 The executable is under `build\windows\x64\runner\Release\homedeck.exe`.
 
-Add an app with the on-screen **Add** tile: Native (`.exe`, `.lnk`, or a
-URI such as `steam://rungameid/…`) or Emulated (emulator, ROM, `{rom}`
-args). Then press Enter (or click) to launch. Layout is stored in the
-application support directory provided by `path_provider` (typically under
-`%AppData%`) as `library.json`. Cached icons live next to it in `icons\`.
-`PreferencesRepository` seeds `library.json` on first load and saves with a
-flushed direct write (temp copy + final overwrite + apps round-trip check)
-under `%AppData%\Horton Press\HomeDeck\`. Empty `apps[]` writes never clobber
-a non-empty on-disk library (Ally @9800850 still saw empty at close after the
-snapshot-based queue). `LibraryController` serializes commits and persists
-the live `_state` at write time so overlapping window/audio prefs cannot wipe
-a concurrent add. Windows launches use the runner `homedeck/win32`
-MethodChannel (`ShellExecuteW`), then Dart FFI / CreateProcess / `cmd /c start`.
-Ally Phase2 drives keys with `WScript.Shell.SendKeys` (not top-level
-`WM_KEYDOWN`), so the runner installs a `WH_KEYBOARD_LL` hook for F11 chrome
-and Enter→focused path while HomeDeck is foreground; Dart mirrors the focused
-launch target and handles a native `launchFocused` fallback when the mirror
-is empty. Dart FFI FindWindow remains a fallback when the channel is missing.
+Add an app with the on-screen **Add** tile or keyboard **A**. On Windows, **A**
+(and the Add tile) one-shot opens the native file picker (`Open` / **Add to
+HomeDeck**) and persists + pins to Home immediately — Ally Phase2 SendKeys
+`a` expects that dialog and checks `library.json` after it closes (it never
+Confirms an in-app sheet). Prior tips left `apps=[]` because only the Add
+sheet opened (no Open dialog); the harness still logged add PASS due to
+PowerShell `Write-Output` polluting a `$false` return. Emulated / URI add
+remains on Menu → Add game (sheet). Then press Enter (or click) to launch.
+Layout is stored in the application support directory provided by
+`path_provider` (typically under `%AppData%`) as `library.json`. Cached icons
+live next to it in `icons\`. `PreferencesRepository` seeds `library.json` on
+first load and saves with a flushed direct write (temp copy + final overwrite
++ apps round-trip check) under `%AppData%\Horton Press\HomeDeck\`. Empty
+`apps[]` writes never clobber a non-empty on-disk library. `LibraryController`
+serializes commits and persists the live `_state` at write time. Windows
+launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
+Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
+`WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
+a `WH_KEYBOARD_LL` hook for F11 chrome and Enter→focused path while HomeDeck
+is foreground; Dart mirrors the focused launch target and handles a native
+`launchFocused` fallback when the mirror is empty.
 
 Keyboard:
 

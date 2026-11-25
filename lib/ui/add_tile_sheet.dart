@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:homedeck/core/library_controller.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/core/models/game_source.dart';
@@ -40,11 +42,35 @@ class _AddTileSheetState extends State<AddTileSheet> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Menu → Add game still opens this sheet. Auto-open the native Open
+    // dialog and persist on confirm so a cancelled one-shot A-key path and
+    // this sheet share the same Ally-compatible pick→save behavior.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_bootstrapNativePick());
+    });
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _uri.dispose();
     _args.dispose();
     super.dispose();
+  }
+
+  Future<void> _bootstrapNativePick() async {
+    if (!mounted || _kind != TileKind.native || _busy) {
+      return;
+    }
+    await _pickNative();
+    if (!mounted) {
+      return;
+    }
+    if (_nativePath != null && _nativePath!.trim().isNotEmpty && _canSave) {
+      await _save();
+    }
   }
 
   Future<void> _pickNative() async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:homedeck/core/device_status.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/core/library_controller.dart';
@@ -65,9 +67,13 @@ class _HomeDeckAppState extends State<HomeDeckApp> with WidgetsBindingObserver {
         widget.music?.unduck();
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
+        widget.music?.duck();
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         widget.music?.duck();
+        // Flush so Ally's close-time library.json read keeps tiles after add.
+        // Refuse-empty still guards a wipe if in-memory state is empty.
+        unawaited(widget.controller.persist());
     }
   }
 
