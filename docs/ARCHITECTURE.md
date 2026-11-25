@@ -59,10 +59,9 @@ sheet Confirm; Menu → Add game keeps the full sheet for URI/emulated).
 SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
 `WM_HOMEDECK_ADD` → OFN on the UI thread → Dart `addPickedPath` (Flutter
 Shortcuts alone never saw harness `a` @82a5a20). Optional
-`HOMEDECK_ADD_PATH` is consumed at startup (and on A) to pin without a
-modal — required because Ally @82a5a20 never reached `PickOpenFile`. The
-same hook handles F11 chrome and Enter→focused launch (with a Dart
-`launchFocused` fallback when the mirrored path is empty).
+`HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome and
+Enter→focused launch (with a Dart `launchFocused` fallback when the
+mirrored path is empty).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

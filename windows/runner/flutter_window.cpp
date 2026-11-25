@@ -55,11 +55,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   // Ally Phase2 primarily uses WScript.SendKeys (Flutter view child), which
   // the WH_KEYBOARD_LL hook in HomedeckWin32 handles. Keep this top-level
   // path for PostMessage / real keyboard focus on the frame window.
-  if (message == WM_TIMER && wparam == HOMEDECK_ADD_PATH_TIMER_ID) {
-    KillTimer(hwnd, HOMEDECK_ADD_PATH_TIMER_ID);
-    win32_.SeedAutomationAddPath();
-    return 0;
-  }
   if (message == WM_HOMEDECK_ADD) {
     win32_.HandleAddKey();
     return 0;

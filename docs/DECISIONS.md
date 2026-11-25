@@ -89,15 +89,10 @@ SendKeys `a` never reached Flutter Shortcuts / MethodChannel `pickOpenFile`,
 so classic OFN never ran (`Open dialog not found` → `apps=[]`). The runner
 `WH_KEYBOARD_LL` hook now posts `WM_HOMEDECK_ADD` on bare **A** (same path as
 F11/Enter), shows OFN on the UI thread, then notifies Dart via
-`addPickedPath`. Optional `HOMEDECK_ADD_PATH` (absolute `.exe` / `.lnk`) is
-honored **at process startup** (Dart `seedHomeDeckAddPath` + runner 750ms
-timer → `addPickedPath`) and again on bare **A** (skips OFN). Ally @82a5a20
-set the env but never reached `PickOpenFile`, so the old bypass never ran —
-startup seed fixes that. **If Ally sets `HOMEDECK_ADD_PATH`, skip
-Wait-WindowTitle Open** and assert `library.json` / Enter only (no Open
-window is shown). Without the env, SendKeys `a` must show exact title
-`Open`. Emulated / URI add uses Menu → Add game (sheet). Then press Enter
-(or click) to launch.
+`addPickedPath`. Optional `HOMEDECK_ADD_PATH` (absolute `.exe` / `.lnk`)
+bypasses the modal and still lands a pinned tile — **if Ally sets it, skip
+the FindWindow Open wait** and assert `library.json` / Enter only. Emulated /
+URI add uses Menu → Add game (sheet). Then press Enter (or click) to launch.
 Layout is stored in the application support directory provided by
 `path_provider` (typically under `%AppData%`) as `library.json`. Cached icons
 live next to it in `icons\`. `PreferencesRepository` seeds `library.json` on

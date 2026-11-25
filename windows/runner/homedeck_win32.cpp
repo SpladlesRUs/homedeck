@@ -224,16 +224,6 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           result->Success(flutter::EncodableValue(fullscreen_));
           return;
         }
-        if (method == "getAutomationAddPath") {
-          const std::wstring path = ReadAutomationAddPath();
-          if (path.empty()) {
-            result->Success(flutter::EncodableValue());
-          } else {
-            result->Success(
-                flutter::EncodableValue(Utf8FromUtf16(path.c_str())));
-          }
-          return;
-        }
         if (method == "pickOpenFile") {
           // Ally Phase2 @bdd3ba1: file_selector IFileDialog never produced a
           // FindWindow-able "Open" dialog after SendKeys a → apps=[] / no Enter
@@ -290,7 +280,6 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
         result->NotImplemented();
       });
   InstallHook();
-  ScheduleAutomationSeed();
 }
 
 void HomedeckWin32::InstallHook() {
@@ -440,60 +429,18 @@ bool HomedeckWin32::SetFullscreen(bool fullscreen) {
   return true;
 }
 
-std::wstring HomedeckWin32::ReadAutomationAddPath() {
-  wchar_t env_path[32768];
-  const DWORD env_len =
-      GetEnvironmentVariableW(L"HOMEDECK_ADD_PATH", env_path, ARRAYSIZE(env_path));
-  if (env_len == 0 || env_len >= ARRAYSIZE(env_path)) {
-    return std::wstring();
-  }
-  return std::wstring(env_path, env_len);
-}
-
-void HomedeckWin32::ScheduleAutomationSeed() {
-  if (!ReadAutomationAddPath().empty()) {
-    OutputDebugStringW(
-        L"homedeck: HOMEDECK_ADD_PATH set — scheduling startup seed\n");
-  }
-  HWND hwnd = window_ != nullptr ? window_->GetHandle() : nullptr;
-  if (hwnd == nullptr) {
-    return;
-  }
-  // Always arm a short timer when env is set so Dart gets addPickedPath even
-  // if SendKeys `a` never runs (Ally @82a5a20 diagnostic).
-  if (!ReadAutomationAddPath().empty()) {
-    SetTimer(hwnd, HOMEDECK_ADD_PATH_TIMER_ID, 750, nullptr);
-  }
-}
-
-bool HomedeckWin32::SeedAutomationAddPath() {
-  if (automation_seeded_) {
-    return false;
-  }
-  const std::wstring path = ReadAutomationAddPath();
-  if (path.empty()) {
-    return false;
-  }
-  automation_seeded_ = true;
-  OutputDebugStringW(
-      L"homedeck: seeding tile from HOMEDECK_ADD_PATH (no Open dialog)\n");
-  // Mirror immediately so Enter works even before Dart finishes persist.
-  SetFocusedLaunch(path, std::wstring());
-  NotifyPickedPath(path);
-  return true;
-}
-
 std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
                                          const std::wstring& extensions,
                                          const std::wstring& ok_label) {
   // Automation bypass: Ally / CI can set HOMEDECK_ADD_PATH to a real
   // notepad.exe / .lnk and skip the modal when SendKeys cannot drive OFN.
-  const std::wstring bypass = ReadAutomationAddPath();
-  if (!bypass.empty()) {
+  wchar_t env_path[32768];
+  const DWORD env_len =
+      GetEnvironmentVariableW(L"HOMEDECK_ADD_PATH", env_path, ARRAYSIZE(env_path));
+  if (env_len > 0 && env_len < ARRAYSIZE(env_path)) {
     OutputDebugStringW(
         L"homedeck: pickOpenFile using HOMEDECK_ADD_PATH bypass\n");
-    automation_seeded_ = true;
-    return bypass;
+    return std::wstring(env_path, env_len);
   }
 
   std::wstring filter = BuildFilter(filter_label, extensions);
@@ -508,7 +455,7 @@ std::wstring HomedeckWin32::PickOpenFile(const std::wstring& filter_label,
   ofn.nFilterIndex = 1;
   ofn.lpstrFile = file;
   ofn.nMaxFile = ARRAYSIZE(file);
-  // Explicit title — Ally EnumWindows / Wait-WindowTitle exact match "Open".
+  // Explicit title — Ally Phase2 FindWindow(null, "Open") / class #32770.
   ofn.lpstrTitle = L"Open";
   ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST |
               OFN_HIDEREADONLY | OFN_NOCHANGEDIR | OFN_ENABLEHOOK |
