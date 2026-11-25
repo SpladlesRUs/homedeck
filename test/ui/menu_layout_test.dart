@@ -179,7 +179,11 @@ void main() {
     ]);
     await pumpHomeDeck(tester, harness);
 
-    await tester.tap(find.byType(EmptySlot).first);
+    // Menu → Add game opens the full sheet (Windows A / empty-slot one-shot
+    // goes straight to the native Open dialog for Ally Phase2).
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-add-game')));
     await tester.pump();
     expect(find.byKey(const Key('add-tile-sheet')), findsOneWidget);
 
