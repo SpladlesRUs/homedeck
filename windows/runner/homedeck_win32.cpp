@@ -9,6 +9,9 @@
 #include <wrl/client.h>
 
 #include <cstring>
+#include <memory>
+#include <optional>
+#include <thread>
 #include <vector>
 
 #pragma comment(lib, "windowscodecs.lib")
@@ -18,6 +21,11 @@ namespace {
 
 constexpr char kChannel[] = "homedeck/win32";
 constexpr int kDefaultIconSize = 256;
+
+struct IconDonePayload {
+  std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>> result;
+  std::optional<std::vector<uint8_t>> png;
+};
 
 std::wstring Utf8ToWide(const std::string& utf8) {
   if (utf8.empty()) {
@@ -350,12 +358,27 @@ void HomedeckWin32::Register(flutter::BinaryMessenger* messenger,
           if (size > 512) {
             size = 512;
           }
-          auto png = ExtractIconPng(Utf8ToWide(path), size);
-          if (!png.has_value()) {
-            result->Success(flutter::EncodableValue());  // null
+          HWND hwnd = window_ != nullptr ? window_->GetHandle() : nullptr;
+          if (hwnd == nullptr) {
+            // No HWND to marshal back — fail closed rather than block the pump.
+            result->Success(flutter::EncodableValue());
             return;
           }
-          result->Success(flutter::EncodableValue(std::move(png.value())));
+          // Run extract off the platform thread. Sync WIC/COM here deadlocked
+          // Ally at f9b1d14 (message pump starved → writePng never ran).
+          auto* payload = new IconDonePayload{
+              std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(
+                  std::move(result)),
+              std::nullopt};
+          std::wstring wide = Utf8ToWide(path);
+          std::thread([payload, wide = std::move(wide), size, hwnd]() mutable {
+            payload->png = HomedeckWin32::ExtractIconPng(wide, size);
+            if (!PostMessage(hwnd, WM_HOMEDECK_ICON_DONE, 0,
+                             reinterpret_cast<LPARAM>(payload))) {
+              // Window gone — drop the result so we do not leak forever.
+              delete payload;
+            }
+          }).detach();
           return;
         }
         if (method == "isFullscreen") {
@@ -423,9 +446,30 @@ bool HomedeckWin32::Launch(const std::wstring& path,
   return reinterpret_cast<INT_PTR>(result) > 32;
 }
 
+bool HomedeckWin32::HandleIconDone(LPARAM lparam) {
+  auto* payload = reinterpret_cast<IconDonePayload*>(lparam);
+  if (payload == nullptr || payload->result == nullptr) {
+    delete payload;
+    return true;
+  }
+  if (payload->png.has_value() && !payload->png->empty()) {
+    payload->result->Success(
+        flutter::EncodableValue(std::move(payload->png.value())));
+  } else {
+    payload->result->Success(flutter::EncodableValue());
+  }
+  delete payload;
+  return true;
+}
+
 std::optional<std::vector<uint8_t>> HomedeckWin32::ExtractIconPng(
     const std::wstring& path, int size) {
   if (path.empty() || size <= 0) {
+    return std::nullopt;
+  }
+  // Fail fast for Ally "bad path" — do not sit in Shell APIs on missing files.
+  const DWORD attrs = GetFileAttributesW(path.c_str());
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
     return std::nullopt;
   }
 

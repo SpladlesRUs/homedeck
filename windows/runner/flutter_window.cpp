@@ -61,6 +61,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     return 0;
   }
 
+  // Background extractIcon worker finished — complete the MethodChannel on
+  // the platform thread (must not call MethodResult from the worker).
+  if (message == WM_HOMEDECK_ICON_DONE) {
+    win32_.HandleIconDone(lparam);
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

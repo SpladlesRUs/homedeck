@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -61,15 +62,28 @@ class WindowsAdapter implements PlatformAdapter {
     required String appId,
     required String displayName,
   }) async {
-    final extracted = await _tryExtractIcon(target);
-    if (extracted != null) {
-      return cache.writePng(appId, extracted);
-    }
-    final bytes = await generateInitialIcon(
+    // Always land a generated PNG first. Ally f9b1d14 saw icons\ empty for
+    // the whole run — a sync MethodChannel extract that blocks the Win32
+    // message pump never returned, so writePng never ran. Generated art must
+    // hit disk before any extract attempt.
+    final generated = await generateInitialIcon(
       displayName: displayName,
       key: appId,
     );
-    return cache.writePng(appId, bytes);
+    final ref = await cache.writePng(appId, generated);
+
+    try {
+      final extracted = await _tryExtractIcon(target).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+      if (extracted != null && extracted.isNotEmpty) {
+        await cache.writePng(appId, extracted);
+      }
+    } catch (_) {
+      // Keep the generated tile already on disk.
+    }
+    return ref;
   }
 
   /// Best-effort PE / `.lnk` extract. Returns `null` for URIs, missing files,
@@ -86,6 +100,14 @@ class WindowsAdapter implements PlatformAdapter {
     if (!WindowsPaths.isExecutable(path) &&
         !WindowsPaths.isShortcut(path) &&
         target.kind != LaunchTargetKind.windowsEmulated) {
+      return null;
+    }
+    // Bad / missing paths must not touch Shell extract (Ally "bad path" case).
+    try {
+      if (!await _io.fileExists(path)) {
+        return null;
+      }
+    } catch (_) {
       return null;
     }
     try {

@@ -53,11 +53,12 @@ void main() {
     }
   });
 
-  test('resolveIcon writes extracted PNG for .exe into IconCache', () async {
+  test('resolveIcon upgrades generated tile with extracted PNG for .exe',
+      () async {
     final exe = p.windows.join(r'C:\Games', 'Star Pilot.exe');
     final extractor = _RecordingExtractor({exe: fakePng});
     final adapter = WindowsAdapter(
-      io: MemoryWindowsIo(),
+      io: MemoryWindowsIo(existing: {exe}),
       filePicker: ({required label, required extensions}) async => null,
       iconExtractor: extractor,
     );
@@ -72,15 +73,16 @@ void main() {
     expect(ref, p.posix.join('icons', 'app-exe.png'));
     expect(extractor.calls, [exe]);
     final file = cache.absoluteFile(ref)!;
-    expect(await file.exists(), isTrue);
+    expect(file.existsSync(), isTrue);
     expect(await file.readAsBytes(), fakePng);
   });
 
-  test('resolveIcon extracts from .lnk path (resolver owns target walk)', () async {
+  test('resolveIcon upgrades generated tile with extracted PNG for .lnk',
+      () async {
     final lnk = p.windows.join(r'C:\Games', 'Star Pilot.lnk');
     final extractor = _RecordingExtractor({lnk: fakePng});
     final adapter = WindowsAdapter(
-      io: MemoryWindowsIo(),
+      io: MemoryWindowsIo(existing: {lnk}),
       filePicker: ({required label, required extensions}) async => null,
       iconExtractor: extractor,
     );
@@ -97,12 +99,12 @@ void main() {
     expect(await cache.absoluteFile(ref)!.readAsBytes(), fakePng);
   });
 
-  test('resolveIcon falls back to generated tile when extraction returns null',
+  test('resolveIcon writes generated art before extract (even when extract null)',
       () async {
     final exe = p.windows.join(r'C:\Games', 'Missing Icon.exe');
     final extractor = _RecordingExtractor({exe: null});
     final adapter = WindowsAdapter(
-      io: MemoryWindowsIo(),
+      io: MemoryWindowsIo(existing: {exe}),
       filePicker: ({required label, required extensions}) async => null,
       iconExtractor: extractor,
     );
@@ -116,32 +118,60 @@ void main() {
 
     expect(ref, p.posix.join('icons', 'app-fallback.png'));
     expect(extractor.calls, [exe]);
-    final bytes = await cache.absoluteFile(ref)!.readAsBytes();
+    final file = File(p.join(tempDir.path, 'icons', 'app-fallback.png'));
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), greaterThan(64));
+    final bytes = await file.readAsBytes();
     expect(bytes, isNot(equals(fakePng)));
-    expect(bytes.length, greaterThan(64));
     // PNG magic
     expect(bytes.sublist(0, 8), fakePng.sublist(0, 8));
   });
 
-  test('resolveIcon falls back when extractor throws', () async {
+  test('resolveIcon skips extract for missing paths but still writes generated art',
+      () async {
+    final missing = p.windows.join(r'C:\Games', 'Gone.exe');
+    final extractor = _RecordingExtractor({});
     final adapter = WindowsAdapter(
       io: MemoryWindowsIo(),
+      filePicker: ({required label, required extensions}) async => null,
+      iconExtractor: extractor,
+    );
+
+    final ref = await adapter.resolveIcon(
+      target: windowsTarget(missing),
+      cache: cache,
+      appId: 'app-missing',
+      displayName: 'Gone',
+    );
+
+    expect(extractor.calls, isEmpty);
+    expect(ref, p.posix.join('icons', 'app-missing.png'));
+    expect(File(p.join(tempDir.path, 'icons', 'app-missing.png')).existsSync(),
+        isTrue);
+  });
+
+  test('resolveIcon keeps generated tile when extractor throws', () async {
+    final boom = p.windows.join(r'C:\Games', 'Boom.exe');
+    final adapter = WindowsAdapter(
+      io: MemoryWindowsIo(existing: {boom}),
       filePicker: ({required label, required extensions}) async => null,
       iconExtractor: _ThrowingExtractor(),
     );
 
     final ref = await adapter.resolveIcon(
-      target: windowsTarget(p.windows.join(r'C:\Games', 'Boom.exe')),
+      target: windowsTarget(boom),
       cache: cache,
       appId: 'app-throw',
       displayName: 'Boom',
     );
 
     expect(ref, p.posix.join('icons', 'app-throw.png'));
-    expect(await cache.absoluteFile(ref)!.exists(), isTrue);
+    expect(cache.absoluteFile(ref)!.existsSync(), isTrue);
+    expect(cache.absoluteFile(ref)!.lengthSync(), greaterThan(64));
   });
 
-  test('resolveIcon skips extraction for store URIs', () async {
+  test('resolveIcon skips extraction for store URIs but writes generated art',
+      () async {
     final extractor = _RecordingExtractor({});
     final adapter = WindowsAdapter(
       io: MemoryWindowsIo(),
@@ -162,7 +192,7 @@ void main() {
 
     expect(extractor.calls, isEmpty);
     expect(ref, p.posix.join('icons', 'app-uri.png'));
-    expect(await cache.absoluteFile(ref)!.exists(), isTrue);
+    expect(cache.absoluteFile(ref)!.existsSync(), isTrue);
   });
 
   test('resolveIcon asks extractor for emulator .exe on emulated tiles',
@@ -170,7 +200,7 @@ void main() {
     final emulator = p.windows.join(r'C:\Emulators', 'retro.exe');
     final extractor = _RecordingExtractor({emulator: fakePng});
     final adapter = WindowsAdapter(
-      io: MemoryWindowsIo(),
+      io: MemoryWindowsIo(existing: {emulator}),
       filePicker: ({required label, required extensions}) async => null,
       iconExtractor: extractor,
     );

@@ -11,9 +11,15 @@
 
 #include "win32_window.h"
 
+// Custom message: background extractIcon finished; LPARAM owns the payload.
+#ifndef WM_HOMEDECK_ICON_DONE
+#define WM_HOMEDECK_ICON_DONE (WM_APP + 0x4D44)  // 'MD'
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, and PE/.lnk icon
-// extraction. Dart-only FFI failed on device for launch/chrome (2417533)
-// and left icons\ empty for M2 extract (8715ce4) — runner owns HWND/GDI+.
+// extraction. Sync MethodChannel extract on the platform thread deadlocked
+// the message pump at f9b1d14 (icons\ stayed empty). extractIcon now runs on
+// a worker thread and completes via WM_HOMEDECK_ICON_DONE.
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -31,6 +37,10 @@ class HomedeckWin32 {
   // Extract associated / PE icon as PNG bytes (empty optional on failure).
   static std::optional<std::vector<uint8_t>> ExtractIconPng(
       const std::wstring& path, int size);
+
+  // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
+  // Returns true when the message was handled.
+  bool HandleIconDone(LPARAM lparam);
 
  private:
   void NotifyFullscreen();

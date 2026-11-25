@@ -18,11 +18,12 @@ abstract class WindowsIconExtractor {
   Future<Uint8List?> extractPng(String path);
 }
 
-/// Prefers the Windows runner MethodChannel (WIC PNG), then Dart FFI.
+/// Tries Dart FFI first (Dart isolate — does not block the Win32 pump), then
+/// the runner MethodChannel (async WIC path).
 ///
-/// Ally M2 smoke at 8715ce4 saw letter tiles and an empty `icons\` folder
-/// with Dart-only FFI extract — same class of device failure as Enter/F11
-/// before the runner bridge. Native extract is the primary path.
+/// Ally f9b1d14: sync MethodChannel extract on the platform thread deadlocked
+/// the message pump so `resolveIcon` never reached `writePng`. Prefer FFI,
+/// then native with a short caller-side timeout.
 class Win32IconExtractor implements WindowsIconExtractor {
   Win32IconExtractor({WindowsIconExtractor? dartFallback})
     : _dartFallback = dartFallback ?? DartFfiIconExtractor();
@@ -32,14 +33,22 @@ class Win32IconExtractor implements WindowsIconExtractor {
   @override
   Future<Uint8List?> extractPng(String path) async {
     try {
+      final ffi = await _dartFallback.extractPng(path);
+      if (ffi != null && ffi.isNotEmpty) {
+        return ffi;
+      }
+    } catch (_) {
+      // Fall through to runner channel.
+    }
+    try {
       final native = await WindowsNativeBridge.extractIconPng(path);
       if (native != null && native.isNotEmpty) {
         return native;
       }
     } catch (_) {
-      // Fall through to Dart FFI.
+      return null;
     }
-    return _dartFallback.extractPng(path);
+    return null;
   }
 }
 

@@ -32,13 +32,16 @@ path remains as a secondary fallback. Bytes are written with sync IO into
 `icons/<id>.png` (relative `iconRef`) — the same [IconCache] format as
 generated tiles.
 
-Ally M2 smoke at 8715ce4 saw letter tiles and an empty `icons\` folder with
-Dart-only FFI extract; the runner path matches the Enter/F11 fix pattern.
+Ally M2 at 8715ce4 / f9b1d14 saw an empty `icons\` for the whole run —
+even generated art never landed — because extract ran (and could hang)
+before any `writePng`. `resolveIcon` now always writes a generated PNG
+first, then best-effort upgrades via Dart FFI / async runner extract
+(worker thread + `WM_HOMEDECK_ICON_DONE`) with a short timeout. `IconCache`
+uses the same durable sync write pattern as `library.json`.
 
 When extraction is unavailable (non-Windows host, store URI, missing file,
-or any Win32 failure), HomeDeck generates a colored tile with the app
-initial and caches that instead. Generated tiles remain the permanent
-fallback; extraction never blocks adding a game.
+or any Win32 failure), the generated tile already on disk remains. Extraction
+never blocks adding a game.
 
 ## Steam Deck validation pending
 
