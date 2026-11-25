@@ -47,7 +47,9 @@ arguments). New games go to the **Library**; optionally pin them to **Home**.
 Settings → **Scan Steam library** (or keyboard **S**) imports installed Steam
 games as `steam://rungameid/…` tiles. Settings → **Scan Start Menu** (or
 keyboard **P**) imports Start Menu Programs shortcuts (resolved `.exe` /
-URI / `.lnk`). ROM-folder auto-scan is a later milestone.
+URI / `.lnk`). Focus a Library tile and press **H** to pin it to Home (same
+as Menu → Add to Home; for Ally harnesses that cannot reach that control).
+ROM-folder auto-scan is a later milestone.
 
 Release defaults to an empty library. To preview a full grid in debug only:
 

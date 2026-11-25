@@ -18,7 +18,10 @@ answer.
    Programs scan uses `discoverStartMenu()` → `importStartMenu` (same import
    path). Humans use Settings → Scan Start Menu; Ally uses bare **P**
    (`WM_HOMEDECK_SCAN_START_MENU` → `scanStartMenu`). Optional
-   `HOMEDECK_START_MENU_ROOT` points at a fixture Programs tree. ROM-folder
+   `HOMEDECK_START_MENU_ROOT` points at a fixture Programs tree. Pinning a
+   focused Library tile to Home: humans use Menu / Details → Add to Home;
+   Ally uses bare **H** (`WM_HOMEDECK_PIN_HOME` → `pinFocusedToHome`, same
+   `LibraryController.pinToHome` — menu UIA is not required). ROM-folder
    discovery is still not implemented. Games-only filtering of Steam
    tools/redistributables or Start Menu entries is left open with library scope.
 
@@ -84,6 +87,7 @@ Do not treat Deck as a separate app.
 | Windows PE / `.lnk` icon extraction | Runner MethodChannel + WIC (Dart FFI fallback); generated tile fallback |
 | Steam library scanner (Windows) | Implemented; Settings → Scan Steam library |
 | Start Menu Programs scanner (Windows) | Implemented; Settings → Scan Start Menu / bare **P** |
+| Pin focused Library tile to Home | Implemented; UI Add to Home / bare **H** |
 | ROM-folder scanner | Not implemented |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
@@ -136,11 +140,11 @@ launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
 Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
 a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, A→classic Open,
-S→Steam scan, and P→Start Menu scan while HomeDeck is foreground; Dart
-mirrors the focused launch target, handles a native `launchFocused` fallback
-when the mirror is empty, and persists native `addPickedPath` results. Dart
-FFI FindWindow remains a fallback for F11 because `window_manager` 0.7 often
-never binds the stock Flutter window.
+S→Steam scan, P→Start Menu scan, and H→pin focused Library tile to Home while
+HomeDeck is foreground; Dart mirrors the focused launch target, handles a
+native `launchFocused` fallback when the mirror is empty, and persists native
+`addPickedPath` results. Dart FFI FindWindow remains a fallback for F11
+because `window_manager` 0.7 often never binds the stock Flutter window.
 
 ### Ally M4 Start Menu smoke
 
@@ -153,6 +157,16 @@ never binds the stock Flutter window.
 4. SendKeys **`p`** again: `apps.length` unchanged (no duplicate targets).
 5. Bare **`s`** and Manual Add (**`a`**) remain unchanged.
 
+### Ally M5 pin-to-Home smoke
+
+1. Scan or open Library with apps present; focus a Library tile (not a folder).
+2. Bare SendKeys **`h`** (no Menu / Add to Home UIA) → `home.slots` gains that
+   app id; UI switches to Home with the pinned tile focused and the Enter
+   launch mirror refreshed (same `pinToHome` as UI Add to Home).
+3. SendKeys Enter launches that app (UIA dock → Home keeps the pin focus —
+   does not steal to Now Playing).
+4. Spot-check bare **`s`** / **`p`** / **`a`** unchanged.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -162,6 +176,7 @@ Keyboard:
 - M enters rearrange mode (arrows swap tiles; drag also works)
 - S scans Steam library into Library (no Home pins)
 - P scans Start Menu Programs into Library (no Home pins)
+- H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Ctrl+, opens the settings stub
 

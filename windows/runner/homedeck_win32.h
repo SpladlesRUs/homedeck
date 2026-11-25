@@ -34,9 +34,16 @@
 #define WM_HOMEDECK_SCAN_START_MENU (WM_APP + 0x50)
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `h` (or a real H key)
+// should pin the focused Library record onto Home (same as UI Add to Home).
+#ifndef WM_HOMEDECK_PIN_HOME
+#define WM_HOMEDECK_PIN_HOME (WM_APP + 0x48)
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
-// bare S → Steam library scan, and bare P → Start Menu Programs scan.
+// bare S → Steam library scan, bare P → Start Menu Programs scan, and bare H
+// → pin focused Library tile to Home.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -44,8 +51,10 @@
 // exactly "Open" (class #32770), then notifies Dart via addPickedPath. Bare
 // `s` posts WM_HOMEDECK_SCAN_STEAM → Dart `scanSteam` (Settings scan without
 // opening the overlay). Bare `p` posts WM_HOMEDECK_SCAN_START_MENU → Dart
-// `scanStartMenu`. The same hook handles F11 chrome and Enter→mirrored path
-// (with a Dart launchFocused fallback when the mirror is empty).
+// `scanStartMenu`. Bare `h` posts WM_HOMEDECK_PIN_HOME → Dart
+// `pinFocusedToHome` (UI Add to Home without menu UIA). The same hook handles
+// F11 chrome and Enter→mirrored path (with a Dart launchFocused fallback when
+// the mirror is empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -100,6 +109,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_SCAN_START_MENU: ask Dart to run Start
   // Menu Programs discover → importDiscovered (Settings → Scan Start Menu).
   void HandleScanStartMenuKey();
+
+  // UI-thread handler for WM_HOMEDECK_PIN_HOME: ask Dart to pin the focused
+  // Library record onto Home (same as UI Add to Home).
+  void HandlePinHomeKey();
 
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.

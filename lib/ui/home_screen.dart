@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onAddPickedPath = _addPickedPathFromNative;
       WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
+      WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
     }
     _gamepad.start(_onGamepad);
     _status.start(_onLibrary);
@@ -147,6 +148,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _scanStartMenuFromNative,
       )) {
         WindowsNativeBridge.onScanStartMenu = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onPinFocusedToHome,
+        _pinFocusedToHomeFromNative,
+      )) {
+        WindowsNativeBridge.onPinFocusedToHome = null;
       }
     }
     _clock?.cancel();
@@ -218,9 +225,38 @@ class _HomeScreenState extends State<HomeScreen> {
     await _scanStartMenu();
   }
 
+  /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
+  /// Add to Home on the focused Library record (Ally without menu UIA).
+  Future<void> _pinFocusedToHomeFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _pinFocusedToHome();
+  }
+
+  Future<void> _pinFocusedToHome() async {
+    final focused = _focusedRecord;
+    if (focused == null) {
+      return;
+    }
+    await _library.pinToHome(focused.id);
+    if (!mounted) {
+      return;
+    }
+    // Ally M5: land on Home with the pinned tile focused and refresh the
+    // Enter/WH_KEYBOARD_LL launch mirror. Staying on Library left a stale
+    // focus; dock→Home then focused Now Playing and wiped setFocusedLaunch.
+    await _focusAddedApp(focused);
+  }
+
   Future<void> _focusAddedApp(AppRecord added) async {
     setState(() {
       _tab = HomeTab.home;
+      _folderTitle = null;
+      _dockForced = true;
       _focusedId = added.id;
     });
     await _syncNativeFocusedLaunchAwait();
@@ -379,6 +415,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanSteamLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyP):
         const ScanStartMenuIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyH):
+        const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
         const OpenSettingsIntent(),
     const SingleActivator(LogicalKeyboardKey.equal): const OpenMenuIntent(),
@@ -452,6 +490,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanStartMenuIntent: CallbackAction<ScanStartMenuIntent>(
         onInvoke: (_) {
           unawaited(_scanStartMenu());
+          return null;
+        },
+      ),
+      PinFocusedToHomeIntent: CallbackAction<PinFocusedToHomeIntent>(
+        onInvoke: (_) {
+          unawaited(_pinFocusedToHome());
           return null;
         },
       ),
@@ -635,6 +679,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _focusFirstForTab() {
     if (_tab == HomeTab.home) {
+      // Prefer an already-focused Home pin (Ally H pin → UIA dock Home) so
+      // Now Playing does not clear the mirrored launch path before Enter.
+      final id = _focusedId;
+      if (id != null &&
+          !isNowPlayingId(id) &&
+          !isEmptySlotId(id) &&
+          !isFolderFocusId(id) &&
+          _library.isOnHome(id)) {
+        _focusId(id, click: false);
+        return;
+      }
       _focusId(nowPlayingId, click: false);
       return;
     }

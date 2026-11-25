@@ -311,6 +311,65 @@ void main() {
     expect(find.byType(EmptySlot), findsNWidgets(14));
   });
 
+  testWidgets('bare H pins focused Library tile onto Home without menu', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await tester.runAsync(() async {
+      await harness.controller.addRecord(
+        displayName: 'Shelf only',
+        target: windowsTarget(p.join(harness.directory.path, 'Shelf only.exe')),
+      );
+    });
+    await pumpHomeDeck(tester, harness);
+
+    expect(harness.controller.isOnHome('app-1'), isFalse);
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-native')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('menu-add-to-home')), findsNothing);
+    expect(harness.controller.isOnHome('app-1'), isTrue);
+    expect(harness.controller.home.slots, contains('app-1'));
+    // H lands on Home with the pinned tile focused (Enter/launch mirror).
+    expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    // Ally UIA dock → Home must keep the pin, not steal to Now Playing.
+    await tester.tap(find.byKey(const Key('tab-home')));
+    await tester.pump();
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    expect(harness.adapter.launchCount, greaterThan(0));
+    expect(
+      harness.adapter.launched.last.value,
+      contains('Shelf only.exe'),
+    );
+  });
+
   testWidgets('Home Move mode rearranges tiles and keeps empty slots', (
     tester,
   ) async {
