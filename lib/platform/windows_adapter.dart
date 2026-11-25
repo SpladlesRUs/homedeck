@@ -12,6 +12,7 @@ import 'package:homedeck/core/models/launch_target.dart';
 import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
+import 'package:homedeck/platform/steam_library.dart';
 import 'package:homedeck/platform/windows_icon_extractor.dart';
 import 'package:homedeck/platform/windows_io.dart';
 import 'package:homedeck/platform/windows_native_bridge.dart';
@@ -24,6 +25,7 @@ typedef FilePickerFn = Future<String?> Function({
 /// Windows launch adapter.
 ///
 /// Manual add: `.exe` / `.lnk`, store URIs (`steam://…`), or emulator + ROM.
+/// [discover] scans Steam library folders for `steam://rungameid/…` targets.
 /// Icons prefer a real PE / shortcut extract into [IconCache]; generated
 /// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
@@ -31,13 +33,16 @@ class WindowsAdapter implements PlatformAdapter {
     WindowsIo io = const DartWindowsIo(),
     FilePickerFn? filePicker,
     WindowsIconExtractor? iconExtractor,
+    SteamLibraryScanner? steamScanner,
   }) : _io = io,
        _filePicker = filePicker ?? _defaultPicker,
-       _iconExtractor = iconExtractor ?? Win32IconExtractor();
+       _iconExtractor = iconExtractor ?? Win32IconExtractor(),
+       _steamScanner = steamScanner ?? SteamLibraryScanner(io: io);
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
   final WindowsIconExtractor _iconExtractor;
+  final SteamLibraryScanner _steamScanner;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -71,7 +76,7 @@ class WindowsAdapter implements PlatformAdapter {
   AppPlatform get platform => AppPlatform.windows;
 
   @override
-  Future<List<DiscoveredApp>> discover() async => const [];
+  Future<List<DiscoveredApp>> discover() => _steamScanner.discover();
 
   @override
   Future<String?> resolveIcon({

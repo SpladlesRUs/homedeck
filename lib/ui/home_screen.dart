@@ -61,6 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _hoveredId;
   bool _moveMode = false;
   bool _settingsOpen = false;
+  bool _steamScanBusy = false;
+  String? _steamScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -196,6 +198,43 @@ class _HomeScreenState extends State<HomeScreen> {
         unawaited(_syncNativeFocusedLaunchAwait());
       });
     });
+  }
+
+  Future<void> _scanSteamLibrary() async {
+    if (_steamScanBusy) {
+      return;
+    }
+    setState(() {
+      _steamScanBusy = true;
+      _steamScanMessage = null;
+    });
+    try {
+      final added = await _library.importDiscovered(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _steamScanBusy = false;
+        if (added == 0) {
+          _steamScanMessage =
+              'No new Steam games found. Install Steam or add games, then scan again.';
+        } else if (added == 1) {
+          _steamScanMessage =
+              'Added 1 Steam game to Library. Open Library → By app → Steam.';
+        } else {
+          _steamScanMessage =
+              'Added $added Steam games to Library. Open Library → By app → Steam.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _steamScanBusy = false;
+        _steamScanMessage = 'Steam scan failed: $error';
+      });
+    }
   }
 
   void _onLibrary() {
@@ -1409,7 +1448,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           widget.music?.musicVolume ??
                           _library.state.audio.musicVolume,
                       uiClicksEnabled: _library.state.audio.uiClicksEnabled,
-                      onClose: () => setState(() => _settingsOpen = false),
+                      steamScanBusy: _steamScanBusy,
+                      steamScanMessage: _steamScanMessage,
+                      onScanSteam: _scanSteamLibrary,
+                      onClose: () => setState(() {
+                        _settingsOpen = false;
+                        _steamScanMessage = null;
+                      }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,
                       onUiClicksEnabled: (enabled) {

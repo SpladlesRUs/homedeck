@@ -3,7 +3,7 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Settings is a stub in milestone 1: window chrome plus open product questions.
+/// Settings: window chrome, audio, Steam scan, and open product questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -18,6 +18,9 @@ class SettingsStub extends StatelessWidget {
     this.onMusicEnabled,
     this.onMusicVolume,
     this.onUiClicksEnabled,
+    this.onScanSteam,
+    this.steamScanBusy = false,
+    this.steamScanMessage,
     this.onExit,
   });
 
@@ -32,6 +35,9 @@ class SettingsStub extends StatelessWidget {
   final ValueChanged<bool>? onMusicEnabled;
   final ValueChanged<double>? onMusicVolume;
   final ValueChanged<bool>? onUiClicksEnabled;
+  final VoidCallback? onScanSteam;
+  final bool steamScanBusy;
+  final String? steamScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -148,7 +154,7 @@ class SettingsStub extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Milestone 1',
+                            'Steam library',
                             style: TextStyle(
                               color: HomeDeckColors.cyanDeep,
                               fontWeight: FontWeight.w800,
@@ -157,16 +163,47 @@ class SettingsStub extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Apps are added manually. Installed-app discovery is not enabled yet.',
+                            'Scan installs Steam games into Library (By app → Steam). Manual Add stays available for .exe, .lnk, URIs, and emulators.',
                             style: TextStyle(
                               color: HomeDeckColors.ink,
                               fontSize: 18,
                               height: 1.35,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          if (onScanSteam != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-steam'),
+                                onPressed: steamScanBusy ? null : onScanSteam,
+                                child: Text(
+                                  steamScanBusy
+                                      ? 'Scanning…'
+                                      : 'Scan Steam library',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (steamScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              steamScanMessage!,
+                              key: const Key('settings-scan-steam-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. ROM-folder discovery is not enabled yet.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

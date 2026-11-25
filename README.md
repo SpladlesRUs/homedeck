@@ -44,7 +44,8 @@ has focus. Press Y for global search. B is always Back.
 Add a **Native** tile (`.exe`, `.lnk`, or a store URI such as
 `steam://rungameid/440`) or an **Emulated** tile (emulator + ROM + `{rom}`
 arguments). New games go to the **Library**; optionally pin them to **Home**.
-Steam / ROM-folder auto-scan is a later milestone.
+Settings → **Scan Steam library** imports installed Steam games as
+`steam://rungameid/…` tiles. ROM-folder auto-scan is a later milestone.
 
 Release defaults to an empty library. To preview a full grid in debug only:
 
@@ -68,4 +69,4 @@ Rendered at 1280×800:
 ## Open questions
 
 - Should the library be limited to games and emulators, or include general apps?
-- Manual add only (current) versus automatic installed-app discovery?
+- Games-only filter for Steam tools/redistributables vs keep everything Steam lists?

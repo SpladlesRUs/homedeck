@@ -8,11 +8,12 @@ answer.
 1. **Library scope.** Is HomeDeck limited to games and emulators, or does it
    include general applications? Records already support an optional `category`
    and a free-form display name. Milestone 1 does not filter the library.
-2. **Manual add vs discovery.** Milestone 1 is **manual add only**. The Add
-   sheet can register a native `.exe` / `.lnk` / store URI, or an emulated
-   game (emulator + ROM + `{rom}` args). `PlatformAdapter.discover()` exists
-   and returns an empty list so a Steam / ROM-folder scanner can replace it
-   later without touching widgets.
+2. **Manual add vs discovery.** Manual Add remains the primary path (native
+   `.exe` / `.lnk` / store URI, or emulator + ROM + `{rom}` args). Windows
+   Steam library scan is available from Settings and feeds Library via
+   `PlatformAdapter.discover()` → `LibraryController.importDiscovered`.
+   ROM-folder discovery is still not implemented. Games-only filtering of
+   Steam tools/redistributables is left open with library scope.
 
 ## Official app icon
 
@@ -74,7 +75,8 @@ Do not treat Deck as a separate app.
 | Windows `.lnk` / store URI launch via `cmd /c start` | Implemented as best-effort; **not verified on real Windows** |
 | Emulator + ROM launch with `{rom}` args | Implemented; **not verified on real Windows** |
 | Windows PE / `.lnk` icon extraction | Runner MethodChannel + WIC (Dart FFI fallback); generated tile fallback |
-| Installed-app / Steam / ROM-folder scanner | Not implemented; `discover()` is the hook |
+| Steam library scanner (Windows) | Implemented; Settings → Scan Steam library |
+| ROM-folder scanner | Not implemented |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
 | Accounts, cloud sync | Out of scope |
