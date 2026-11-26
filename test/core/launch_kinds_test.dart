@@ -31,6 +31,8 @@ void main() {
       isTrue,
     );
     expect(WindowsPaths.isLaunchUri('goggalaxy://openGameView/123'), isTrue);
+    expect(WindowsPaths.isLaunchUri('uplay://launch/1234/0'), isTrue);
+    expect(WindowsPaths.isLaunchUri('ubisoftconnect://launch/1234/0'), isTrue);
     expect(WindowsPaths.isLaunchUri('msxbox://game/?id=abc'), isTrue);
     expect(WindowsPaths.isLaunchUri(r'C:\Games\Star.exe'), isFalse);
     expect(WindowsPaths.isLaunchUri('https://example.com/game'), isFalse);
@@ -131,6 +133,10 @@ void main() {
     expect(
       SourceInference.storeFrom(r'C:\Program Files\Epic Games\Fortnite\Fortnite.exe'),
       Storefront.epic,
+    );
+    expect(
+      SourceInference.storeFrom('uplay://launch/1234/0'),
+      Storefront.ubisoft,
     );
     expect(
       SourceInference.consoleFrom(romPath: r'D:\Roms\game.sfc'),

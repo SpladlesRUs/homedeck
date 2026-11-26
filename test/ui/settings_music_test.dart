@@ -499,6 +499,100 @@ void main() {
     expect(find.byKey(const Key('settings-scan-gog-message')), findsOneWidget);
   });
 
+  testWidgets('bare U imports Ubisoft titles without opening Settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverUbisoftResult: [
+          DiscoveredApp(
+            displayName: 'Far Cry 5',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'uplay://launch/1234/0',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyU);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('settings-scan-ubisoft')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Far Cry 5');
+    expect(harness.controller.apps.single.store, Storefront.ubisoft);
+  });
+
+  testWidgets('settings Ubisoft scan imports discovered titles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverUbisoftResult: [
+          DiscoveredApp(
+            displayName: "Assassin's Creed Odyssey",
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'uplay://launch/911/0',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-settings')));
+    await tester.pump();
+
+    final scan = find.byKey(const Key('settings-scan-ubisoft'));
+    expect(scan, findsOneWidget);
+    await tester.ensureVisible(scan);
+    await tester.pump();
+    await tester.tap(scan);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(harness.controller.apps, hasLength(1));
+    expect(
+      harness.controller.apps.single.displayName,
+      "Assassin's Creed Odyssey",
+    );
+    expect(
+      find.byKey(const Key('settings-scan-ubisoft-message')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('window blur ducks menu music and focus restores it', (
     tester,
   ) async {

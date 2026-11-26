@@ -96,6 +96,11 @@ class ScanGogLibraryIntent extends Intent {
   const ScanGogLibraryIntent();
 }
 
+/// Ubisoft Connect library discover → import (Settings scan / Ally bare `U`).
+class ScanUbisoftLibraryIntent extends Intent {
+  const ScanUbisoftLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();

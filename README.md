@@ -57,7 +57,10 @@ Launcher titles as `com.epicgames.launcher://apps/…` tiles when available
 (else resolved `.exe`; optional `HOMEDECK_EPIC_ROOT` fixture). Settings →
 **Scan GOG** (or keyboard **G**) imports GOG Galaxy titles as
 `goggalaxy://openGameView/…` tiles when available (else resolved `.exe`
-from `goggame-*.info`; optional `HOMEDECK_GOG_ROOT` fixture). Focus a
+from `goggame-*.info`; optional `HOMEDECK_GOG_ROOT` fixture). Settings →
+**Scan Ubisoft Connect** (or keyboard **U**) imports Ubisoft Connect titles
+as `uplay://launch/…` tiles when available (else resolved `.exe`; optional
+`HOMEDECK_UBISOFT_ROOT` fixture with `ubisoftgame-*.info`). Focus a
 Library tile and press **H** to pin it to Home (same as Menu → Add to Home;
 for Ally harnesses that cannot reach that control). **Delete** / **Backspace**
 unpins a focused Home tile, or asks to remove a focused Library tile

@@ -3,8 +3,8 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic / GOG scan,
-/// open questions.
+/// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic / GOG /
+/// Ubisoft scan, open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -40,6 +40,9 @@ class SettingsStub extends StatelessWidget {
     this.onScanGog,
     this.gogScanBusy = false,
     this.gogScanMessage,
+    this.onScanUbisoft,
+    this.ubisoftScanBusy = false,
+    this.ubisoftScanMessage,
     this.onExit,
   });
 
@@ -75,6 +78,9 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanGog;
   final bool gogScanBusy;
   final String? gogScanMessage;
+  final VoidCallback? onScanUbisoft;
+  final bool ubisoftScanBusy;
+  final String? ubisoftScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -487,9 +493,59 @@ class SettingsStub extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Ubisoft Connect',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports installed Ubisoft Connect titles into Library (By app → Ubisoft Connect) via uplay://launch/… when available (else resolved .exe). Keyboard U (Ally SendKeys u) runs the same scan without opening Settings. Optional HOMEDECK_UBISOFT_ROOT points at a fixture Games tree or install folder (ubisoftgame-*.info). No games-only filter — every launchable install is imported.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (onScanUbisoft != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-ubisoft'),
+                                onPressed:
+                                    ubisoftScanBusy ? null : onScanUbisoft,
+                                child: Text(
+                                  ubisoftScanBusy
+                                      ? 'Scanning…'
+                                      : 'Scan Ubisoft Connect',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (ubisoftScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              ubisoftScanMessage!,
+                              key: const Key('settings-scan-ubisoft-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), and pin to Home (H) stay unchanged.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), Ubisoft (U), and pin to Home (H) stay unchanged.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

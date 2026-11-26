@@ -72,6 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _epicScanMessage;
   bool _gogScanBusy = false;
   String? _gogScanMessage;
+  bool _ubisoftScanBusy = false;
+  String? _ubisoftScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -113,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onScanEpic = _scanEpicFromNative;
       WindowsNativeBridge.onScanGog = _scanGogFromNative;
+      WindowsNativeBridge.onScanUbisoft = _scanUbisoftFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -182,6 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onScanGog, _scanGogFromNative)) {
         WindowsNativeBridge.onScanGog = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onScanUbisoft,
+        _scanUbisoftFromNative,
+      )) {
+        WindowsNativeBridge.onScanUbisoft = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -325,6 +334,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanGogLibrary();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `U` / WM_HOMEDECK_SCAN_UBISOFT — same import
+  /// as Settings → Scan Ubisoft Connect (Ally without Settings UIA).
+  Future<void> _scanUbisoftFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanUbisoftLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -606,6 +627,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanUbisoftLibrary() async {
+    if (_ubisoftScanBusy) {
+      return;
+    }
+    setState(() {
+      _ubisoftScanBusy = true;
+      _ubisoftScanMessage = null;
+    });
+    try {
+      final added = await _library.importUbisoft(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _ubisoftScanBusy = false;
+        if (added == 0) {
+          _ubisoftScanMessage =
+              'No new Ubisoft titles found. Install Ubisoft Connect games (or set HOMEDECK_UBISOFT_ROOT), then scan again.';
+        } else if (added == 1) {
+          _ubisoftScanMessage =
+              'Added 1 Ubisoft title to Library. Open Library → By app → Ubisoft Connect.';
+        } else {
+          _ubisoftScanMessage =
+              'Added $added Ubisoft titles to Library. Open Library → By app → Ubisoft Connect.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _ubisoftScanBusy = false;
+        _ubisoftScanMessage = 'Ubisoft scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -685,6 +743,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanEpicLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyG):
         const ScanGogLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyU):
+        const ScanUbisoftLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -778,6 +838,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanGogLibraryIntent: CallbackAction<ScanGogLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanGogLibrary());
+          return null;
+        },
+      ),
+      ScanUbisoftLibraryIntent: CallbackAction<ScanUbisoftLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanUbisoftLibrary());
           return null;
         },
       ),
@@ -1955,6 +2021,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       gogScanBusy: _gogScanBusy,
                       gogScanMessage: _gogScanMessage,
                       onScanGog: _scanGogLibrary,
+                      ubisoftScanBusy: _ubisoftScanBusy,
+                      ubisoftScanMessage: _ubisoftScanMessage,
+                      onScanUbisoft: _scanUbisoftLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
@@ -1962,6 +2031,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _romScanMessage = null;
                         _epicScanMessage = null;
                         _gogScanMessage = null;
+                        _ubisoftScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

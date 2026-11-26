@@ -141,6 +141,9 @@ class LibraryController extends ChangeNotifier {
   /// Platform GOG Galaxy install scan on Windows.
   Future<List<DiscoveredApp>> discoverGog() => _adapter.discoverGog();
 
+  /// Platform Ubisoft Connect install scan on Windows.
+  Future<List<DiscoveredApp>> discoverUbisoft() => _adapter.discoverUbisoft();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -149,8 +152,8 @@ class LibraryController extends ChangeNotifier {
   /// emulator (or an empty emulator) still import.
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
-  /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] for the
-  /// other scanners.
+  /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] /
+  /// [importUbisoft] for the other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -221,6 +224,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: _adapter.discoverGog,
+    );
+  }
+
+  /// Ubisoft Connect discover → Library native tiles (no Home pins).
+  Future<int> importUbisoft({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverUbisoft,
     );
   }
 
