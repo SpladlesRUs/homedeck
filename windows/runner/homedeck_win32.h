@@ -62,6 +62,12 @@
 #define WM_HOMEDECK_SCAN_UBISOFT (WM_APP + 0x55)
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `o` (or a real O key)
+// should run EA App / Origin discover → Library import (no Settings UIA).
+#ifndef WM_HOMEDECK_SCAN_EA
+#define WM_HOMEDECK_SCAN_EA (WM_APP + 0x4F)
+#endif
+
 // Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `h` (or a real H key)
 // should pin the focused Library record onto Home (same as UI Add to Home).
 #ifndef WM_HOMEDECK_PIN_HOME
@@ -90,8 +96,9 @@
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
 // ROM-folder scan, bare E → Epic Games scan, bare G → GOG Galaxy scan,
-// bare U → Ubisoft Connect scan, bare H → pin focused Library tile to Home,
-// and bare Delete/Backspace → unpin / Library remove.
+// bare U → Ubisoft Connect scan, bare O → EA App / Origin scan, bare H → pin
+// focused Library tile to Home, and bare Delete/Backspace → unpin / Library
+// remove.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -102,7 +109,8 @@
 // `scanStartMenu`. Bare `r` posts WM_HOMEDECK_SCAN_ROMS → Dart `scanRoms`.
 // Bare `e` posts WM_HOMEDECK_SCAN_EPIC → Dart `scanEpic`. Bare `g` posts
 // WM_HOMEDECK_SCAN_GOG → Dart `scanGog`. Bare `u` posts
-// WM_HOMEDECK_SCAN_UBISOFT → Dart `scanUbisoft`. Bare `h` posts
+// WM_HOMEDECK_SCAN_UBISOFT → Dart `scanUbisoft`. Bare `o` posts
+// WM_HOMEDECK_SCAN_EA → Dart `scanEa`. Bare `h` posts
 // WM_HOMEDECK_PIN_HOME → Dart `pinFocusedToHome` (UI Add to Home without menu
 // UIA). Bare Delete/Backspace posts WM_HOMEDECK_REMOVE → Dart `removeFocused`
 // (same as RemoveFocusedIntent / `_requestRemove`). While Library remove
@@ -197,6 +205,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_SCAN_UBISOFT: ask Dart to run Ubisoft
   // Connect discover → importUbisoft (Settings → Scan Ubisoft Connect).
   void HandleScanUbisoftKey();
+
+  // UI-thread handler for WM_HOMEDECK_SCAN_EA: ask Dart to run EA App / Origin
+  // discover → importEa (Settings → Scan EA App).
+  void HandleScanEaKey();
 
   // UI-thread handler for WM_HOMEDECK_PIN_HOME: ask Dart to pin the focused
   // Library record onto Home (same as UI Add to Home).

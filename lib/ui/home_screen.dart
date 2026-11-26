@@ -74,6 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _gogScanMessage;
   bool _ubisoftScanBusy = false;
   String? _ubisoftScanMessage;
+  bool _eaScanBusy = false;
+  String? _eaScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -116,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanEpic = _scanEpicFromNative;
       WindowsNativeBridge.onScanGog = _scanGogFromNative;
       WindowsNativeBridge.onScanUbisoft = _scanUbisoftFromNative;
+      WindowsNativeBridge.onScanEa = _scanEaFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -191,6 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _scanUbisoftFromNative,
       )) {
         WindowsNativeBridge.onScanUbisoft = null;
+      }
+      if (identical(WindowsNativeBridge.onScanEa, _scanEaFromNative)) {
+        WindowsNativeBridge.onScanEa = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -346,6 +352,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanUbisoftLibrary();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `O` / WM_HOMEDECK_SCAN_EA — same import as
+  /// Settings → Scan EA App (Ally without Settings UIA).
+  Future<void> _scanEaFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanEaLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -664,6 +682,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanEaLibrary() async {
+    if (_eaScanBusy) {
+      return;
+    }
+    setState(() {
+      _eaScanBusy = true;
+      _eaScanMessage = null;
+    });
+    try {
+      final added = await _library.importEa(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _eaScanBusy = false;
+        if (added == 0) {
+          _eaScanMessage =
+              'No new EA titles found. Install EA App / Origin games (or set HOMEDECK_EA_ROOT), then scan again.';
+        } else if (added == 1) {
+          _eaScanMessage =
+              'Added 1 EA title to Library. Open Library → By app → Origin / EA app.';
+        } else {
+          _eaScanMessage =
+              'Added $added EA titles to Library. Open Library → By app → Origin / EA app.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _eaScanBusy = false;
+        _eaScanMessage = 'EA scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -745,6 +800,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanGogLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyU):
         const ScanUbisoftLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyO):
+        const ScanEaLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -844,6 +901,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanUbisoftLibraryIntent: CallbackAction<ScanUbisoftLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanUbisoftLibrary());
+          return null;
+        },
+      ),
+      ScanEaLibraryIntent: CallbackAction<ScanEaLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanEaLibrary());
           return null;
         },
       ),
@@ -2024,6 +2087,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ubisoftScanBusy: _ubisoftScanBusy,
                       ubisoftScanMessage: _ubisoftScanMessage,
                       onScanUbisoft: _scanUbisoftLibrary,
+                      eaScanBusy: _eaScanBusy,
+                      eaScanMessage: _eaScanMessage,
+                      onScanEa: _scanEaLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
@@ -2032,6 +2098,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _epicScanMessage = null;
                         _gogScanMessage = null;
                         _ubisoftScanMessage = null;
+                        _eaScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

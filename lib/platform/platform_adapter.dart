@@ -66,6 +66,9 @@ abstract class PlatformAdapter {
   /// Ubisoft Connect / Uplay install scan on Windows; empty elsewhere.
   Future<List<DiscoveredApp>> discoverUbisoft() async => const [];
 
+  /// EA App / Origin install scan on Windows; empty elsewhere.
+  Future<List<DiscoveredApp>> discoverEa() async => const [];
+
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({
     required LaunchTarget target,

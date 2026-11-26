@@ -93,7 +93,13 @@ re-scan skips duplicate targets). Ubisoft Connect discovery reads
 games-only filtering. Settings → Scan Ubisoft Connect and bare **U**
 (`WM_HOMEDECK_SCAN_UBISOFT` → Dart `scanUbisoft`) call
 `LibraryController.importUbisoft` (Library only; no Home pins; re-scan
-skips duplicate targets).
+skips duplicate targets). EA App / Origin discovery reads
+`__Installer\installerdata.xml` under EA Games / Origin Games roots
+(registry `Origin Games\{id}`, optional `HOMEDECK_EA_ROOT` fixture),
+prefers `origin://launchgame/{offerId}` (else resolved `.exe`), and does
+not invent games-only filtering. Settings → Scan EA App and bare **O**
+(`WM_HOMEDECK_SCAN_EA` → Dart `scanEa`) call `LibraryController.importEa`
+(Library only; no Home pins; re-scan skips duplicate targets).
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
@@ -112,9 +118,9 @@ Shortcuts alone never saw harness `a` @82a5a20). Optional
 `HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome,
 Enter→focused launch (with a Dart `launchFocused` fallback when the
 mirrored path is empty), bare **E** → `scanEpic`, bare **G** → `scanGog`,
-bare **U** → `scanUbisoft`, bare **H** → `pinFocusedToHome`, and bare
-**Delete** / **Backspace** → `removeFocused` (Library confirm Enter →
-`confirmFocused`, not ShellExecute).
+bare **U** → `scanUbisoft`, bare **O** → `scanEa`, bare **H** →
+`pinFocusedToHome`, and bare **Delete** / **Backspace** → `removeFocused`
+(Library confirm Enter → `confirmFocused`, not ShellExecute).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

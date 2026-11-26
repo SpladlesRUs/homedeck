@@ -4,7 +4,7 @@ import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic / GOG /
-/// Ubisoft scan, open questions.
+/// Ubisoft / EA scan, open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -43,6 +43,9 @@ class SettingsStub extends StatelessWidget {
     this.onScanUbisoft,
     this.ubisoftScanBusy = false,
     this.ubisoftScanMessage,
+    this.onScanEa,
+    this.eaScanBusy = false,
+    this.eaScanMessage,
     this.onExit,
   });
 
@@ -81,6 +84,9 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanUbisoft;
   final bool ubisoftScanBusy;
   final String? ubisoftScanMessage;
+  final VoidCallback? onScanEa;
+  final bool eaScanBusy;
+  final String? eaScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -543,9 +549,56 @@ class SettingsStub extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'EA App / Origin',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports installed EA App / Origin titles into Library (By app → Origin / EA app) via origin://launchgame/… when available (else resolved .exe). Keyboard O (Ally SendKeys o) runs the same scan without opening Settings. Optional HOMEDECK_EA_ROOT points at a fixture Games tree or install folder (__Installer\\installerdata.xml). No games-only filter — every launchable install is imported.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (onScanEa != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-ea'),
+                                onPressed: eaScanBusy ? null : onScanEa,
+                                child: Text(
+                                  eaScanBusy ? 'Scanning…' : 'Scan EA App',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (eaScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              eaScanMessage!,
+                              key: const Key('settings-scan-ea-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), Ubisoft (U), and pin to Home (H) stay unchanged.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), Ubisoft (U), EA (O), and pin to Home (H) stay unchanged.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

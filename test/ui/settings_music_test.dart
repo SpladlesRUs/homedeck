@@ -593,6 +593,97 @@ void main() {
     );
   });
 
+  testWidgets('bare O imports EA titles without opening Settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverEaResult: [
+          DiscoveredApp(
+            displayName: 'Bejeweled 3',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'origin://launchgame/71715',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('settings-scan-ea')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Bejeweled 3');
+    expect(harness.controller.apps.single.store, Storefront.ea);
+  });
+
+  testWidgets('settings EA scan imports discovered titles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverEaResult: [
+          DiscoveredApp(
+            displayName: 'Dead Space',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'origin://launchgame/1002975',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-settings')));
+    await tester.pump();
+
+    final scan = find.byKey(const Key('settings-scan-ea'));
+    expect(scan, findsOneWidget);
+    await tester.ensureVisible(scan);
+    await tester.pump();
+    await tester.tap(scan);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Dead Space');
+    expect(
+      find.byKey(const Key('settings-scan-ea-message')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('window blur ducks menu music and focus restores it', (
     tester,
   ) async {

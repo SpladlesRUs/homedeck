@@ -906,6 +906,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M13: bare SendKeys `o` -> EA App / Origin scan (Settings -> Scan
+      // EA App) without Settings UIA.
+      if (info->vkCode == 'O' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_EA, 0, 0);
+          return 1;
+        }
+      }
       // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
       // pins the focused Library record onto Home (same as the menu action).
       if (info->vkCode == 'H' && !ModifierHeld()) {
@@ -1129,6 +1140,17 @@ void HomedeckWin32::HandleScanUbisoftKey() {
   }
   OutputDebugStringW(L"homedeck: HandleScanUbisoftKey → Dart scanUbisoft\n");
   channel_->InvokeMethod("scanUbisoft", nullptr);
+}
+
+void HomedeckWin32::HandleScanEaKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleScanEaKey → Dart scanEa\n");
+  channel_->InvokeMethod("scanEa", nullptr);
 }
 
 void HomedeckWin32::HandlePinHomeKey() {

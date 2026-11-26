@@ -39,10 +39,14 @@ answer.
    Settings → Scan Ubisoft Connect; Ally uses bare **U**
    (`WM_HOMEDECK_SCAN_UBISOFT` → `scanUbisoft`). Optional
    `HOMEDECK_UBISOFT_ROOT` points at a fixture Games / install tree
-   (`ubisoftgame-*.info`). Games-only filtering of Steam
-   tools/redistributables, Start Menu entries, Epic manifests, GOG info
-   files, or Ubisoft installs is left open with library scope (Epic skips
-   incomplete installs only).
+   (`ubisoftgame-*.info`). EA App / Origin scan uses `discoverEa()` →
+   `importEa`. Humans use Settings → Scan EA App; Ally uses bare **O**
+   (`WM_HOMEDECK_SCAN_EA` → `scanEa`). Optional `HOMEDECK_EA_ROOT` points
+   at a fixture Games / install tree (`__Installer\installerdata.xml`).
+   Games-only filtering of Steam tools/redistributables, Start Menu
+   entries, Epic manifests, GOG info files, Ubisoft installs, or EA
+   installs is left open with library scope (Epic skips incomplete
+   installs only).
 
 ## Official app icon
 
@@ -112,6 +116,8 @@ Do not treat Deck as a separate app.
 | ROM-folder scanner | Implemented; Settings → Scan ROM folder / bare **R** |
 | Epic Games scanner (Windows) | Implemented; Settings → Scan Epic Games / bare **E** |
 | GOG Galaxy scanner (Windows) | Implemented; Settings → Scan GOG / bare **G** |
+| Ubisoft Connect scanner (Windows) | Implemented; Settings → Scan Ubisoft Connect / bare **U** |
+| EA App / Origin scanner (Windows) | Implemented; Settings → Scan EA App / bare **O** |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
 | Accounts, cloud sync | Out of scope |
@@ -164,7 +170,8 @@ Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
 a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, A→classic Open,
 S→Steam scan, P→Start Menu scan, R→ROM-folder scan, E→Epic Games scan,
-G→GOG Galaxy scan, H→pin focused Library tile to Home, and
+G→GOG Galaxy scan, U→Ubisoft Connect scan, O→EA App / Origin scan,
+H→pin focused Library tile to Home, and
 Delete/Backspace→unpin / Library remove while HomeDeck is foreground; Dart
 mirrors the focused launch target,
 handles a native `launchFocused` fallback when the mirror is empty, and
@@ -277,6 +284,21 @@ window.
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
    **`h`** / **`a`** / Delete.
 
+### Ally M13 EA App / Origin smoke
+
+1. Optional fixture: set `HOMEDECK_EA_ROOT` to a Games-like tree of 1–2
+   folders each with `__Installer\installerdata.xml` (or a single install
+   folder), or use a real EA App / Origin install on the Ally box.
+2. Launch HomeDeck; bare SendKeys **`o`** (no Settings UIA) runs
+   discoverEa → importEa.
+3. Open Library → By app → Origin / EA app; new tiles appear. Focus one; bare
+   **`h`** pins to Home; SendKeys Enter launches (URI via
+   `origin://launchgame/…` when present — best-effort if EA App is not
+   installed; else resolved `.exe`).
+4. SendKeys **`o`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
+   **`u`** / **`h`** / **`a`** / Delete.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -292,6 +314,7 @@ Keyboard:
 - E scans Epic Games Launcher installs into Library (no Home pins)
 - G scans GOG Galaxy installs into Library (no Home pins)
 - U scans Ubisoft Connect installs into Library (no Home pins)
+- O scans EA App / Origin installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”

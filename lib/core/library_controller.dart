@@ -144,6 +144,9 @@ class LibraryController extends ChangeNotifier {
   /// Platform Ubisoft Connect install scan on Windows.
   Future<List<DiscoveredApp>> discoverUbisoft() => _adapter.discoverUbisoft();
 
+  /// Platform EA App / Origin install scan on Windows.
+  Future<List<DiscoveredApp>> discoverEa() => _adapter.discoverEa();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -153,7 +156,7 @@ class LibraryController extends ChangeNotifier {
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
   /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] /
-  /// [importUbisoft] for the other scanners.
+  /// [importUbisoft] / [importEa] for the other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -232,6 +235,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: _adapter.discoverUbisoft,
+    );
+  }
+
+  /// EA App / Origin discover → Library native tiles (no Home pins).
+  Future<int> importEa({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverEa,
     );
   }
 
