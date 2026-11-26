@@ -897,7 +897,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       // Ally M12: bare SendKeys `u` -> Ubisoft Connect scan (Settings -> Scan
       // Ubisoft Connect) without Settings UIA.
-      if (info->vkCode == 'U' && !modifierHeld()) {
+      if (info->vkCode == 'U' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
@@ -908,7 +908,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
       // pins the focused Library record onto Home (same as the menu action).
-      if (info->vkCode == 'H' && !modifierHeld()) {
+      if (info->vkCode == 'H' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
