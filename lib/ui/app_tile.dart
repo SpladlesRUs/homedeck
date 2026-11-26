@@ -276,17 +276,31 @@ class TileFace extends StatefulWidget {
     required this.child,
   });
 
+  /// Lift when keyboard / gamepad / mouse focus lands on a tile.
+  static const focusedScale = 1.08;
+
+  /// Soft hover lift for mouse-over without focus.
+  static const hoveredScale = 1.03;
+
+  /// Cyan → deep cyan → gold sweep used by the animated focus ring.
+  static const focusRingColors = <Color>[
+    HomeDeckColors.cyan,
+    HomeDeckColors.cyanDeep,
+    HomeDeckColors.gold,
+    HomeDeckColors.cyanDeep,
+    HomeDeckColors.cyan,
+  ];
+
   final HomeDeckMetrics metrics;
   final bool focused;
   final bool hovered;
   final Widget child;
 
   @override
-  State<TileFace> createState() => _TileFaceState();
+  State<TileFace> createState() => TileFaceState();
 }
 
-class _TileFaceState extends State<TileFace>
-    with SingleTickerProviderStateMixin {
+class TileFaceState extends State<TileFace> with SingleTickerProviderStateMixin {
   late final AnimationController _spin;
 
   @override
@@ -294,7 +308,7 @@ class _TileFaceState extends State<TileFace>
     super.initState();
     _spin = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 2400),
     );
     if (widget.focused) {
       _spin.repeat();
@@ -318,51 +332,59 @@ class _TileFaceState extends State<TileFace>
     super.dispose();
   }
 
+  @visibleForTesting
+  AnimationController get spinController => _spin;
+
   @override
   Widget build(BuildContext context) {
     final focused = widget.focused;
-    final scale = focused ? 1.08 : (widget.hovered ? 1.03 : 1.0);
+    final scale = focused
+        ? TileFace.focusedScale
+        : (widget.hovered ? TileFace.hoveredScale : 1.0);
     final radius = 14 * widget.metrics.scale;
+    final ring = 3.5 * widget.metrics.scale;
     return LayoutBuilder(
       builder: (context, constraints) {
         final side = math.min(constraints.maxWidth, constraints.maxHeight);
         return Center(
           child: AnimatedScale(
             scale: scale,
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOut,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
             child: AnimatedBuilder(
               animation: _spin,
               builder: (context, child) {
+                // Gentle glow pulse so the ring reads as alive, not a still outline.
+                final pulse = 0.5 + 0.5 * math.sin(_spin.value * math.pi * 2);
                 return Container(
+                  key: focused
+                      ? const ValueKey('tile-focus-ring')
+                      : const ValueKey('tile-face-calm'),
                   width: side,
                   height: side,
-                  padding: EdgeInsets.all(focused ? 3.5 : 0),
+                  padding: EdgeInsets.all(focused ? ring : 0),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(radius + 4),
+                    borderRadius: BorderRadius.circular(radius + ring),
                     gradient: focused
                         ? SweepGradient(
-                            startAngle: _spin.value * 6.2832,
-                            colors: const [
-                              HomeDeckColors.cyan,
-                              HomeDeckColors.purple,
-                              HomeDeckColors.cyanDeep,
-                              HomeDeckColors.cyan,
-                            ],
+                            transform: GradientRotation(
+                              _spin.value * math.pi * 2,
+                            ),
+                            colors: TileFace.focusRingColors,
                           )
                         : null,
                     boxShadow: focused
                         ? [
                             BoxShadow(
                               color: HomeDeckColors.cyan.withValues(
-                                alpha: 0.55,
+                                alpha: 0.38 + pulse * 0.28,
                               ),
-                              blurRadius: 16,
+                              blurRadius: 12 + pulse * 8,
                               spreadRadius: 1,
                             ),
                             BoxShadow(
-                              color: HomeDeckColors.purple.withValues(
-                                alpha: 0.35,
+                              color: HomeDeckColors.gold.withValues(
+                                alpha: 0.12 + pulse * 0.16,
                               ),
                               blurRadius: 10,
                             ),

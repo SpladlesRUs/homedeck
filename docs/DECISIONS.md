@@ -344,6 +344,21 @@ window.
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
    **`u`** / **`o`** / **`n`** / **`h`** / **`a`** / Delete.
 
+### Ally M16 animated focus smoke
+
+Visual check (widget tests cover ring presence / scale / spin; Ally confirms
+motion on device). Focused Home / Library / folder tiles — including empty
+Home slots — use a spinning cyan→cyanDeep→gold gradient ring plus a slight
+scale-up (`TileFace`); unfocused tiles stay calm (no ring).
+
+1. Launch HomeDeck; move focus across Home tiles (filled + empty) — focused
+   tile shows the animated ring / scale (not a static outline).
+2. Library folder: focus games — same focus treatment; folder hero still
+   settles / crossfades after ~350 ms.
+3. Spot-check Enter launch, Delete / unpin, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`** unchanged.
+
 Keyboard:
 
 - Arrow keys move focus
