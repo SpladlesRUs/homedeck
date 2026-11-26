@@ -872,6 +872,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M10: bare SendKeys `e` -> Epic Games scan (Settings -> Scan Epic
+      // Games) without Settings UIA.
+      if (info->vkCode == 'E' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_EPIC, 0, 0);
+          return 1;
+        }
+      }
       // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
       // pins the focused Library record onto Home (same as the menu action).
       if (info->vkCode == 'H' && !ModifierHeld()) {
@@ -1062,6 +1073,17 @@ void HomedeckWin32::HandleScanRomsKey() {
   }
   OutputDebugStringW(L"homedeck: HandleScanRomsKey → Dart scanRoms\n");
   channel_->InvokeMethod("scanRoms", nullptr);
+}
+
+void HomedeckWin32::HandleScanEpicKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleScanEpicKey → Dart scanEpic\n");
+  channel_->InvokeMethod("scanEpic", nullptr);
 }
 
 void HomedeckWin32::HandlePinHomeKey() {

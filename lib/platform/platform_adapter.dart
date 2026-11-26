@@ -17,7 +17,7 @@ class PickedLaunch {
   final TileKind kind;
 }
 
-/// Metadata from an installed-app scanner (Steam / Start Menu / ROM folder).
+/// Metadata from an installed-app scanner (Steam / Start Menu / ROM / Epic).
 class DiscoveredApp {
   const DiscoveredApp({
     required this.displayName,
@@ -55,6 +55,9 @@ abstract class PlatformAdapter {
     String? emulator,
   }) async =>
       const [];
+
+  /// Epic Games Launcher `*.item` manifest scan on Windows; empty elsewhere.
+  Future<List<DiscoveredApp>> discoverEpic() async => const [];
 
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({

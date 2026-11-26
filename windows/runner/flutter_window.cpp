@@ -71,6 +71,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleScanRomsKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_SCAN_EPIC) {
+    win32_.HandleScanEpicKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_PIN_HOME) {
     win32_.HandlePinHomeKey();
     return 0;
@@ -131,6 +135,16 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                       (GetKeyState(VK_RWIN) & 0x8000) != 0;
     if (!mods) {
       win32_.HandleScanRomsKey();
+      return 0;
+    }
+  }
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) && wparam == 'E') {
+    const bool mods = (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
+                      (GetKeyState(VK_MENU) & 0x8000) != 0 ||
+                      (GetKeyState(VK_LWIN) & 0x8000) != 0 ||
+                      (GetKeyState(VK_RWIN) & 0x8000) != 0;
+    if (!mods) {
+      win32_.HandleScanEpicKey();
       return 0;
     }
   }

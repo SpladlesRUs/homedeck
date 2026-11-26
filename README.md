@@ -51,8 +51,11 @@ games as `steam://rungameid/…` tiles. Settings → **Scan Start Menu** (or
 keyboard **P**) imports Start Menu Programs shortcuts (resolved `.exe` /
 URI / `.lnk`). Settings → **Choose ROM folder** / **Scan ROM folder** (or
 keyboard **R**) imports common ROM files as emulated tiles with `{rom}` args
-(`HOMEDECK_ROM_ROOT` / `HOMEDECK_EMULATOR` optional for Ally fixtures). Focus
-a Library tile and press **H** to pin it to Home (same as Menu → Add to Home;
+(`HOMEDECK_ROM_ROOT` / `HOMEDECK_EMULATOR` optional for Ally fixtures).
+Settings → **Scan Epic Games** (or keyboard **E**) imports Epic Games
+Launcher titles as `com.epicgames.launcher://apps/…` tiles when available
+(else resolved `.exe`; optional `HOMEDECK_EPIC_ROOT` fixture). Focus a
+Library tile and press **H** to pin it to Home (same as Menu → Add to Home;
 for Ally harnesses that cannot reach that control). **Delete** / **Backspace**
 unpins a focused Home tile, or asks to remove a focused Library tile
 (Enter confirms; Esc cancels — same as Menu Remove, without UIA).

@@ -73,7 +73,14 @@ dismiss/confirm. ROM-folder scanning walks a Settings-persisted folder (or
 library emulator `.exe` fills the emulator path; otherwise the path is left
 empty so Manual Add / edit can finish it. Settings → Scan ROM folder and bare
 **R** (`WM_HOMEDECK_SCAN_ROMS` → Dart `scanRoms`) call
-`LibraryController.importRoms`.
+`LibraryController.importRoms`. Epic Games discovery reads EpicGamesLauncher
+`*.item` manifests under `%ProgramData%\Epic\…\Manifests` (registry
+`AppDataPath`, optional `HOMEDECK_EPIC_ROOT` fixture), prefers
+`com.epicgames.launcher://apps/…` launch URIs (else resolved `.exe`), and
+does not invent games-only filtering. Settings → Scan Epic Games and bare
+**E** (`WM_HOMEDECK_SCAN_EPIC` → Dart `scanEpic`) call
+`LibraryController.importEpic` (Library only; no Home pins; re-scan skips
+duplicate targets).
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
@@ -91,9 +98,9 @@ SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
 Shortcuts alone never saw harness `a` @82a5a20). Optional
 `HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome,
 Enter→focused launch (with a Dart `launchFocused` fallback when the
-mirrored path is empty), bare **H** → `pinFocusedToHome`, and bare
-**Delete** / **Backspace** → `removeFocused` (Library confirm Enter →
-`confirmFocused`, not ShellExecute).
+mirrored path is empty), bare **E** → `scanEpic`, bare **H** →
+`pinFocusedToHome`, and bare **Delete** / **Backspace** → `removeFocused`
+(Library confirm Enter → `confirmFocused`, not ShellExecute).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.
