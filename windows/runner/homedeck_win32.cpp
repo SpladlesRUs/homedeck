@@ -886,7 +886,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // Ally M11: bare SendKeys `g` -> GOG Galaxy scan (Settings -> Scan GOG)
       // without Settings UIA. Message id is WM_HOMEDECK_SCAN_GOG (0x67), not
       // WM_HOMEDECK_GAME_EXIT (0x47).
-      if (info->vkCode == 'G' && !modifierHeld()) {
+      if (info->vkCode == 'G' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
