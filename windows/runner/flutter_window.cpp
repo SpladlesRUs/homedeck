@@ -75,6 +75,14 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandlePinHomeKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_REMOVE) {
+    win32_.HandleRemoveKey();
+    return 0;
+  }
+  if (message == WM_HOMEDECK_CONFIRM) {
+    win32_.HandleConfirmKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_GAME_EXIT) {
     const uint64_t generation =
         (static_cast<uint64_t>(static_cast<uint32_t>(lparam)) << 32) |
@@ -133,6 +141,19 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                       (GetKeyState(VK_RWIN) & 0x8000) != 0;
     if (!mods) {
       win32_.HandlePinHomeKey();
+      return 0;
+    }
+  }
+  if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) &&
+      (wparam == VK_DELETE || wparam == VK_BACK)) {
+    const bool mods = (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
+                      (GetKeyState(VK_MENU) & 0x8000) != 0 ||
+                      (GetKeyState(VK_LWIN) & 0x8000) != 0 ||
+                      (GetKeyState(VK_RWIN) & 0x8000) != 0;
+    if (!mods) {
+      win32_.SetRemoveArmed(true);
+      win32_.SetFocusedLaunch(L"", L"");
+      win32_.HandleRemoveKey();
       return 0;
     }
   }

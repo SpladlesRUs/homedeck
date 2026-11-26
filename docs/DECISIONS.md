@@ -21,10 +21,13 @@ answer.
    `HOMEDECK_START_MENU_ROOT` points at a fixture Programs tree. Pinning a
    focused Library tile to Home: humans use Menu / Details → Add to Home;
    Ally uses bare **H** (`WM_HOMEDECK_PIN_HOME` → `pinFocusedToHome`, same
-   `LibraryController.pinToHome` — menu UIA is not required). ROM-folder
-   discovery uses `discoverRoms()` → `importRoms`. Humans use Settings →
-   Choose ROM folder / Scan ROM folder; Ally uses bare **R**
-   (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
+   `LibraryController.pinToHome` — menu UIA is not required). Unpin / Library
+   remove: humans use Menu / Details; Ally uses bare **Delete** / **Backspace**
+   (`WM_HOMEDECK_REMOVE` → `removeFocused`, same `_requestRemove` — menu UIA
+   is not required). Library confirm Enter is `WM_HOMEDECK_CONFIRM` (not
+   ShellExecute). ROM-folder discovery uses `discoverRoms()` → `importRoms`.
+   Humans use Settings → Choose ROM folder / Scan ROM folder; Ally uses bare
+   **R** (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
    `HOMEDECK_EMULATOR` fixture the folder and emulator. Games-only filtering
    of Steam tools/redistributables or Start Menu entries is left open with
    library scope.
@@ -93,6 +96,7 @@ Do not treat Deck as a separate app.
 | Steam library scanner (Windows) | Implemented; Settings → Scan Steam library |
 | Start Menu Programs scanner (Windows) | Implemented; Settings → Scan Start Menu / bare **P** |
 | Pin focused Library tile to Home | Implemented; UI Add to Home / bare **H** |
+| Unpin / remove focused tile | Implemented; UI Remove / bare **Delete**/**Backspace** |
 | ROM-folder scanner | Implemented; Settings → Scan ROM folder / bare **R** |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
@@ -145,12 +149,14 @@ launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
 Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
 a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, A→classic Open,
-S→Steam scan, P→Start Menu scan, R→ROM-folder scan, and H→pin focused Library
-tile to Home while HomeDeck is foreground; Dart mirrors the focused launch
-target, handles a native `launchFocused` fallback when the mirror is empty,
-and persists native `addPickedPath` results. Dart FFI FindWindow remains a
-fallback for F11 because `window_manager` 0.7 often never binds the stock
-Flutter window.
+S→Steam scan, P→Start Menu scan, R→ROM-folder scan, H→pin focused Library
+tile to Home, and Delete/Backspace→unpin / Library remove while HomeDeck is
+foreground; Dart mirrors the focused launch target, handles a native
+`launchFocused` fallback when the mirror is empty, and persists native
+`addPickedPath` results. While Library remove confirm is pending, Enter is
+`confirmFocused` (not ShellExecute). Dart FFI FindWindow remains a fallback
+for F11 because `window_manager` 0.7 often never binds the stock Flutter
+window.
 
 ### Ally M4 Start Menu smoke
 
@@ -202,11 +208,22 @@ Flutter window.
    (no process wait / Steam overlay hooks) — do not FAIL the smoke if a
    Steam session does not auto-return.
 
+### Ally M9 unpin / Library remove smoke
+
+1. Pin a launchable app (e.g. notepad) to Home; focus it; SendKeys **Delete**
+   (or **Backspace**) → tile unpinned (`home.slots` / UI). No Menu UIA.
+2. Library: focus a removable tile; **Delete** → confirm overlay; **Enter** →
+   app gone from `library.json` / UI (**no** accidental launch).
+3. **Escape** on confirm cancels; spot-check F11 and **`s`** / **`p`** /
+   **`r`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
-- Enter launches (Add sheet also handles Enter / A via `LaunchFocusedIntent`)
+- Enter launches (Add sheet also handles Enter / A via `LaunchFocusedIntent`;
+  Library remove confirm uses Enter → `confirmFocused`, not ShellExecute)
 - Delete / Backspace unpins from Home; in Library it asks to remove the game
+  (Ally: `WM_HOMEDECK_REMOVE` — same as UI Remove; menu UIA not required)
 - Esc dismisses overlays
 - M enters rearrange mode (arrows swap tiles; drag also works)
 - S scans Steam library into Library (no Home pins)

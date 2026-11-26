@@ -108,6 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
+      WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
+      WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
       // runner can enter F11 chrome and restore on process exit.
@@ -175,6 +177,18 @@ class _HomeScreenState extends State<HomeScreen> {
       )) {
         WindowsNativeBridge.onPinFocusedToHome = null;
       }
+      if (identical(
+        WindowsNativeBridge.onRemoveFocused,
+        _removeFocusedFromNative,
+      )) {
+        WindowsNativeBridge.onRemoveFocused = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onConfirmFocused,
+        _confirmFocusedFromNative,
+      )) {
+        WindowsNativeBridge.onConfirmFocused = null;
+      }
       if (identical(WindowsNativeBridge.onGameExited, _gameExitedFromNative)) {
         WindowsNativeBridge.onGameExited = null;
       }
@@ -194,7 +208,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Runner WH_KEYBOARD_LL / WM_KEYDOWN Enter when mirrored path was empty.
   Future<void> _launchFocusedFromNative() async {
-    if (!mounted || _overlayOpen) {
+    if (!mounted) {
+      return;
+    }
+    // Library remove confirm / failure: Enter confirms via `_handleConfirm`
+    // even though `_overlayOpen` is true (must not no-op and leave armed).
+    if (_pendingRemoveId != null || _failure != null) {
+      _handleConfirm();
+      return;
+    }
+    if (_overlayOpen) {
+      return;
+    }
+    _handleConfirm();
+  }
+
+  /// Runner WH_KEYBOARD_LL Enter while remove-armed / WM_HOMEDECK_CONFIRM.
+  Future<void> _confirmFocusedFromNative() async {
+    if (!mounted) {
       return;
     }
     _handleConfirm();
@@ -270,6 +301,34 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _pinFocusedToHome();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
+  /// as RemoveFocusedIntent / `_requestRemove` (Ally without menu UIA).
+  Future<void> _removeFocusedFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _failure != null ||
+        _pendingRemoveId != null) {
+      // Native already armed Delete; disarm so Enter can launch again.
+      await WindowsNativeBridge.setRemoveArmed(false);
+      _syncNativeFocusedLaunch();
+      return;
+    }
+    _requestRemove();
+    if (!mounted) {
+      return;
+    }
+    if (_pendingRemoveId == null) {
+      // Home unpin — no confirm overlay; restore Enter→launch.
+      await WindowsNativeBridge.setRemoveArmed(false);
+      _syncNativeFocusedLaunch();
+    }
+    // Library pending: stay armed; mirror stays cleared until confirm/cancel.
   }
 
   Future<void> _pinFocusedToHome() async {
@@ -879,6 +938,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final id = _pendingRemoveId!;
       setState(() => _pendingRemoveId = null);
       _library.remove(id);
+      unawaited(_clearRemoveArmedAndSyncLaunch());
       return;
     }
     if (_searchOpen) {
@@ -931,6 +991,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _clearRemoveArmedAndSyncLaunch() async {
+    await WindowsNativeBridge.setRemoveArmed(false);
+    if (!mounted) {
+      return;
+    }
+    _syncNativeFocusedLaunch();
+  }
+
   void _dismiss() {
     if (_failure != null) {
       setState(() {
@@ -941,6 +1009,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (_pendingRemoveId != null) {
       setState(() => _pendingRemoveId = null);
+      unawaited(_clearRemoveArmedAndSyncLaunch());
       return;
     }
     if (_searchOpen) {
@@ -1090,6 +1159,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _pendingRemoveId = id);
+    // Clear Enter mirror so confirm cannot ShellExecute the focused path.
+    _syncNativeFocusedLaunch();
   }
 
   void _openFolder(String title) {
@@ -1664,6 +1735,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _menuOpen = false;
                                 _pendingRemoveId = focused.id;
                               });
+                              _syncNativeFocusedLaunch();
                             },
                     ),
                   if (_addOpen)
@@ -1826,6 +1898,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _detailsOpen = false;
                                 _pendingRemoveId = focused.id;
                               });
+                              _syncNativeFocusedLaunch();
                             },
                     ),
                   if (_pendingRemoveId != null)
@@ -1838,8 +1911,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         final id = _pendingRemoveId!;
                         setState(() => _pendingRemoveId = null);
                         _library.remove(id);
+                        unawaited(_clearRemoveArmedAndSyncLaunch());
                       },
-                      onCancel: () => setState(() => _pendingRemoveId = null),
+                      onCancel: () {
+                        setState(() => _pendingRemoveId = null);
+                        unawaited(_clearRemoveArmedAndSyncLaunch());
+                      },
                     ),
                 ],
               ),
@@ -2087,6 +2164,7 @@ class _RemoveConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: const Key('remove-confirm'),
       color: Colors.black.withValues(alpha: 0.45),
       child: Center(
         child: ConstrainedBox(
@@ -2124,6 +2202,7 @@ class _RemoveConfirm extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TextButton(
+                        key: const Key('remove-confirm-cancel'),
                         onPressed: onCancel,
                         child: const Text(
                           'Cancel  ·  B',
@@ -2135,6 +2214,7 @@ class _RemoveConfirm extends StatelessWidget {
                       ),
                       const SizedBox(width: 16),
                       FilledButton(
+                        key: const Key('remove-confirm-ok'),
                         onPressed: onConfirm,
                         style: FilledButton.styleFrom(
                           backgroundColor: HomeDeckColors.danger,

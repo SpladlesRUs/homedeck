@@ -311,6 +311,113 @@ void main() {
     expect(find.byType(EmptySlot), findsNWidgets(14));
   });
 
+  testWidgets('Delete unpins focused Home tile without menu', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    expect(harness.controller.isOnHome('app-1'), isTrue);
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+
+    expect(harness.controller.isOnHome('app-1'), isFalse);
+    expect(harness.controller.home.slots, isNot(contains('app-1')));
+    expect(harness.controller.apps, hasLength(1));
+    expect(find.byKey(const Key('remove-confirm')), findsNothing);
+  });
+
+  testWidgets(
+    'Delete on Library asks to remove; Enter confirms without launch',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final harness = await createHarnessForWidgets(tester);
+      await tester.runAsync(() async {
+        await harness.controller.addRecord(
+          displayName: 'Shelf only',
+          target: windowsTarget(
+            p.join(harness.directory.path, 'Shelf only.exe'),
+          ),
+        );
+      });
+      await pumpHomeDeck(tester, harness);
+
+      await tester.tap(find.byKey(const Key('tab-allApps')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('folder-native')));
+      await tester.pump();
+      // Tap focuses + launches (AppTile onActivate); baseline then Delete/Enter.
+      await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+      await tester.pump();
+      expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+      final launchesAfterFocus = harness.adapter.launchCount;
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+      await tester.pump();
+      expect(find.byKey(const Key('remove-confirm')), findsOneWidget);
+      expect(harness.controller.apps, hasLength(1));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      });
+      await tester.pump();
+
+      expect(find.byKey(const Key('remove-confirm')), findsNothing);
+      expect(harness.controller.apps, isEmpty);
+      expect(harness.adapter.launchCount, launchesAfterFocus);
+    },
+  );
+
+  testWidgets('Escape cancels Library remove confirm', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await tester.runAsync(() async {
+      await harness.controller.addRecord(
+        displayName: 'Shelf only',
+        target: windowsTarget(p.join(harness.directory.path, 'Shelf only.exe')),
+      );
+    });
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-native')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(find.byKey(const Key('remove-confirm')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('remove-confirm')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+  });
+
   testWidgets('bare H pins focused Library tile onto Home without menu', (
     tester,
   ) async {

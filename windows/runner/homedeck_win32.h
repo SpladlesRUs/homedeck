@@ -48,6 +48,18 @@
 #define WM_HOMEDECK_PIN_HOME (WM_APP + 0x48)
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys Delete/Backspace
+// should unpin (Home) or ask to remove (Library) the focused tile.
+#ifndef WM_HOMEDECK_REMOVE
+#define WM_HOMEDECK_REMOVE (WM_APP + 0x2E)  // VK_DELETE
+#endif
+
+// Posted while remove-armed (Library confirm pending): Enter must confirm
+// remove via Dart, not ShellExecute the prior mirrored path.
+#ifndef WM_HOMEDECK_CONFIRM
+#define WM_HOMEDECK_CONFIRM (WM_APP + 0x0D)  // VK_RETURN
+#endif
+
 // Posted by the game-exit watcher thread when a tracked .exe/.lnk process
 // terminates. WPARAM/LPARAM carry the 64-bit watch generation.
 #ifndef WM_HOMEDECK_GAME_EXIT
@@ -57,7 +69,8 @@
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
-// ROM-folder scan, and bare H → pin focused Library tile to Home.
+// ROM-folder scan, bare H → pin focused Library tile to Home, and bare
+// Delete/Backspace → unpin / Library remove.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -67,8 +80,12 @@
 // opening the overlay). Bare `p` posts WM_HOMEDECK_SCAN_START_MENU → Dart
 // `scanStartMenu`. Bare `r` posts WM_HOMEDECK_SCAN_ROMS → Dart `scanRoms`.
 // Bare `h` posts WM_HOMEDECK_PIN_HOME → Dart `pinFocusedToHome` (UI Add to
-// Home without menu UIA). The same hook handles F11 chrome and Enter→mirrored
-// path (with a Dart launchFocused fallback when the mirror is empty).
+// Home without menu UIA). Bare Delete/Backspace posts WM_HOMEDECK_REMOVE →
+// Dart `removeFocused` (same as RemoveFocusedIntent / `_requestRemove`).
+// While Library remove confirm is pending, Enter posts WM_HOMEDECK_CONFIRM
+// (not ShellExecute) until Dart clears remove-armed. The same hook handles
+// F11 chrome and Enter→mirrored path (with a Dart launchFocused fallback
+// when the mirror is empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -149,6 +166,19 @@ class HomedeckWin32 {
   // Library record onto Home (same as UI Add to Home).
   void HandlePinHomeKey();
 
+  // UI-thread handler for WM_HOMEDECK_REMOVE: ask Dart to unpin (Home) or
+  // show Library remove confirm (same as RemoveFocusedIntent).
+  void HandleRemoveKey();
+
+  // UI-thread handler for WM_HOMEDECK_CONFIRM: ask Dart `_handleConfirm`
+  // (Library remove Enter) without ShellExecute.
+  void HandleConfirmKey();
+
+  // Ally Delete→Enter: while armed, Enter confirms remove instead of launch.
+  void SetRemoveArmed(bool armed);
+
+  bool RemoveArmed() const { return remove_armed_; }
+
   // Drain a WM_HOMEDECK_ICON_DONE posted from the extract worker.
   // Returns true when the message was handled.
   bool HandleIconDone(LPARAM lparam);
@@ -189,6 +219,9 @@ class HomedeckWin32 {
   HHOOK keyboard_hook_ = nullptr;
   // True while GetOpenFileName is modal — do not steal Enter/F11/A from OFN.
   bool picking_file_ = false;
+  // True after bare Delete/Backspace until Dart clears (Home unpin done, or
+  // Library remove confirmed/cancelled). Suppresses Enter→ShellExecute.
+  bool remove_armed_ = false;
 
   static HomedeckWin32* instance_;
 };
