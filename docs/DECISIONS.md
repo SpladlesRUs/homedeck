@@ -28,9 +28,13 @@ answer.
    ShellExecute). ROM-folder discovery uses `discoverRoms()` → `importRoms`.
    Humans use Settings → Choose ROM folder / Scan ROM folder; Ally uses bare
    **R** (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
-   `HOMEDECK_EMULATOR` fixture the folder and emulator. Games-only filtering
-   of Steam tools/redistributables or Start Menu entries is left open with
-   library scope.
+   `HOMEDECK_EMULATOR` fixture the folder and emulator. Epic Games scan uses
+   `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games;
+   Ally uses bare **E** (`WM_HOMEDECK_SCAN_EPIC` → `scanEpic`). Optional
+   `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. Games-only
+   filtering of Steam tools/redistributables, Start Menu entries, or Epic
+   manifests is left open with library scope (Epic skips incomplete installs
+   only).
 
 ## Official app icon
 
@@ -98,6 +102,7 @@ Do not treat Deck as a separate app.
 | Pin focused Library tile to Home | Implemented; UI Add to Home / bare **H** |
 | Unpin / remove focused tile | Implemented; UI Remove / bare **Delete**/**Backspace** |
 | ROM-folder scanner | Implemented; Settings → Scan ROM folder / bare **R** |
+| Epic Games scanner (Windows) | Implemented; Settings → Scan Epic Games / bare **E** |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
 | Accounts, cloud sync | Out of scope |
@@ -149,12 +154,12 @@ launches use the runner `homedeck/win32` MethodChannel (`ShellExecuteW`), then
 Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
 a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, A→classic Open,
-S→Steam scan, P→Start Menu scan, R→ROM-folder scan, H→pin focused Library
-tile to Home, and Delete/Backspace→unpin / Library remove while HomeDeck is
-foreground; Dart mirrors the focused launch target, handles a native
-`launchFocused` fallback when the mirror is empty, and persists native
-`addPickedPath` results. While Library remove confirm is pending, Enter is
-`confirmFocused` (not ShellExecute). Dart FFI FindWindow remains a fallback
+S→Steam scan, P→Start Menu scan, R→ROM-folder scan, E→Epic Games scan,
+H→pin focused Library tile to Home, and Delete/Backspace→unpin / Library
+remove while HomeDeck is foreground; Dart mirrors the focused launch target,
+handles a native `launchFocused` fallback when the mirror is empty, and
+persists native `addPickedPath` results. While Library remove confirm is
+pending, Enter is `confirmFocused` (not ShellExecute). Dart FFI FindWindow remains a fallback
 for F11 because `window_manager` 0.7 often never binds the stock Flutter
 window.
 
@@ -217,6 +222,21 @@ window.
 3. **Escape** on confirm cancels; spot-check F11 and **`s`** / **`p`** /
    **`r`** / **`h`** / **`a`**.
 
+### Ally M10 Epic Games smoke
+
+1. Optional fixture: set `HOMEDECK_EPIC_ROOT` to a folder of 1–2 fake
+   `*.item` manifests (or a Data root with `Manifests/`), or use a real Epic
+   Games Launcher install on the Ally box.
+2. Launch HomeDeck; bare SendKeys **`e`** (no Settings UIA) runs
+   discoverEpic → importEpic.
+3. Open Library → By app → Epic; new tiles appear. Focus one; bare **`h`**
+   pins to Home; SendKeys Enter launches (URI via
+   `com.epicgames.launcher://apps/…` when present — best-effort if Epic is
+   not installed; else resolved `.exe`).
+4. SendKeys **`e`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`h`** / **`a`** /
+   Delete.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -229,6 +249,7 @@ Keyboard:
 - S scans Steam library into Library (no Home pins)
 - P scans Start Menu Programs into Library (no Home pins)
 - R scans the configured ROM folder into Library as emulated tiles (no Home pins)
+- E scans Epic Games Launcher installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”

@@ -86,6 +86,11 @@ class ScanRomFolderIntent extends Intent {
   const ScanRomFolderIntent();
 }
 
+/// Epic Games library discover → import (Settings scan / Ally bare `E`).
+class ScanEpicLibraryIntent extends Intent {
+  const ScanEpicLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();

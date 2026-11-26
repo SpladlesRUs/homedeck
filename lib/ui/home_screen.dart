@@ -68,6 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _startMenuScanMessage;
   bool _romScanBusy = false;
   String? _romScanMessage;
+  bool _epicScanBusy = false;
+  String? _epicScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -107,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanSteam = _scanSteamFromNative;
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
+      WindowsNativeBridge.onScanEpic = _scanEpicFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -170,6 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onScanRoms, _scanRomsFromNative)) {
         WindowsNativeBridge.onScanRoms = null;
+      }
+      if (identical(WindowsNativeBridge.onScanEpic, _scanEpicFromNative)) {
+        WindowsNativeBridge.onScanEpic = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -289,6 +295,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanRomFolder();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `E` / WM_HOMEDECK_SCAN_EPIC — same import as
+  /// Settings → Scan Epic Games (Ally without Settings UIA).
+  Future<void> _scanEpicFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanEpicLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -496,6 +514,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanEpicLibrary() async {
+    if (_epicScanBusy) {
+      return;
+    }
+    setState(() {
+      _epicScanBusy = true;
+      _epicScanMessage = null;
+    });
+    try {
+      final added = await _library.importEpic(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _epicScanBusy = false;
+        if (added == 0) {
+          _epicScanMessage =
+              'No new Epic Games titles found. Install Epic Games Launcher games (or set HOMEDECK_EPIC_ROOT), then scan again.';
+        } else if (added == 1) {
+          _epicScanMessage =
+              'Added 1 Epic title to Library. Open Library → By app → Epic.';
+        } else {
+          _epicScanMessage =
+              'Added $added Epic titles to Library. Open Library → By app → Epic.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _epicScanBusy = false;
+        _epicScanMessage = 'Epic scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -571,6 +626,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanStartMenuIntent(),
     const SingleActivator(LogicalKeyboardKey.keyR):
         const ScanRomFolderIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyE):
+        const ScanEpicLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -652,6 +709,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanRomFolderIntent: CallbackAction<ScanRomFolderIntent>(
         onInvoke: (_) {
           unawaited(_scanRomFolder());
+          return null;
+        },
+      ),
+      ScanEpicLibraryIntent: CallbackAction<ScanEpicLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanEpicLibrary());
           return null;
         },
       ),
@@ -1823,11 +1886,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onScanRoms: _scanRomFolder,
                       romScanBusy: _romScanBusy,
                       romScanMessage: _romScanMessage,
+                      epicScanBusy: _epicScanBusy,
+                      epicScanMessage: _epicScanMessage,
+                      onScanEpic: _scanEpicLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
                         _startMenuScanMessage = null;
                         _romScanMessage = null;
+                        _epicScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

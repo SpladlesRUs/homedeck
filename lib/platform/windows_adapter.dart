@@ -12,6 +12,7 @@ import 'package:homedeck/core/models/launch_target.dart';
 import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
+import 'package:homedeck/platform/epic_library.dart';
 import 'package:homedeck/platform/rom_library.dart';
 import 'package:homedeck/platform/start_menu_library.dart';
 import 'package:homedeck/platform/steam_library.dart';
@@ -30,6 +31,8 @@ typedef FilePickerFn = Future<String?> Function({
 /// [discover] scans Steam library folders for `steam://rungameid/…` targets.
 /// [discoverStartMenu] walks Start Menu Programs for `.lnk` → exe/URI/shortcut.
 /// [discoverRoms] walks a configured ROM folder for common ROM extensions.
+/// [discoverEpic] reads Epic Games Launcher `*.item` manifests for
+/// `com.epicgames.launcher://apps/…` (or resolved `.exe`) targets.
 /// Icons prefer a real PE / shortcut extract into [IconCache]; generated
 /// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
@@ -40,12 +43,14 @@ class WindowsAdapter implements PlatformAdapter {
     SteamLibraryScanner? steamScanner,
     StartMenuScanner? startMenuScanner,
     RomFolderScanner? romScanner,
+    EpicLibraryScanner? epicScanner,
   }) : _io = io,
        _filePicker = filePicker ?? _defaultPicker,
        _iconExtractor = iconExtractor ?? Win32IconExtractor(),
        _steamScanner = steamScanner ?? SteamLibraryScanner(io: io),
        _startMenuScanner = startMenuScanner ?? StartMenuScanner(io: io),
-       _romScanner = romScanner;
+       _romScanner = romScanner,
+       _epicScanner = epicScanner ?? EpicLibraryScanner(io: io);
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
@@ -53,6 +58,7 @@ class WindowsAdapter implements PlatformAdapter {
   final SteamLibraryScanner _steamScanner;
   final StartMenuScanner _startMenuScanner;
   final RomFolderScanner? _romScanner;
+  final EpicLibraryScanner _epicScanner;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -116,6 +122,9 @@ class WindowsAdapter implements PlatformAdapter {
         );
     return scanner.discover();
   }
+
+  @override
+  Future<List<DiscoveredApp>> discoverEpic() => _epicScanner.discover();
 
   @override
   Future<String?> resolveIcon({

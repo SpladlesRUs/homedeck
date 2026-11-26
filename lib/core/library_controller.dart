@@ -135,6 +135,9 @@ class LibraryController extends ChangeNotifier {
         emulator: resolveRomEmulator(),
       );
 
+  /// Platform Epic Games Launcher manifest scan on Windows.
+  Future<List<DiscoveredApp>> discoverEpic() => _adapter.discoverEpic();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -143,7 +146,7 @@ class LibraryController extends ChangeNotifier {
   /// emulator (or an empty emulator) still import.
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
-  /// [importStartMenu] / [importRoms] for the other scanners.
+  /// [importStartMenu] / [importRoms] / [importEpic] for the other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -198,6 +201,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: discoverRoms,
+    );
+  }
+
+  /// Epic Games Launcher discover → Library native tiles (no Home pins).
+  Future<int> importEpic({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverEpic,
     );
   }
 
