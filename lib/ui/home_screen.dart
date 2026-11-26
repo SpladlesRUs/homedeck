@@ -2218,6 +2218,27 @@ class _HomeScreenState extends State<HomeScreen> {
                           _searchOpen = true;
                         });
                       },
+                      // Library + menu: Steam / Start Menu / ROM rescans only.
+                      // Epic/GOG/Ubisoft/EA/Battle.net/Xbox stay Settings-only
+                      // this milestone so the menu stays short.
+                      onScanSteam: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanSteamLibrary());
+                            },
+                      onScanStartMenu: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanStartMenu());
+                            },
+                      onScanRoms: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanRomFolder());
+                            },
                       onReorder: _tab != HomeTab.home
                           ? null
                           : () {

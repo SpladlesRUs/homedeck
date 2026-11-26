@@ -313,6 +313,46 @@ void main() {
     expect(find.byType(EmptySlot), findsNWidgets(14));
   });
 
+  testWidgets('Library + menu shows scan rows; Home Customize Home does not', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.text('Customize Home'), findsOneWidget);
+    expect(find.byKey(const Key('menu-reorder')), findsOneWidget);
+    expect(find.byKey(const Key('menu-new-page')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-steam')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-start-menu')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-roms')), findsNothing);
+    harness.gamepad.emit(GamepadButton.b);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.text('Customize Home'), findsNothing);
+    expect(find.byKey(const Key('menu-reorder')), findsNothing);
+    expect(find.byKey(const Key('menu-new-page')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-steam')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-start-menu')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-roms')), findsOneWidget);
+    expect(find.text('Rescan Steam'), findsOneWidget);
+    expect(find.text('Rescan Start Menu'), findsOneWidget);
+    expect(find.text('Rescan ROM folder'), findsOneWidget);
+  });
+
   testWidgets('Delete unpins focused Home tile without menu', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;

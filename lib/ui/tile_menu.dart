@@ -16,6 +16,9 @@ class TileMenu extends StatelessWidget {
     this.onHome = false,
     this.pinned = false,
     this.onSearch,
+    this.onScanSteam,
+    this.onScanStartMenu,
+    this.onScanRoms,
     this.onReorder,
     this.onNewPage,
     this.onAddToHome,
@@ -35,6 +38,12 @@ class TileMenu extends StatelessWidget {
   final VoidCallback onSettings;
   final VoidCallback onExit;
   final VoidCallback? onSearch;
+  /// Library-only: same import path as Settings / harness **S**.
+  final VoidCallback? onScanSteam;
+  /// Library-only: same import path as Settings / harness **P**.
+  final VoidCallback? onScanStartMenu;
+  /// Library-only: same import path as Settings / harness **R**.
+  final VoidCallback? onScanRoms;
   final VoidCallback? onReorder;
   final VoidCallback? onNewPage;
   final VoidCallback? onAddToHome;
@@ -94,6 +103,24 @@ class TileMenu extends StatelessWidget {
                           key: const Key('menu-search'),
                           label: 'Global Search',
                           onTap: onSearch!,
+                        ),
+                      if (onScanSteam != null)
+                        _row(
+                          key: const Key('menu-scan-steam'),
+                          label: 'Rescan Steam',
+                          onTap: onScanSteam!,
+                        ),
+                      if (onScanStartMenu != null)
+                        _row(
+                          key: const Key('menu-scan-start-menu'),
+                          label: 'Rescan Start Menu',
+                          onTap: onScanStartMenu!,
+                        ),
+                      if (onScanRoms != null)
+                        _row(
+                          key: const Key('menu-scan-roms'),
+                          label: 'Rescan ROM folder',
+                          onTap: onScanRoms!,
                         ),
                       if (onReorder != null)
                         _row(
