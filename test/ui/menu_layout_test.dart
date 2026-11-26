@@ -58,10 +58,11 @@ void main() {
     expect(find.byKey(const ValueKey('tile-app-1')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tile-app-1')));
     await tester.pump();
+    // Home title pill shows page dots (not focused-item name).
     expect(
       find.descendant(
         of: find.byKey(const Key('title-pill')),
-        matching: find.text('Arcade Cabinet'),
+        matching: find.byKey(const ValueKey('page-dot-0')),
       ),
       findsOneWidget,
     );
@@ -610,6 +611,64 @@ void main() {
       find.descendant(
         of: find.byKey(const Key('title-pill')),
         matching: find.text('SNES'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Home title pill shows page dots; Library keeps text title', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    // Home: dots live inside the centered pill (not a second under-grid row).
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.byKey(const ValueKey('page-dot-0')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.byKey(const ValueKey('page-dot-1')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('page-dot-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('page-dot-1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('page-dot-1')));
+    await tester.pump();
+    expect(find.byKey(const Key('home-peek-prev')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('page-dot-0')), findsNothing);
+    expect(find.byKey(const ValueKey('page-dot-1')), findsNothing);
+    // Library root: text title (focused folder name), never page dots.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.byType(Text),
+      ),
+      findsWidgets,
+    );
+
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('page-dot-0')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-pill')),
+        matching: find.text('Music Box'),
       ),
       findsOneWidget,
     );
