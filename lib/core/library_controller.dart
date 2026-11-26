@@ -151,6 +151,9 @@ class LibraryController extends ChangeNotifier {
   Future<List<DiscoveredApp>> discoverBattlenet() =>
       _adapter.discoverBattlenet();
 
+  /// Platform Xbox / Microsoft Store / Game Pass PC install scan on Windows.
+  Future<List<DiscoveredApp>> discoverXbox() => _adapter.discoverXbox();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -160,7 +163,8 @@ class LibraryController extends ChangeNotifier {
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
   /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] /
-  /// [importUbisoft] / [importEa] / [importBattlenet] for the other scanners.
+  /// [importUbisoft] / [importEa] / [importBattlenet] / [importXbox] for the
+  /// other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -255,6 +259,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: _adapter.discoverBattlenet,
+    );
+  }
+
+  /// Xbox / Microsoft Store discover → Library native tiles (no Home pins).
+  Future<int> importXbox({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverXbox,
     );
   }
 

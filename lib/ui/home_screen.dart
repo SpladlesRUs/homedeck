@@ -78,6 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _eaScanMessage;
   bool _battlenetScanBusy = false;
   String? _battlenetScanMessage;
+  bool _xboxScanBusy = false;
+  String? _xboxScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -122,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanUbisoft = _scanUbisoftFromNative;
       WindowsNativeBridge.onScanEa = _scanEaFromNative;
       WindowsNativeBridge.onScanBattlenet = _scanBattlenetFromNative;
+      WindowsNativeBridge.onScanXbox = _scanXboxFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -206,6 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _scanBattlenetFromNative,
       )) {
         WindowsNativeBridge.onScanBattlenet = null;
+      }
+      if (identical(WindowsNativeBridge.onScanXbox, _scanXboxFromNative)) {
+        WindowsNativeBridge.onScanXbox = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -385,6 +391,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanBattlenetLibrary();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `W` / WM_HOMEDECK_SCAN_XBOX — same import
+  /// as Settings → Scan Xbox / Microsoft Store (Ally without Settings UIA).
+  Future<void> _scanXboxFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanXboxLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -777,6 +795,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanXboxLibrary() async {
+    if (_xboxScanBusy) {
+      return;
+    }
+    setState(() {
+      _xboxScanBusy = true;
+      _xboxScanMessage = null;
+    });
+    try {
+      final added = await _library.importXbox(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _xboxScanBusy = false;
+        if (added == 0) {
+          _xboxScanMessage =
+              'No new Xbox / Microsoft Store titles found. Install Xbox / Game Pass PC games (or set HOMEDECK_XBOX_ROOT), then scan again.';
+        } else if (added == 1) {
+          _xboxScanMessage =
+              'Added 1 Xbox title to Library. Open Library → By app → Xbox / Microsoft Store.';
+        } else {
+          _xboxScanMessage =
+              'Added $added Xbox titles to Library. Open Library → By app → Xbox / Microsoft Store.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _xboxScanBusy = false;
+        _xboxScanMessage = 'Xbox scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -862,6 +917,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanEaLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyN):
         const ScanBattlenetLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyW):
+        const ScanXboxLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -973,6 +1030,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanBattlenetLibraryIntent: CallbackAction<ScanBattlenetLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanBattlenetLibrary());
+          return null;
+        },
+      ),
+      ScanXboxLibraryIntent: CallbackAction<ScanXboxLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanXboxLibrary());
           return null;
         },
       ),
@@ -2159,6 +2222,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       battlenetScanBusy: _battlenetScanBusy,
                       battlenetScanMessage: _battlenetScanMessage,
                       onScanBattlenet: _scanBattlenetLibrary,
+                      xboxScanBusy: _xboxScanBusy,
+                      xboxScanMessage: _xboxScanMessage,
+                      onScanXbox: _scanXboxLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
@@ -2169,6 +2235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _ubisoftScanMessage = null;
                         _eaScanMessage = null;
                         _battlenetScanMessage = null;
+                        _xboxScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

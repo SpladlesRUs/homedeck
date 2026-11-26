@@ -40,6 +40,17 @@ void main() {
     );
     expect(WindowsPaths.isLaunchUri('eaapp://launch/71715'), isTrue);
     expect(WindowsPaths.isLaunchUri('msxbox://game/?id=abc'), isTrue);
+    expect(WindowsPaths.isLaunchUri('xbox://game/?id=abc'), isTrue);
+    expect(
+      WindowsPaths.isLaunchUri('ms-windows-store://pdp/?ProductId=abc'),
+      isTrue,
+    );
+    expect(
+      WindowsPaths.isLaunchUri(
+        r'shell:AppsFolder\Publisher.Game_8wekyb3d8bbwe!App',
+      ),
+      isTrue,
+    );
     expect(WindowsPaths.isLaunchUri(r'C:\Games\Star.exe'), isFalse);
     expect(WindowsPaths.isLaunchUri('https://example.com/game'), isFalse);
     expect(WindowsPaths.isLaunchUri('file:///C:/Games/a.exe'), isFalse);

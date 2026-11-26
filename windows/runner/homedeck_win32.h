@@ -74,6 +74,13 @@
 #define WM_HOMEDECK_SCAN_BATTLENET (WM_APP + 0x4E)
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `w` (or a real W key)
+// should run Xbox / Microsoft Store discover → Library import (no Settings
+// UIA). Uses 0x57 ('W'); free of A/S/P/R/E/G/U/O/N/H and GAME_EXIT.
+#ifndef WM_HOMEDECK_SCAN_XBOX
+#define WM_HOMEDECK_SCAN_XBOX (WM_APP + 0x57)
+#endif
+
 // Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `h` (or a real H key)
 // should pin the focused Library record onto Home (same as UI Add to Home).
 #ifndef WM_HOMEDECK_PIN_HOME
@@ -103,8 +110,9 @@
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
 // ROM-folder scan, bare E → Epic Games scan, bare G → GOG Galaxy scan,
 // bare U → Ubisoft Connect scan, bare O → EA App / Origin scan, bare N →
-// Battle.net scan, bare H → pin focused Library tile to Home, and bare
-// Delete/Backspace → unpin / Library remove.
+// Battle.net scan, bare W → Xbox / Microsoft Store scan, bare H → pin
+// focused Library tile to Home, and bare Delete/Backspace → unpin /
+// Library remove.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -117,7 +125,8 @@
 // WM_HOMEDECK_SCAN_GOG → Dart `scanGog`. Bare `u` posts
 // WM_HOMEDECK_SCAN_UBISOFT → Dart `scanUbisoft`. Bare `o` posts
 // WM_HOMEDECK_SCAN_EA → Dart `scanEa`. Bare `n` posts
-// WM_HOMEDECK_SCAN_BATTLENET → Dart `scanBattlenet`. Bare `h` posts
+// WM_HOMEDECK_SCAN_BATTLENET → Dart `scanBattlenet`. Bare `w` posts
+// WM_HOMEDECK_SCAN_XBOX → Dart `scanXbox`. Bare `h` posts
 // WM_HOMEDECK_PIN_HOME → Dart `pinFocusedToHome` (UI Add to Home without menu
 // UIA). Bare Delete/Backspace posts WM_HOMEDECK_REMOVE → Dart `removeFocused`
 // (same as RemoveFocusedIntent / `_requestRemove`). While Library remove
@@ -221,6 +230,10 @@ class HomedeckWin32 {
   // Battle.net discover → importBattlenet (Settings → Scan Battle.net).
   void HandleScanBattlenetKey();
 
+  // UI-thread handler for WM_HOMEDECK_SCAN_XBOX: ask Dart to run Xbox /
+  // Microsoft Store discover → importXbox (Settings → Scan Xbox).
+  void HandleScanXboxKey();
+
   // UI-thread handler for WM_HOMEDECK_PIN_HOME: ask Dart to pin the focused
   // Library record onto Home (same as UI Add to Home).
   void HandlePinHomeKey();
@@ -251,6 +264,7 @@ class HomedeckWin32 {
   bool IsOurForeground() const;
   void StartWatchingProcess(HANDLE process);
   void BringHomeDeckToForeground();
+  // MSVC is case-sensitive: definition + hook calls must match this name.
   static bool ModifierHeld();
 
   static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,

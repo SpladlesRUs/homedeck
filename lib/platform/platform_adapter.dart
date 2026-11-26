@@ -18,7 +18,7 @@ class PickedLaunch {
 }
 
 /// Metadata from an installed-app scanner (Steam / Start Menu / ROM / Epic /
-/// GOG / Ubisoft).
+/// GOG / Ubisoft / EA / Battle.net / Xbox).
 class DiscoveredApp {
   const DiscoveredApp({
     required this.displayName,
@@ -71,6 +71,10 @@ abstract class PlatformAdapter {
 
   /// Battle.net Agent / product.db install scan on Windows; empty elsewhere.
   Future<List<DiscoveredApp>> discoverBattlenet() async => const [];
+
+  /// Xbox / Microsoft Store / Game Pass PC install scan on Windows; empty
+  /// elsewhere.
+  Future<List<DiscoveredApp>> discoverXbox() async => const [];
 
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({

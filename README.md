@@ -67,10 +67,16 @@ optional `HOMEDECK_EA_ROOT` fixture with `__Installer\installerdata.xml`).
 Settings → **Scan Battle.net** (or keyboard **N**) imports Battle.net
 titles as `battlenet://…` tiles when available (else resolved `.exe`;
 optional `HOMEDECK_BATTLENET_ROOT` fixture with Agent `product.db` or
-`battlenetgame-*.info`). Focus a Library tile and press **H** to pin it to
-Home (same as Menu → Add to Home; for Ally harnesses that cannot reach that
-control). **Delete** / **Backspace** unpins a focused Home tile, or asks to
-remove a focused Library tile (Enter confirms; Esc cancels — same as Menu
+`battlenetgame-*.info`). Settings → **Scan Xbox / Microsoft Store** (or
+keyboard **W**) imports Xbox / Game Pass PC titles as `msxbox:` /
+`xbox:` / `ms-windows-store:` tiles when available (else AppX AUMID or
+resolved `.exe`; optional `HOMEDECK_XBOX_ROOT` fixture with
+`xboxgame-*.info` or `MicrosoftGame.config`). UWP/Game Pass launch is
+best-effort — raw `.exe` often fails; WindowsApps may be ACL-locked.
+Focus a Library tile and press **H** to pin it to Home (same as Menu →
+Add to Home; for Ally harnesses that cannot reach that control).
+**Delete** / **Backspace** unpins a focused Home tile, or asks to remove
+a focused Library tile (Enter confirms; Esc cancels — same as Menu
 Remove, without UIA).
 
 Release defaults to an empty library. To preview a full grid in debug only:

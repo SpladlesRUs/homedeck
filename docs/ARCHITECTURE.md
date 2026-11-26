@@ -107,7 +107,17 @@ optional `HOMEDECK_BATTLENET_ROOT` fixture with `battlenetgame-*.info` or
 uids only are skipped). Settings → Scan Battle.net and bare **N**
 (`WM_HOMEDECK_SCAN_BATTLENET` → Dart `scanBattlenet`) call
 `LibraryController.importBattlenet` (Library only; no Home pins; re-scan
-skips duplicate targets).
+skips duplicate targets). Xbox / Microsoft Store / Game Pass PC discovery
+reads GamingRoot / `XboxGames` / `ModifiableWindowsApps` (and optional
+`HOMEDECK_XBOX_ROOT` fixture with `xboxgame-*.info` or
+`MicrosoftGame.config`), prefers `msxbox:` / `xbox:` /
+`ms-windows-store:` when a product id is known (else AppX AUMID
+`shell:AppsFolder\{PFN}!{AppId}`, else resolved `.exe`), and does not
+invent games-only filtering. WindowsApps ACL and UWP/Game Pass launch
+limits are documented honestly — URI/AUMID is best-effort. Settings →
+Scan Xbox / Microsoft Store and bare **W** (`WM_HOMEDECK_SCAN_XBOX` →
+Dart `scanXbox`) call `LibraryController.importXbox` (Library only; no
+Home pins; re-scan skips duplicate targets).
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
@@ -127,9 +137,10 @@ Shortcuts alone never saw harness `a` @82a5a20). Optional
 Enter→focused launch (with a Dart `launchFocused` fallback when the
 mirrored path is empty), bare **E** → `scanEpic`, bare **G** → `scanGog`,
 bare **U** → `scanUbisoft`, bare **O** → `scanEa`, bare **N** →
-`scanBattlenet`, bare **H** → `pinFocusedToHome`, and bare **Delete** /
-**Backspace** → `removeFocused` (Library confirm Enter → `confirmFocused`,
-not ShellExecute).
+`scanBattlenet`, bare **W** → `scanXbox`, bare **H** →
+`pinFocusedToHome`, and bare **Delete** / **Backspace** →
+`removeFocused` (Library confirm Enter → `confirmFocused`, not
+ShellExecute).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

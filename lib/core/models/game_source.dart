@@ -180,9 +180,12 @@ class SourceInference {
     if (value.startsWith('msxbox:') ||
         value.startsWith('xbox:') ||
         value.startsWith('ms-windows-store:') ||
+        value.startsWith('shell:appsfolder\\') ||
+        value.startsWith('shell:appsfolder/') ||
         value.contains('windowsapps') ||
         value.contains(r'\xbox') ||
-        value.contains('xbox games')) {
+        value.contains('xbox games') ||
+        value.contains('modifiablewindowsapps')) {
       return Storefront.xbox;
     }
     if (value.startsWith('battlenet:') ||

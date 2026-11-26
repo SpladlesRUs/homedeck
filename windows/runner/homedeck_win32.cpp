@@ -928,6 +928,17 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M15: bare SendKeys `w` -> Xbox / Microsoft Store scan
+      // (Settings -> Scan Xbox) without Settings UIA.
+      if (info->vkCode == 'W' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_XBOX, 0, 0);
+          return 1;
+        }
+      }
       // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
       // pins the focused Library record onto Home (same as the menu action).
       if (info->vkCode == 'H' && !ModifierHeld()) {
@@ -1173,6 +1184,17 @@ void HomedeckWin32::HandleScanBattlenetKey() {
   }
   OutputDebugStringW(L"homedeck: HandleScanBattlenetKey → Dart scanBattlenet\n");
   channel_->InvokeMethod("scanBattlenet", nullptr);
+}
+
+void HomedeckWin32::HandleScanXboxKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleScanXboxKey → Dart scanXbox\n");
+  channel_->InvokeMethod("scanXbox", nullptr);
 }
 
 void HomedeckWin32::HandlePinHomeKey() {
