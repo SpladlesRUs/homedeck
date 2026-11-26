@@ -16,14 +16,16 @@ import 'package:flutter/services.dart';
 /// (Start Menu Programs discover without Settings UIA). Bare `r` posts
 /// `WM_HOMEDECK_SCAN_ROMS` → [onScanRoms] (ROM-folder discover without
 /// Settings UIA). Bare `e` posts `WM_HOMEDECK_SCAN_EPIC` → [onScanEpic]
-/// (Epic Games discover without Settings UIA). Bare `h` posts
-/// `WM_HOMEDECK_PIN_HOME` → [onPinFocusedToHome] (same as UI Add to Home —
-/// no UIA on the menu). Bare Delete/Backspace posts `WM_HOMEDECK_REMOVE` →
-/// [onRemoveFocused] (same as RemoveFocusedIntent). While Library remove is
-/// pending, Enter posts `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not
-/// ShellExecute). The same hook handles F11 chrome and Enter→focused path;
-/// Dart mirrors the target via [setFocusedLaunch] and handles a native
-/// [onLaunchFocused] fallback when the mirrored path is empty.
+/// (Epic Games discover without Settings UIA). Bare `g` posts
+/// `WM_HOMEDECK_SCAN_GOG` → [onScanGog] (GOG Galaxy discover without
+/// Settings UIA). Bare `h` posts `WM_HOMEDECK_PIN_HOME` →
+/// [onPinFocusedToHome] (same as UI Add to Home — no UIA on the menu). Bare
+/// Delete/Backspace posts `WM_HOMEDECK_REMOVE` → [onRemoveFocused] (same as
+/// RemoveFocusedIntent). While Library remove is pending, Enter posts
+/// `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not ShellExecute). The same
+/// hook handles F11 chrome and Enter→focused path; Dart mirrors the target
+/// via [setFocusedLaunch] and handles a native [onLaunchFocused] fallback
+/// when the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -57,6 +59,10 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare `E` / `WM_HOMEDECK_SCAN_EPIC` asks Dart to
   /// run Epic Games `discoverEpic()` → `importEpic`.
   static Future<void> Function()? onScanEpic;
+
+  /// Runner WH_KEYBOARD_LL bare `G` / `WM_HOMEDECK_SCAN_GOG` asks Dart to
+  /// run GOG Galaxy `discoverGog()` → `importGog`.
+  static Future<void> Function()? onScanGog;
 
   /// Runner WH_KEYBOARD_LL bare `H` / `WM_HOMEDECK_PIN_HOME` asks Dart to pin
   /// the focused Library record onto Home (same as UI Add to Home).
@@ -140,6 +146,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'scanEpic') {
         final handler = onScanEpic;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'scanGog') {
+        final handler = onScanGog;
         if (handler != null) {
           await handler();
         }

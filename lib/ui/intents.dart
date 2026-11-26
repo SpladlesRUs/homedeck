@@ -91,6 +91,11 @@ class ScanEpicLibraryIntent extends Intent {
   const ScanEpicLibraryIntent();
 }
 
+/// GOG Galaxy library discover → import (Settings scan / Ally bare `G`).
+class ScanGogLibraryIntent extends Intent {
+  const ScanGogLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();

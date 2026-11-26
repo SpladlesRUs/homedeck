@@ -138,6 +138,9 @@ class LibraryController extends ChangeNotifier {
   /// Platform Epic Games Launcher manifest scan on Windows.
   Future<List<DiscoveredApp>> discoverEpic() => _adapter.discoverEpic();
 
+  /// Platform GOG Galaxy install scan on Windows.
+  Future<List<DiscoveredApp>> discoverGog() => _adapter.discoverGog();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -146,7 +149,8 @@ class LibraryController extends ChangeNotifier {
   /// emulator (or an empty emulator) still import.
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
-  /// [importStartMenu] / [importRoms] / [importEpic] for the other scanners.
+  /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] for the
+  /// other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -209,6 +213,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: _adapter.discoverEpic,
+    );
+  }
+
+  /// GOG Galaxy discover → Library native tiles (no Home pins).
+  Future<int> importGog({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverGog,
     );
   }
 

@@ -86,6 +86,7 @@ class FakePlatformAdapter implements PlatformAdapter {
     this.discoverStartMenuResult = const [],
     this.discoverRomsResult = const [],
     this.discoverEpicResult = const [],
+    this.discoverGogResult = const [],
   });
 
   PickedLaunch? pick;
@@ -95,6 +96,7 @@ class FakePlatformAdapter implements PlatformAdapter {
   List<DiscoveredApp> discoverStartMenuResult;
   List<DiscoveredApp> discoverRomsResult;
   List<DiscoveredApp> discoverEpicResult;
+  List<DiscoveredApp> discoverGogResult;
   String? lastRomRoot;
   String? lastRomEmulator;
   final fileQueue = <String>[];
@@ -125,6 +127,9 @@ class FakePlatformAdapter implements PlatformAdapter {
 
   @override
   Future<List<DiscoveredApp>> discoverEpic() async => discoverEpicResult;
+
+  @override
+  Future<List<DiscoveredApp>> discoverGog() async => discoverGogResult;
 
   @override
   Future<LaunchOutcome> launch(LaunchTarget target) async {

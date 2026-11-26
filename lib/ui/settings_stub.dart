@@ -3,7 +3,7 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic scan,
+/// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic / GOG scan,
 /// open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
@@ -37,6 +37,9 @@ class SettingsStub extends StatelessWidget {
     this.onScanEpic,
     this.epicScanBusy = false,
     this.epicScanMessage,
+    this.onScanGog,
+    this.gogScanBusy = false,
+    this.gogScanMessage,
     this.onExit,
   });
 
@@ -69,6 +72,9 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanEpic;
   final bool epicScanBusy;
   final String? epicScanMessage;
+  final VoidCallback? onScanGog;
+  final bool gogScanBusy;
+  final String? gogScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -432,9 +438,58 @@ class SettingsStub extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'GOG Galaxy',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports installed GOG Galaxy titles into Library (By app → GOG) via goggalaxy://openGameView/… when available (else resolved .exe from goggame-*.info playTasks). Keyboard G (Ally SendKeys g) runs the same scan without opening Settings. Optional HOMEDECK_GOG_ROOT points at a fixture Games tree or install folder. No games-only filter — every launchable info file is imported.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (onScanGog != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-gog'),
+                                onPressed: gogScanBusy ? null : onScanGog,
+                                child: Text(
+                                  gogScanBusy
+                                      ? 'Scanning…'
+                                      : 'Scan GOG',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (gogScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              gogScanMessage!,
+                              key: const Key('settings-scan-gog-message'),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), and pin to Home (H) stay unchanged.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), and pin to Home (H) stay unchanged.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

@@ -883,6 +883,18 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M11: bare SendKeys `g` -> GOG Galaxy scan (Settings -> Scan GOG)
+      // without Settings UIA. Message id is WM_HOMEDECK_SCAN_GOG (0x67), not
+      // WM_HOMEDECK_GAME_EXIT (0x47).
+      if (info->vkCode == 'G' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_SCAN_GOG, 0, 0);
+          return 1;
+        }
+      }
       // Ally M5: UI Add to Home is not UIA-reachable. Bare SendKeys `h`
       // pins the focused Library record onto Home (same as the menu action).
       if (info->vkCode == 'H' && !ModifierHeld()) {
@@ -1084,6 +1096,17 @@ void HomedeckWin32::HandleScanEpicKey() {
   }
   OutputDebugStringW(L"homedeck: HandleScanEpicKey → Dart scanEpic\n");
   channel_->InvokeMethod("scanEpic", nullptr);
+}
+
+void HomedeckWin32::HandleScanGogKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleScanGogKey → Dart scanGog\n");
+  channel_->InvokeMethod("scanGog", nullptr);
 }
 
 void HomedeckWin32::HandlePinHomeKey() {
