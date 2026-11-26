@@ -18,7 +18,7 @@ class PickedLaunch {
 }
 
 /// Metadata from an installed-app scanner (Steam / Start Menu / ROM / Epic /
-/// GOG).
+/// GOG / Ubisoft).
 class DiscoveredApp {
   const DiscoveredApp({
     required this.displayName,
@@ -62,6 +62,9 @@ abstract class PlatformAdapter {
 
   /// GOG Galaxy `goggame-*.info` install scan on Windows; empty elsewhere.
   Future<List<DiscoveredApp>> discoverGog() async => const [];
+
+  /// Ubisoft Connect / Uplay install scan on Windows; empty elsewhere.
+  Future<List<DiscoveredApp>> discoverUbisoft() async => const [];
 
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({

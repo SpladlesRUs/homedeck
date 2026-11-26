@@ -34,9 +34,14 @@ answer.
    `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. GOG Galaxy
    scan uses `discoverGog()` → `importGog`. Humans use Settings → Scan GOG;
    Ally uses bare **G** (`WM_HOMEDECK_SCAN_GOG` → `scanGog`). Optional
-   `HOMEDECK_GOG_ROOT` points at a fixture Games / install tree. Games-only
-   filtering of Steam tools/redistributables, Start Menu entries, Epic
-   manifests, or GOG info files is left open with library scope (Epic skips
+   `HOMEDECK_GOG_ROOT` points at a fixture Games / install tree. Ubisoft
+   Connect scan uses `discoverUbisoft()` → `importUbisoft`. Humans use
+   Settings → Scan Ubisoft Connect; Ally uses bare **U**
+   (`WM_HOMEDECK_SCAN_UBISOFT` → `scanUbisoft`). Optional
+   `HOMEDECK_UBISOFT_ROOT` points at a fixture Games / install tree
+   (`ubisoftgame-*.info`). Games-only filtering of Steam
+   tools/redistributables, Start Menu entries, Epic manifests, GOG info
+   files, or Ubisoft installs is left open with library scope (Epic skips
    incomplete installs only).
 
 ## Official app icon
@@ -257,6 +262,21 @@ window.
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`h`** /
    **`a`** / Delete.
 
+### Ally M12 Ubisoft Connect smoke
+
+1. Optional fixture: set `HOMEDECK_UBISOFT_ROOT` to a Games-like tree of 1–2
+   folders each with `ubisoftgame-*.info` (or a single install folder), or use
+   a real Ubisoft Connect install on the Ally box.
+2. Launch HomeDeck; bare SendKeys **`u`** (no Settings UIA) runs
+   discoverUbisoft → importUbisoft.
+3. Open Library → By app → Ubisoft Connect; new tiles appear. Focus one; bare
+   **`h`** pins to Home; SendKeys Enter launches (URI via
+   `uplay://launch/…` when present — best-effort if Connect is not
+   installed; else resolved `.exe`).
+4. SendKeys **`u`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
+   **`h`** / **`a`** / Delete.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -271,6 +291,7 @@ Keyboard:
 - R scans the configured ROM folder into Library as emulated tiles (no Home pins)
 - E scans Epic Games Launcher installs into Library (no Home pins)
 - G scans GOG Galaxy installs into Library (no Home pins)
+- U scans Ubisoft Connect installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”

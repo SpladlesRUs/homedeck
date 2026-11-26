@@ -17,6 +17,7 @@ import 'package:homedeck/platform/gog_library.dart';
 import 'package:homedeck/platform/rom_library.dart';
 import 'package:homedeck/platform/start_menu_library.dart';
 import 'package:homedeck/platform/steam_library.dart';
+import 'package:homedeck/platform/ubisoft_library.dart';
 import 'package:homedeck/platform/windows_icon_extractor.dart';
 import 'package:homedeck/platform/windows_io.dart';
 import 'package:homedeck/platform/windows_native_bridge.dart';
@@ -36,6 +37,8 @@ typedef FilePickerFn = Future<String?> Function({
 /// `com.epicgames.launcher://apps/…` (or resolved `.exe`) targets.
 /// [discoverGog] reads GOG `goggame-*.info` installs for
 /// `goggalaxy://openGameView/…` (or resolved `.exe`) targets.
+/// [discoverUbisoft] reads Ubisoft Connect installs for
+/// `uplay://launch/…` (or resolved `.exe`) targets.
 /// Icons prefer a real PE / shortcut extract into [IconCache]; generated
 /// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
@@ -48,6 +51,7 @@ class WindowsAdapter implements PlatformAdapter {
     RomFolderScanner? romScanner,
     EpicLibraryScanner? epicScanner,
     GogLibraryScanner? gogScanner,
+    UbisoftLibraryScanner? ubisoftScanner,
   }) : _io = io,
        _filePicker = filePicker ?? _defaultPicker,
        _iconExtractor = iconExtractor ?? Win32IconExtractor(),
@@ -55,7 +59,8 @@ class WindowsAdapter implements PlatformAdapter {
        _startMenuScanner = startMenuScanner ?? StartMenuScanner(io: io),
        _romScanner = romScanner,
        _epicScanner = epicScanner ?? EpicLibraryScanner(io: io),
-       _gogScanner = gogScanner ?? GogLibraryScanner(io: io);
+       _gogScanner = gogScanner ?? GogLibraryScanner(io: io),
+       _ubisoftScanner = ubisoftScanner ?? UbisoftLibraryScanner(io: io);
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
@@ -65,6 +70,7 @@ class WindowsAdapter implements PlatformAdapter {
   final RomFolderScanner? _romScanner;
   final EpicLibraryScanner _epicScanner;
   final GogLibraryScanner _gogScanner;
+  final UbisoftLibraryScanner _ubisoftScanner;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -134,6 +140,9 @@ class WindowsAdapter implements PlatformAdapter {
 
   @override
   Future<List<DiscoveredApp>> discoverGog() => _gogScanner.discover();
+
+  @override
+  Future<List<DiscoveredApp>> discoverUbisoft() => _ubisoftScanner.discover();
 
   @override
   Future<String?> resolveIcon({
