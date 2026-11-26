@@ -47,6 +47,12 @@ class HomeScreen extends StatefulWidget {
   /// Tests freeze the clock for screenshots.
   static DateTime Function() clock = DateTime.now;
 
+  /// Idle delay before the tab dock auto-hides on Home / Library root.
+  /// Inside folders the dock stays on the `_dockForced` path instead.
+  /// Chosen: 2.5s (iiSU-like short idle; documented in docs/DECISIONS.md).
+  /// Tests may shorten or zero this.
+  static Duration dockIdleHideDelay = const Duration(milliseconds: 2500);
+
   final LibraryController controller;
   final WindowModeController windowMode;
   final GamepadSource? gamepad;
@@ -86,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _chipsFocused = false;
   bool _searchOpen = false;
   bool _dockForced = false;
+  bool _dockIdleHidden = false;
   LibraryGroupMode _libraryMode = LibraryGroupMode.console;
   String? _folderTitle;
   LaunchFailure? _failure;
@@ -95,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _extraHomePages = 0;
   HomeTab _tab = HomeTab.home;
   Timer? _clock;
+  Timer? _dockIdleTimer;
   DateTime _now = HomeScreen.clock();
   DateTime _lastConfirm = DateTime.fromMillisecondsSinceEpoch(0);
   final _focusNodes = <String, FocusNode>{};
@@ -159,10 +167,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _focusId(nowPlayingId, click: false);
       }
     });
+    _scheduleDockIdleHide();
   }
 
   @override
   void dispose() {
+    _cancelDockIdleTimer();
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     if (Platform.isWindows) {
       if (identical(
@@ -465,8 +475,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _tab = HomeTab.home;
       _folderTitle = null;
       _dockForced = true;
+      _dockIdleHidden = false;
       _focusedId = added.id;
     });
+    _scheduleDockIdleHide();
     await _syncNativeFocusedLaunchAwait();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -874,7 +886,66 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
 
-  bool get _dockVisible => !_insideFolder || _dockForced;
+  /// Root tabs: visible until idle-hidden. Inside folders: `_dockForced` only.
+  bool get _dockVisible =>
+      _insideFolder ? _dockForced : !_dockIdleHidden;
+
+  void _cancelDockIdleTimer() {
+    _dockIdleTimer?.cancel();
+    _dockIdleTimer = null;
+  }
+
+  void _scheduleDockIdleHide() {
+    _cancelDockIdleTimer();
+    if (_insideFolder) {
+      return;
+    }
+    final delay = HomeScreen.dockIdleHideDelay;
+    if (delay <= Duration.zero) {
+      return;
+    }
+    _dockIdleTimer = Timer(delay, _hideDockForIdle);
+  }
+
+  void _hideDockForIdle() {
+    if (!mounted || _insideFolder) {
+      return;
+    }
+    // Keep dock up while a modal is open; retry after it closes via bump.
+    if (_overlayOpen) {
+      _scheduleDockIdleHide();
+      return;
+    }
+    if (!_dockIdleHidden) {
+      setState(() => _dockIdleHidden = true);
+    }
+  }
+
+  /// Show the dock (LB/RB / PageUp/PageDown / dock tap / bottom reveal hit).
+  void _revealDock({bool forceInsideFolder = false}) {
+    _cancelDockIdleTimer();
+    if (_insideFolder || forceInsideFolder) {
+      if (!_dockForced || _dockIdleHidden) {
+        setState(() {
+          _dockForced = true;
+          _dockIdleHidden = false;
+        });
+      }
+      return;
+    }
+    if (_dockIdleHidden) {
+      setState(() => _dockIdleHidden = false);
+    }
+    _scheduleDockIdleHide();
+  }
+
+  /// Reset the idle timer while the dock is already visible; do not unhide.
+  void _bumpDockActivity() {
+    if (!_dockVisible) {
+      return;
+    }
+    _scheduleDockIdleHide();
+  }
 
   void _click(UiClick kind) {
     _clicks.enabled = _library.state.audio.uiClicksEnabled;
@@ -1217,9 +1288,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _tab = values[next < 0 ? values.length - 1 : next];
       _dockForced = true;
+      _dockIdleHidden = false;
       _folderTitle = null;
       _chipsFocused = false;
     });
+    _scheduleDockIdleHide();
     _focusFirstForTab();
   }
 
@@ -1549,6 +1622,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openFolder(String title) {
     final section = _sectionByTitle(title);
+    _cancelDockIdleTimer();
     setState(() {
       _folderTitle = title;
       _dockForced = false;
@@ -1568,10 +1642,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _folderTitle = null;
       _dockForced = false;
+      _dockIdleHidden = false;
       if (title != null) {
         _focusedId = folderFocusId(title);
       }
     });
+    _scheduleDockIdleHide();
     final id = _focusedId;
     if (id != null) {
       _nodeFor(id).requestFocus();
@@ -1620,6 +1696,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onDirection(TraversalDirection direction, HomeDeckMetrics metrics) {
+    _bumpDockActivity();
     if (_overlayOpen) {
       return;
     }
@@ -1854,14 +1931,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (next >= ids.length) {
       if (_insideFolder && direction == TraversalDirection.down) {
-        setState(() => _dockForced = true);
+        _revealDock(forceInsideFolder: true);
       }
       return;
     }
     if (_insideFolder &&
         direction == TraversalDirection.down &&
         next ~/ columns >= (ids.length / columns).ceil() - 1) {
-      setState(() => _dockForced = true);
+      _revealDock(forceInsideFolder: true);
     }
     _focusId(ids[next]);
   }
@@ -1956,7 +2033,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Focus(
             autofocus: true,
             child: Scaffold(
-              body: Stack(
+              body: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (_) => _bumpDockActivity(),
+                child: Stack(
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 280),
@@ -1998,28 +2078,53 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       AnimatedSize(
-                        duration: const Duration(milliseconds: 180),
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
                         child: _dockVisible
                             ? Padding(
                                 padding: EdgeInsets.only(
                                   top: 8 * metrics.scale,
                                   bottom: 52 * metrics.scale,
                                 ),
-                                child: TabDock(
-                                  metrics: metrics,
-                                  active: _tab,
-                                  onSelect: (tab) {
-                                    setState(() {
-                                      _tab = tab;
-                                      _folderTitle = null;
-                                      _dockForced = true;
-                                    });
-                                    _focusFirstForTab();
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: 1),
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, value, child) {
+                                    return Opacity(
+                                      opacity: value,
+                                      child: Transform.translate(
+                                        offset: Offset(0, (1 - value) * 14),
+                                        child: child,
+                                      ),
+                                    );
                                   },
-                                  onSearch: _openSearch,
+                                  child: TabDock(
+                                    metrics: metrics,
+                                    active: _tab,
+                                    onSelect: (tab) {
+                                      setState(() {
+                                        _tab = tab;
+                                        _folderTitle = null;
+                                        _dockForced = true;
+                                        _dockIdleHidden = false;
+                                      });
+                                      _scheduleDockIdleHide();
+                                      _focusFirstForTab();
+                                    },
+                                    onSearch: _openSearch,
+                                  ),
                                 ),
                               )
-                            : SizedBox(height: 52 * metrics.scale),
+                            : GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _revealDock,
+                                child: SizedBox(
+                                  key: const Key('dock-reveal-hit'),
+                                  height: 52 * metrics.scale,
+                                  width: double.infinity,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -2327,6 +2432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                 ],
+              ),
               ),
             ),
           ),
