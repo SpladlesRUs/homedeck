@@ -91,6 +91,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleScanBattlenetKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_SCAN_XBOX) {
+    win32_.HandleScanXboxKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_PIN_HOME) {
     win32_.HandlePinHomeKey();
     return 0;

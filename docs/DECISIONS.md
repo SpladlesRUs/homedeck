@@ -47,10 +47,19 @@ answer.
    use Settings → Scan Battle.net; Ally uses bare **N**
    (`WM_HOMEDECK_SCAN_BATTLENET` → `scanBattlenet`). Optional
    `HOMEDECK_BATTLENET_ROOT` points at a fixture Games / Agent
-   `product.db` / install tree (`battlenetgame-*.info`). Games-only
+   `product.db` / install tree (`battlenetgame-*.info`). Xbox /
+   Microsoft Store / Game Pass PC scan uses `discoverXbox()` →
+   `importXbox`. Humans use Settings → Scan Xbox / Microsoft Store; Ally
+   uses bare **W** (`WM_HOMEDECK_SCAN_XBOX` → `scanXbox`). Optional
+   `HOMEDECK_XBOX_ROOT` points at a fixture XboxGames / GamingRoot /
+   install tree (`xboxgame-*.info` or `MicrosoftGame.config`). Prefer
+   `msxbox:` / `xbox:` / `ms-windows-store:` when a product id is known;
+   else AppX AUMID (`shell:AppsFolder\{PFN}!{AppId}`); else resolved
+   `.exe`. UWP/Game Pass limits: WindowsApps is often ACL-locked; raw
+   `.exe` launch frequently fails — URI/AUMID is best-effort. Games-only
    filtering of Steam tools/redistributables, Start Menu entries, Epic
-   manifests, GOG info files, Ubisoft installs, EA installs, or
-   Battle.net installs is left open with library scope (Epic skips
+   manifests, GOG info files, Ubisoft installs, EA installs, Battle.net
+   installs, or Xbox installs is left open with library scope (Epic skips
    incomplete installs only; Battle.net skips Agent/client component
    uids only).
 
@@ -319,6 +328,21 @@ window.
 4. SendKeys **`n`** again: `apps.length` unchanged (no duplicate targets).
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
    **`u`** / **`o`** / **`h`** / **`a`** / Delete.
+
+### Ally M15 Xbox / Microsoft Store smoke
+
+1. Optional fixture: set `HOMEDECK_XBOX_ROOT` to an XboxGames-like tree of
+   1–2 folders each with `xboxgame-*.info` or `MicrosoftGame.config` (or
+   a real Xbox / Game Pass PC install / GamingRoot on the Ally box).
+2. Launch HomeDeck; bare SendKeys **`w`** (no Settings UIA) runs
+   discoverXbox → importXbox.
+3. Open Library → By app → Xbox / Microsoft Store; new tiles appear.
+   Focus one; bare **`h`** pins to Home; SendKeys Enter launches (URI via
+   `msxbox:` / `xbox:` / `ms-windows-store:` or AUMID when present —
+   best-effort for UWP/Game Pass; raw `.exe` often fails).
+4. SendKeys **`w`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
+   **`u`** / **`o`** / **`n`** / **`h`** / **`a`** / Delete.
 
 Keyboard:
 

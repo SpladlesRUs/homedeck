@@ -111,6 +111,11 @@ class ScanBattlenetLibraryIntent extends Intent {
   const ScanBattlenetLibraryIntent();
 }
 
+/// Xbox / Microsoft Store library discover → import (Settings scan / Ally bare `W`).
+class ScanXboxLibraryIntent extends Intent {
+  const ScanXboxLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();
