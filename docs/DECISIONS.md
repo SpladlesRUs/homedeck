@@ -384,6 +384,21 @@ skip dock tabs when cycling.
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M18 title-pill page dots smoke
+
+On Home the centered title pill shows WiiSU-style page dots (active page
+emphasized) instead of a text title — matching iiSU “title bar off → page
+dots in capsule.” Library, open folders, and other tabs keep the focused-item
+(or section) name as text. The under-grid page-dot row is removed so the pill
+is the primary pager chrome. Pill stays truly centered.
+
+1. Home: title-pill shows page dots; active page matches; change page (dot tap
+   or existing pager / edge arrows) updates the active dot.
+2. Library / open folder: title-pill shows focused name (text), not dots.
+3. Spot-check dock idle hide, focus ring, Enter/Delete, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus

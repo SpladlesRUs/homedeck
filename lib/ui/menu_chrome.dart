@@ -227,6 +227,9 @@ class HomeTopBar extends StatelessWidget {
     required this.now,
     this.batteryPercent,
     this.fullscreen = false,
+    this.pageCount,
+    this.page,
+    this.onSelectPage,
   });
 
   final HomeDeckMetrics metrics;
@@ -234,6 +237,11 @@ class HomeTopBar extends StatelessWidget {
   final DateTime now;
   final int? batteryPercent;
   final bool fullscreen;
+
+  /// When set (Home tab), the centered pill shows page dots instead of [title].
+  final int? pageCount;
+  final int? page;
+  final ValueChanged<int>? onSelectPage;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +262,13 @@ class HomeTopBar extends StatelessWidget {
             ),
             Align(
               alignment: Alignment.topCenter,
-              child: TitlePill(title: title, metrics: metrics),
+              child: TitlePill(
+                title: title,
+                metrics: metrics,
+                pageCount: pageCount,
+                page: page,
+                onSelectPage: onSelectPage,
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
@@ -273,10 +287,25 @@ class HomeTopBar extends StatelessWidget {
 }
 
 class TitlePill extends StatelessWidget {
-  const TitlePill({super.key, required this.title, required this.metrics});
+  const TitlePill({
+    super.key,
+    required this.title,
+    required this.metrics,
+    this.pageCount,
+    this.page,
+    this.onSelectPage,
+  });
 
   final String title;
   final HomeDeckMetrics metrics;
+
+  /// Home WiiSU mode: page dots in the capsule (iiSU title-bar-off).
+  final int? pageCount;
+  final int? page;
+  final ValueChanged<int>? onSelectPage;
+
+  bool get _showPageDots =>
+      pageCount != null && page != null && onSelectPage != null;
 
   @override
   Widget build(BuildContext context) {
@@ -291,16 +320,22 @@ class TitlePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0x33FFFFFF)),
       ),
-      child: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 16 * metrics.scale,
-        ),
-      ),
+      child: _showPageDots
+          ? SubtlePageDots(
+              count: pageCount!,
+              page: page!,
+              onSelect: onSelectPage!,
+            )
+          : Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16 * metrics.scale,
+              ),
+            ),
     );
   }
 }

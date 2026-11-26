@@ -2108,6 +2108,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         now: _now,
                         batteryPercent: _status.batteryPercent,
                         fullscreen: _window.isFullscreen,
+                        // Home: page dots in the centered pill (iiSU WiiSU).
+                        // Library / folders / other tabs keep the text title.
+                        pageCount: _tab == HomeTab.home ? pages : null,
+                        page: _tab == HomeTab.home ? page : null,
+                        onSelectPage: _tab == HomeTab.home ? _goToPage : null,
                       ),
                       Expanded(
                         child: Padding(
@@ -2568,14 +2573,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 focusNodeFor: _nodeFor,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SubtlePageDots(
-                count: pages,
-                page: page,
-                onSelect: _goToPage,
-              ),
-            ),
+            // Page dots live in the centered TitlePill on Home (not a second row).
           ],
         );
     }
