@@ -413,6 +413,54 @@ class StatusCluster extends StatelessWidget {
   }
 }
 
+/// One-shot slide-in when the tab dock remounts after idle/folder hide.
+///
+/// Kept as a [StatefulWidget] with a stable key so tab switches (setState
+/// while the dock stays mounted) do not remount and restart an opacity
+/// tween from 0 — that briefly drops Semantics and Ally UIA tab counts to 0.
+/// Slide only (no Opacity) so tabs stay in the semantics tree for the
+/// whole entrance.
+class DockEntrance extends StatefulWidget {
+  const DockEntrance({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<DockEntrance> createState() => _DockEntranceState();
+}
+
+class _DockEntranceState extends State<DockEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  )..forward();
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - _t.value) * 14),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class TabDock extends StatelessWidget {
   const TabDock({
     super.key,

@@ -47,6 +47,12 @@ class HomeScreen extends StatefulWidget {
   /// Tests freeze the clock for screenshots.
   static DateTime Function() clock = DateTime.now;
 
+  /// Idle delay before the tab dock auto-hides on Home / Library root.
+  /// Inside folders the dock stays on the `_dockForced` path instead.
+  /// Chosen: 2.5s (iiSU-like short idle; documented in docs/DECISIONS.md).
+  /// Tests may shorten or zero this.
+  static Duration dockIdleHideDelay = const Duration(milliseconds: 2500);
+
   final LibraryController controller;
   final WindowModeController windowMode;
   final GamepadSource? gamepad;
@@ -86,6 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _chipsFocused = false;
   bool _searchOpen = false;
   bool _dockForced = false;
+  bool _dockIdleHidden = false;
+  /// Bumped on every force-show / tab shift so a stale idle timer cannot
+  /// hide the dock during an in-progress reveal or PageDown/LB cycle.
+  int _dockShowEpoch = 0;
   LibraryGroupMode _libraryMode = LibraryGroupMode.console;
   String? _folderTitle;
   LaunchFailure? _failure;
@@ -95,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _extraHomePages = 0;
   HomeTab _tab = HomeTab.home;
   Timer? _clock;
+  Timer? _dockIdleTimer;
   DateTime _now = HomeScreen.clock();
   DateTime _lastConfirm = DateTime.fromMillisecondsSinceEpoch(0);
   final _focusNodes = <String, FocusNode>{};
@@ -159,10 +170,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _focusId(nowPlayingId, click: false);
       }
     });
+    _scheduleDockIdleHide();
   }
 
   @override
   void dispose() {
+    _cancelDockIdleTimer();
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     if (Platform.isWindows) {
       if (identical(
@@ -461,12 +474,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _focusAddedApp(AppRecord added) async {
+    _dockShowEpoch++;
     setState(() {
       _tab = HomeTab.home;
       _folderTitle = null;
       _dockForced = true;
+      _dockIdleHidden = false;
       _focusedId = added.id;
     });
+    _scheduleDockIdleHide();
     await _syncNativeFocusedLaunchAwait();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -874,7 +890,87 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
 
-  bool get _dockVisible => !_insideFolder || _dockForced;
+  /// Root tabs: visible until idle-hidden. Inside folders: `_dockForced` only.
+  bool get _dockVisible =>
+      _insideFolder ? _dockForced : !_dockIdleHidden;
+
+  void _cancelDockIdleTimer() {
+    _dockIdleTimer?.cancel();
+    _dockIdleTimer = null;
+  }
+
+  void _scheduleDockIdleHide() {
+    _cancelDockIdleTimer();
+    if (_insideFolder) {
+      return;
+    }
+    final delay = HomeScreen.dockIdleHideDelay;
+    if (delay <= Duration.zero) {
+      return;
+    }
+    // Capture epoch so a force-show that races the fire cannot be undone.
+    final epoch = _dockShowEpoch;
+    _dockIdleTimer = Timer(delay, () {
+      if (_dockShowEpoch != epoch) {
+        return;
+      }
+      _hideDockForIdle();
+    });
+  }
+
+  void _hideDockForIdle() {
+    if (!mounted || _insideFolder) {
+      return;
+    }
+    // Keep dock up while a modal is open; retry after it closes via bump.
+    if (_overlayOpen) {
+      _scheduleDockIdleHide();
+      return;
+    }
+    if (!_dockIdleHidden) {
+      setState(() => _dockIdleHidden = true);
+      // Dock unmount can drop primary focus; keep Shortcuts + native unpin
+      // targeting the same tile Ally had selected.
+      final id = _focusedId;
+      if (id != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _focusedId != id) {
+            return;
+          }
+          _nodeFor(id).requestFocus();
+        });
+      }
+    }
+  }
+
+  /// Show the dock (LB/RB / PageUp/PageDown / dock tap / bottom reveal hit).
+  void _revealDock({bool forceInsideFolder = false}) {
+    _dockShowEpoch++;
+    _cancelDockIdleTimer();
+    if (_insideFolder || forceInsideFolder) {
+      if (!_dockForced || _dockIdleHidden) {
+        setState(() {
+          _dockForced = true;
+          _dockIdleHidden = false;
+        });
+      }
+      // Inside a folder the dock stays until dismissed; no idle re-hide.
+      if (_insideFolder) {
+        return;
+      }
+    } else if (_dockIdleHidden) {
+      setState(() => _dockIdleHidden = false);
+    }
+    _scheduleDockIdleHide();
+  }
+
+  /// Reset the idle timer while the dock is already visible; do not unhide.
+  void _bumpDockActivity() {
+    if (!_dockVisible) {
+      return;
+    }
+    _scheduleDockIdleHide();
+  }
 
   void _click(UiClick kind) {
     _clicks.enabled = _library.state.audio.uiClicksEnabled;
@@ -888,10 +984,6 @@ class _HomeScreenState extends State<HomeScreen> {
         const LaunchFocusedIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonA):
         const LaunchFocusedIntent(),
-    const SingleActivator(LogicalKeyboardKey.delete):
-        const RemoveFocusedIntent(),
-    const SingleActivator(LogicalKeyboardKey.backspace):
-        const RemoveFocusedIntent(),
     const SingleActivator(LogicalKeyboardKey.escape):
         const DismissOverlayIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonB):
@@ -940,8 +1032,9 @@ class _HomeScreenState extends State<HomeScreen> {
         const PrevTabIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonRight1):
         const NextTabIntent(),
-    const SingleActivator(LogicalKeyboardKey.pageUp): const PrevTabIntent(),
-    const SingleActivator(LogicalKeyboardKey.pageDown): const NextTabIntent(),
+    // PageUp/PageDown/Delete/Backspace: handled in `_onHardwareKey` so they
+    // still work after idle-hide drops Shortcuts focus (Ally SendKeys). Kept
+    // out of Shortcuts to avoid double-invoke with the hardware handler.
     const SingleActivator(LogicalKeyboardKey.keyX):
         const ToggleLibraryGroupIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonX):
@@ -1157,6 +1250,22 @@ class _HomeScreenState extends State<HomeScreen> {
       unawaited(_toggleFullscreen());
       return true;
     }
+    // Idle-hide unmounts the dock and can drop Shortcuts focus; PageDown /
+    // PageUp / Delete must still force-show / unpin (same as LB/RB gamepad).
+    if (!_overlayOpen && key == LogicalKeyboardKey.pageDown) {
+      _shiftTab(1);
+      return true;
+    }
+    if (!_overlayOpen && key == LogicalKeyboardKey.pageUp) {
+      _shiftTab(-1);
+      return true;
+    }
+    if (!_overlayOpen &&
+        (key == LogicalKeyboardKey.delete ||
+            key == LogicalKeyboardKey.backspace)) {
+      _requestRemove();
+      return true;
+    }
     return false;
   }
 
@@ -1211,15 +1320,27 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
+    // Inside a folder with the dock down: first LB/RB / PageUp/PageDown only
+    // force-reveals TabDock (Ally UIA 5 tabs) and stays in the folder. A
+    // second press then exits + advances the tab as usual.
+    if (_insideFolder && !_dockForced) {
+      _revealDock(forceInsideFolder: true);
+      return;
+    }
+    // Invalidate any pending idle-hide so it cannot race this force-show.
+    _dockShowEpoch++;
+    _cancelDockIdleTimer();
     final values = HomeTab.values;
     final next = (values.indexOf(_tab) + delta) % values.length;
     _click(UiClick.page);
     setState(() {
       _tab = values[next < 0 ? values.length - 1 : next];
       _dockForced = true;
+      _dockIdleHidden = false;
       _folderTitle = null;
       _chipsFocused = false;
     });
+    _scheduleDockIdleHide();
     _focusFirstForTab();
   }
 
@@ -1549,6 +1670,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openFolder(String title) {
     final section = _sectionByTitle(title);
+    _cancelDockIdleTimer();
     setState(() {
       _folderTitle = title;
       _dockForced = false;
@@ -1568,10 +1690,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _folderTitle = null;
       _dockForced = false;
+      _dockIdleHidden = false;
       if (title != null) {
         _focusedId = folderFocusId(title);
       }
     });
+    _scheduleDockIdleHide();
     final id = _focusedId;
     if (id != null) {
       _nodeFor(id).requestFocus();
@@ -1620,6 +1744,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onDirection(TraversalDirection direction, HomeDeckMetrics metrics) {
+    _bumpDockActivity();
     if (_overlayOpen) {
       return;
     }
@@ -1854,14 +1979,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (next >= ids.length) {
       if (_insideFolder && direction == TraversalDirection.down) {
-        setState(() => _dockForced = true);
+        _revealDock(forceInsideFolder: true);
       }
       return;
     }
     if (_insideFolder &&
         direction == TraversalDirection.down &&
         next ~/ columns >= (ids.length / columns).ceil() - 1) {
-      setState(() => _dockForced = true);
+      _revealDock(forceInsideFolder: true);
     }
     _focusId(ids[next]);
   }
@@ -1956,7 +2081,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Focus(
             autofocus: true,
             child: Scaffold(
-              body: Stack(
+              body: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (_) => _bumpDockActivity(),
+                child: Stack(
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 280),
@@ -1998,28 +2126,52 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       AnimatedSize(
-                        duration: const Duration(milliseconds: 180),
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
                         child: _dockVisible
                             ? Padding(
                                 padding: EdgeInsets.only(
                                   top: 8 * metrics.scale,
                                   bottom: 52 * metrics.scale,
                                 ),
-                                child: TabDock(
-                                  metrics: metrics,
-                                  active: _tab,
-                                  onSelect: (tab) {
-                                    setState(() {
-                                      _tab = tab;
-                                      _folderTitle = null;
-                                      _dockForced = true;
-                                    });
-                                    _focusFirstForTab();
-                                  },
-                                  onSearch: _openSearch,
+                                child: DockEntrance(
+                                  key: const ValueKey('dock-entrance'),
+                                  child: TabDock(
+                                    metrics: metrics,
+                                    active: _tab,
+                                    onSelect: (tab) {
+                                      _dockShowEpoch++;
+                                      setState(() {
+                                        _tab = tab;
+                                        _folderTitle = null;
+                                        _dockForced = true;
+                                        _dockIdleHidden = false;
+                                      });
+                                      _scheduleDockIdleHide();
+                                      _focusFirstForTab();
+                                    },
+                                    onSearch: _openSearch,
+                                  ),
                                 ),
                               )
-                            : SizedBox(height: 52 * metrics.scale),
+                            : Semantics(
+                                key: const Key('dock-reveal-hit'),
+                                button: true,
+                                label: 'Show tabs',
+                                // Ally UIA Invoke needs Semantics.onTap;
+                                // GestureDetector alone is not enough.
+                                onTap: () =>
+                                    _revealDock(forceInsideFolder: true),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () =>
+                                      _revealDock(forceInsideFolder: true),
+                                  child: SizedBox(
+                                    height: 52 * metrics.scale,
+                                    width: double.infinity,
+                                  ),
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -2327,6 +2479,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                 ],
+              ),
               ),
             ),
           ),

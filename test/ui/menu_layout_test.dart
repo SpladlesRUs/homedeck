@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homedeck/core/gamepad.dart';
 import 'package:homedeck/ui/app_tile.dart';
+import 'package:homedeck/ui/home_screen.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
@@ -545,6 +546,14 @@ void main() {
     expect(find.byKey(const Key('library-mode-console')), findsNothing);
     expect(find.byType(TabDock), findsNothing);
 
+    // First RB force-reveals the dock while staying in the folder.
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+
+    // Second RB exits the folder and advances to Home.
     harness.gamepad.emit(GamepadButton.rb);
     await tester.pump();
     expect(find.byType(TabDock), findsOneWidget);
@@ -692,4 +701,188 @@ void main() {
       expect(find.byKey(const Key('now-playing-tile')), findsNothing);
     },
   );
+
+  testWidgets('Home dock idle-hides then LB reveals and switches tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final priorDelay = HomeScreen.dockIdleHideDelay;
+    HomeScreen.dockIdleHideDelay = const Duration(milliseconds: 800);
+    addTearDown(() => HomeScreen.dockIdleHideDelay = priorDelay);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('dock-home')), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 850));
+    expect(find.byType(TabDock), findsNothing);
+    expect(find.byKey(const Key('dock-reveal-hit')), findsOneWidget);
+
+    harness.gamepad.emit(GamepadButton.lb);
+    await tester.pump();
+    // LB wraps Home → Library (allApps); dock must be visible again.
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+  });
+
+  testWidgets('Home dock idle-hides then PageDown reveals and advances tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final priorDelay = HomeScreen.dockIdleHideDelay;
+    HomeScreen.dockIdleHideDelay = const Duration(milliseconds: 800);
+    addTearDown(() => HomeScreen.dockIdleHideDelay = priorDelay);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.pump(const Duration(milliseconds: 850));
+    expect(find.byType(TabDock), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('dock-games')), findsOneWidget);
+
+    // Second PageDown must keep the dock mounted (no opacity remount / UIA 0).
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('dock-achievements')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(TabDock), findsOneWidget);
+  });
+
+  testWidgets('Library root dock idle-hides; bottom hit reveals without tab change', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final priorDelay = HomeScreen.dockIdleHideDelay;
+    HomeScreen.dockIdleHideDelay = const Duration(milliseconds: 800);
+    addTearDown(() => HomeScreen.dockIdleHideDelay = priorDelay);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 850));
+    expect(find.byType(TabDock), findsNothing);
+
+    await tester.tap(find.byKey(const Key('dock-reveal-hit')));
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+    expect(find.byKey(const Key('library-folders')), findsOneWidget);
+  });
+
+  testWidgets('Inside Library folder bottom hit force-shows dock', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump();
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byType(TabDock), findsNothing);
+    expect(find.byKey(const Key('dock-reveal-hit')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('dock-reveal-hit')));
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+  });
+
+  testWidgets('Inside Library folder PageDown force-shows dock without leaving', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester, seedDemo: true);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('folder-snes')));
+    await tester.pump();
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byType(TabDock), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    // First PageDown remounts TabDock while staying in the folder.
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+
+    // Second PageDown exits folder and advances the tab.
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsNothing);
+  });
+
+  testWidgets('Delete still unpins Home tile after dock idle-hides', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final priorDelay = HomeScreen.dockIdleHideDelay;
+    HomeScreen.dockIdleHideDelay = const Duration(milliseconds: 800);
+    addTearDown(() => HomeScreen.dockIdleHideDelay = priorDelay);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    expect(harness.controller.isOnHome('app-1'), isTrue);
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    expect(focusOn(tester, const ValueKey('tile-app-1')), isTrue);
+
+    await tester.pump(const Duration(milliseconds: 850));
+    expect(find.byType(TabDock), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+
+    expect(harness.controller.isOnHome('app-1'), isFalse);
+    expect(harness.controller.home.slots, isNot(contains('app-1')));
+  });
 }

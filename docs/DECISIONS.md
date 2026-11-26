@@ -359,6 +359,31 @@ scale-up (`TileFace`); unfocused tiles stay calm (no ring).
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`** unchanged.
 
+### Ally M17 auto-hide tab dock smoke
+
+The bottom tab dock auto-hides after **2.5s** idle on Home and Library root
+(and the placeholder tabs). Activity (D-pad / keys / pointer while visible)
+resets the timer; it does not unhide a already-hidden dock. LB / RB,
+PageUp / PageDown, next/prev-tab intents, dock tab taps, and the bottom
+`dock-reveal-hit` strip force the dock visible again (slight slide; no
+opacity fade so Ally UIA keeps tab Semantics during the entrance and across
+tab switches). A show-epoch cancels in-flight idle hides so force-show /
+PageDown cannot be immediately re-hidden. Inside a Library folder the dock
+stays on the existing hide + `_dockForced` path (down-edge / LB-RB /
+PageUp-PageDown / bottom hit). The first LB/RB or PageUp/PageDown while the
+folder dock is down only force-reveals TabDock (stay in folder; Ally UIA
+sees 5 tabs again); a second press then exits and advances the tab. Never
+skip dock tabs when cycling.
+
+1. On Home: wait idle → dock hides (removed from tree; bottom hit strip remains).
+2. SendKeys PageDown or gamepad RB → dock returns; tab advances (Home→Games
+   on PageDown / RB; LB wraps Home→Library).
+3. Open a Library folder → dock hidden; PageDown / LB/RB / bottom hit
+   remounts TabDock while staying in the folder (`_dockForced`).
+4. Spot-check Enter, Delete, F11, focus ring, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
