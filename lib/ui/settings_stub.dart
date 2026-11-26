@@ -4,7 +4,7 @@ import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Settings: window chrome, audio, Steam / Start Menu / ROM / Epic / GOG /
-/// Ubisoft / EA scan, open questions.
+/// Ubisoft / EA / Battle.net scan, open questions.
 class SettingsStub extends StatelessWidget {
   const SettingsStub({
     super.key,
@@ -46,6 +46,9 @@ class SettingsStub extends StatelessWidget {
     this.onScanEa,
     this.eaScanBusy = false,
     this.eaScanMessage,
+    this.onScanBattlenet,
+    this.battlenetScanBusy = false,
+    this.battlenetScanMessage,
     this.onExit,
   });
 
@@ -87,6 +90,9 @@ class SettingsStub extends StatelessWidget {
   final VoidCallback? onScanEa;
   final bool eaScanBusy;
   final String? eaScanMessage;
+  final VoidCallback? onScanBattlenet;
+  final bool battlenetScanBusy;
+  final String? battlenetScanMessage;
   final VoidCallback? onExit;
 
   @override
@@ -596,9 +602,62 @@ class SettingsStub extends StatelessWidget {
                               ),
                             ),
                           ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Battle.net',
+                            style: TextStyle(
+                              color: HomeDeckColors.cyanDeep,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18 * scale,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Scan imports installed Battle.net titles into Library (By app → Battle.net) via battlenet://… when available (else resolved .exe). Keyboard N (Ally SendKeys n) runs the same scan without opening Settings. Optional HOMEDECK_BATTLENET_ROOT points at a fixture Games tree, Agent product.db, or install folder (battlenetgame-*.info). No games-only filter — every launchable install is imported.',
+                            style: TextStyle(
+                              color: HomeDeckColors.ink,
+                              fontSize: 18,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (onScanBattlenet != null) ...[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton(
+                                key: const Key('settings-scan-battlenet'),
+                                onPressed: battlenetScanBusy
+                                    ? null
+                                    : onScanBattlenet,
+                                child: Text(
+                                  battlenetScanBusy
+                                      ? 'Scanning…'
+                                      : 'Scan Battle.net',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (battlenetScanMessage != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              battlenetScanMessage!,
+                              key: const Key(
+                                'settings-scan-battlenet-message',
+                              ),
+                              style: const TextStyle(
+                                color: HomeDeckColors.muted,
+                                fontSize: 16,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           const Text(
-                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), Ubisoft (U), EA (O), and pin to Home (H) stay unchanged.',
+                            'The library can hold games, emulators, and general applications. Scope is still an open product question. Manual Add (A), Steam (S), Start Menu (P), ROM (R), Epic (E), GOG (G), Ubisoft (U), EA (O), Battle.net (N), and pin to Home (H) stay unchanged.',
                             style: TextStyle(
                               color: HomeDeckColors.muted,
                               fontSize: 16,

@@ -64,11 +64,14 @@ as `uplay://launch/…` tiles when available (else resolved `.exe`; optional
 **Scan EA App** (or keyboard **O**) imports EA App / Origin titles as
 `origin://launchgame/…` tiles when available (else resolved `.exe`;
 optional `HOMEDECK_EA_ROOT` fixture with `__Installer\installerdata.xml`).
-Focus a Library tile and press **H** to pin it to Home (same as Menu → Add
-to Home; for Ally harnesses that cannot reach that control). **Delete** /
-**Backspace** unpins a focused Home tile, or asks to remove a focused
-Library tile (Enter confirms; Esc cancels — same as Menu Remove, without
-UIA).
+Settings → **Scan Battle.net** (or keyboard **N**) imports Battle.net
+titles as `battlenet://…` tiles when available (else resolved `.exe`;
+optional `HOMEDECK_BATTLENET_ROOT` fixture with Agent `product.db` or
+`battlenetgame-*.info`). Focus a Library tile and press **H** to pin it to
+Home (same as Menu → Add to Home; for Ally harnesses that cannot reach that
+control). **Delete** / **Backspace** unpins a focused Home tile, or asks to
+remove a focused Library tile (Enter confirms; Esc cancels — same as Menu
+Remove, without UIA).
 
 Release defaults to an empty library. To preview a full grid in debug only:
 

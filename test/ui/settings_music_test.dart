@@ -684,6 +684,97 @@ void main() {
     );
   });
 
+  testWidgets('bare N imports Battle.net titles without opening Settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverBattlenetResult: [
+          DiscoveredApp(
+            displayName: 'Diablo III',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'battlenet://D3/',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byKey(const Key('settings-scan-battlenet')), findsNothing);
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'Diablo III');
+    expect(harness.controller.apps.single.store, Storefront.battlenet);
+  });
+
+  testWidgets('settings Battle.net scan imports discovered titles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(
+      tester,
+      adapter: FakePlatformAdapter(
+        discoverBattlenetResult: [
+          DiscoveredApp(
+            displayName: 'World of Warcraft',
+            target: const LaunchTarget(
+              platform: AppPlatform.windows,
+              kind: LaunchTargetKind.windowsUri,
+              value: 'battlenet://WoW/',
+            ),
+          ),
+        ],
+      ),
+    );
+    await pumpHomeDeck(tester, harness);
+    await tester.pump();
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('menu-settings')));
+    await tester.pump();
+
+    final scan = find.byKey(const Key('settings-scan-battlenet'));
+    expect(scan, findsOneWidget);
+    await tester.ensureVisible(scan);
+    await tester.pump();
+    await tester.tap(scan);
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(harness.controller.apps, hasLength(1));
+    expect(harness.controller.apps.single.displayName, 'World of Warcraft');
+    expect(
+      find.byKey(const Key('settings-scan-battlenet-message')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('window blur ducks menu music and focus restores it', (
     tester,
   ) async {

@@ -76,6 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _ubisoftScanMessage;
   bool _eaScanBusy = false;
   String? _eaScanMessage;
+  bool _battlenetScanBusy = false;
+  String? _battlenetScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -119,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanGog = _scanGogFromNative;
       WindowsNativeBridge.onScanUbisoft = _scanUbisoftFromNative;
       WindowsNativeBridge.onScanEa = _scanEaFromNative;
+      WindowsNativeBridge.onScanBattlenet = _scanBattlenetFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -197,6 +200,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onScanEa, _scanEaFromNative)) {
         WindowsNativeBridge.onScanEa = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onScanBattlenet,
+        _scanBattlenetFromNative,
+      )) {
+        WindowsNativeBridge.onScanBattlenet = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -364,6 +373,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanEaLibrary();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `N` / WM_HOMEDECK_SCAN_BATTLENET — same
+  /// import as Settings → Scan Battle.net (Ally without Settings UIA).
+  Future<void> _scanBattlenetFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanBattlenetLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -719,6 +740,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanBattlenetLibrary() async {
+    if (_battlenetScanBusy) {
+      return;
+    }
+    setState(() {
+      _battlenetScanBusy = true;
+      _battlenetScanMessage = null;
+    });
+    try {
+      final added = await _library.importBattlenet(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _battlenetScanBusy = false;
+        if (added == 0) {
+          _battlenetScanMessage =
+              'No new Battle.net titles found. Install Battle.net games (or set HOMEDECK_BATTLENET_ROOT), then scan again.';
+        } else if (added == 1) {
+          _battlenetScanMessage =
+              'Added 1 Battle.net title to Library. Open Library → By app → Battle.net.';
+        } else {
+          _battlenetScanMessage =
+              'Added $added Battle.net titles to Library. Open Library → By app → Battle.net.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _battlenetScanBusy = false;
+        _battlenetScanMessage = 'Battle.net scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -802,6 +860,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanUbisoftLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyO):
         const ScanEaLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyN):
+        const ScanBattlenetLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -907,6 +967,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanEaLibraryIntent: CallbackAction<ScanEaLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanEaLibrary());
+          return null;
+        },
+      ),
+      ScanBattlenetLibraryIntent: CallbackAction<ScanBattlenetLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanBattlenetLibrary());
           return null;
         },
       ),
@@ -2090,6 +2156,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       eaScanBusy: _eaScanBusy,
                       eaScanMessage: _eaScanMessage,
                       onScanEa: _scanEaLibrary,
+                      battlenetScanBusy: _battlenetScanBusy,
+                      battlenetScanMessage: _battlenetScanMessage,
+                      onScanBattlenet: _scanBattlenetLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
@@ -2099,6 +2168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _gogScanMessage = null;
                         _ubisoftScanMessage = null;
                         _eaScanMessage = null;
+                        _battlenetScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,

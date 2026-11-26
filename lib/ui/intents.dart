@@ -106,6 +106,11 @@ class ScanEaLibraryIntent extends Intent {
   const ScanEaLibraryIntent();
 }
 
+/// Battle.net library discover → import (Settings scan / Ally bare `N`).
+class ScanBattlenetLibraryIntent extends Intent {
+  const ScanBattlenetLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();

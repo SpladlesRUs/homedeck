@@ -147,6 +147,10 @@ class LibraryController extends ChangeNotifier {
   /// Platform EA App / Origin install scan on Windows.
   Future<List<DiscoveredApp>> discoverEa() => _adapter.discoverEa();
 
+  /// Platform Battle.net install scan on Windows.
+  Future<List<DiscoveredApp>> discoverBattlenet() =>
+      _adapter.discoverBattlenet();
+
   /// Adds discovered apps that are not already in the library. Does not pin
   /// to Home — Library / By app holds them.
   ///
@@ -156,7 +160,7 @@ class LibraryController extends ChangeNotifier {
   ///
   /// [discover] defaults to Steam ([PlatformAdapter.discover]); use
   /// [importStartMenu] / [importRoms] / [importEpic] / [importGog] /
-  /// [importUbisoft] / [importEa] for the other scanners.
+  /// [importUbisoft] / [importEa] / [importBattlenet] for the other scanners.
   Future<int> importDiscovered({
     bool pinToHome = false,
     Future<List<DiscoveredApp>> Function()? discover,
@@ -243,6 +247,14 @@ class LibraryController extends ChangeNotifier {
     return importDiscovered(
       pinToHome: pinToHome,
       discover: _adapter.discoverEa,
+    );
+  }
+
+  /// Battle.net discover → Library native tiles (no Home pins).
+  Future<int> importBattlenet({bool pinToHome = false}) {
+    return importDiscovered(
+      pinToHome: pinToHome,
+      discover: _adapter.discoverBattlenet,
     );
   }
 

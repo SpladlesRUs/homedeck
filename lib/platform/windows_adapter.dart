@@ -17,6 +17,7 @@ import 'package:homedeck/platform/gog_library.dart';
 import 'package:homedeck/platform/rom_library.dart';
 import 'package:homedeck/platform/start_menu_library.dart';
 import 'package:homedeck/platform/steam_library.dart';
+import 'package:homedeck/platform/battlenet_library.dart';
 import 'package:homedeck/platform/ea_library.dart';
 import 'package:homedeck/platform/ubisoft_library.dart';
 import 'package:homedeck/platform/windows_icon_extractor.dart';
@@ -42,6 +43,8 @@ typedef FilePickerFn = Future<String?> Function({
 /// `uplay://launch/…` (or resolved `.exe`) targets.
 /// [discoverEa] reads EA App / Origin installs for
 /// `origin://launchgame/…` (or resolved `.exe`) targets.
+/// [discoverBattlenet] reads Battle.net Agent / product.db installs for
+/// `battlenet://…` (or resolved `.exe`) targets.
 /// Icons prefer a real PE / shortcut extract into [IconCache]; generated
 /// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
@@ -56,6 +59,7 @@ class WindowsAdapter implements PlatformAdapter {
     GogLibraryScanner? gogScanner,
     UbisoftLibraryScanner? ubisoftScanner,
     EaLibraryScanner? eaScanner,
+    BattlenetLibraryScanner? battlenetScanner,
   }) : _io = io,
        _filePicker = filePicker ?? _defaultPicker,
        _iconExtractor = iconExtractor ?? Win32IconExtractor(),
@@ -65,7 +69,9 @@ class WindowsAdapter implements PlatformAdapter {
        _epicScanner = epicScanner ?? EpicLibraryScanner(io: io),
        _gogScanner = gogScanner ?? GogLibraryScanner(io: io),
        _ubisoftScanner = ubisoftScanner ?? UbisoftLibraryScanner(io: io),
-       _eaScanner = eaScanner ?? EaLibraryScanner(io: io);
+       _eaScanner = eaScanner ?? EaLibraryScanner(io: io),
+       _battlenetScanner =
+           battlenetScanner ?? BattlenetLibraryScanner(io: io);
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
@@ -77,6 +83,7 @@ class WindowsAdapter implements PlatformAdapter {
   final GogLibraryScanner _gogScanner;
   final UbisoftLibraryScanner _ubisoftScanner;
   final EaLibraryScanner _eaScanner;
+  final BattlenetLibraryScanner _battlenetScanner;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -152,6 +159,10 @@ class WindowsAdapter implements PlatformAdapter {
 
   @override
   Future<List<DiscoveredApp>> discoverEa() => _eaScanner.discover();
+
+  @override
+  Future<List<DiscoveredApp>> discoverBattlenet() =>
+      _battlenetScanner.discover();
 
   @override
   Future<String?> resolveIcon({
