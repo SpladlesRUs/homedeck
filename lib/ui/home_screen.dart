@@ -1320,6 +1320,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_overlayOpen) {
       return;
     }
+    // Inside a folder with the dock down: first LB/RB / PageUp/PageDown only
+    // force-reveals TabDock (Ally UIA 5 tabs) and stays in the folder. A
+    // second press then exits + advances the tab as usual.
+    if (_insideFolder && !_dockForced) {
+      _revealDock(forceInsideFolder: true);
+      return;
+    }
     // Invalidate any pending idle-hide so it cannot race this force-show.
     _dockShowEpoch++;
     _cancelDockIdleTimer();
@@ -2151,6 +2158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 key: const Key('dock-reveal-hit'),
                                 button: true,
                                 label: 'Show tabs',
+                                // Ally UIA Invoke needs Semantics.onTap;
+                                // GestureDetector alone is not enough.
+                                onTap: () =>
+                                    _revealDock(forceInsideFolder: true),
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () =>

@@ -546,6 +546,14 @@ void main() {
     expect(find.byKey(const Key('library-mode-console')), findsNothing);
     expect(find.byType(TabDock), findsNothing);
 
+    // First RB force-reveals the dock while staying in the folder.
+    harness.gamepad.emit(GamepadButton.rb);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+
+    // Second RB exits the folder and advances to Home.
     harness.gamepad.emit(GamepadButton.rb);
     await tester.pump();
     expect(find.byType(TabDock), findsOneWidget);
@@ -785,7 +793,7 @@ void main() {
     expect(find.byKey(const Key('library-folders')), findsOneWidget);
   });
 
-  testWidgets('Inside Library folder PageDown and bottom hit force-show dock', (
+  testWidgets('Inside Library folder bottom hit force-shows dock', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -811,7 +819,7 @@ void main() {
     expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
   });
 
-  testWidgets('Inside Library folder PageDown force-shows dock via tab shift', (
+  testWidgets('Inside Library folder PageDown force-shows dock without leaving', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -826,11 +834,21 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('folder-snes')));
     await tester.pump();
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
     expect(find.byType(TabDock), findsNothing);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
     await tester.pump();
+    // First PageDown remounts TabDock while staying in the folder.
     expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsOneWidget);
+    expect(find.byKey(const Key('dock-allApps')), findsOneWidget);
+
+    // Second PageDown exits folder and advances the tab.
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    expect(find.byType(TabDock), findsOneWidget);
+    expect(find.byKey(const Key('folder-interior')), findsNothing);
   });
 
   testWidgets('Delete still unpins Home tile after dock idle-hides', (
