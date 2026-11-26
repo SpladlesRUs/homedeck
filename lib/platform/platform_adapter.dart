@@ -69,6 +69,9 @@ abstract class PlatformAdapter {
   /// EA App / Origin install scan on Windows; empty elsewhere.
   Future<List<DiscoveredApp>> discoverEa() async => const [];
 
+  /// Battle.net Agent / product.db install scan on Windows; empty elsewhere.
+  Future<List<DiscoveredApp>> discoverBattlenet() async => const [];
+
   /// Cache an icon under HomeDeck's data dir and return a relative [iconRef].
   Future<String?> resolveIcon({
     required LaunchTarget target,

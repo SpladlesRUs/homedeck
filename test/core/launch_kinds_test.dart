@@ -153,6 +153,10 @@ void main() {
       Storefront.ea,
     );
     expect(
+      SourceInference.storeFrom('battlenet://WoW/'),
+      Storefront.battlenet,
+    );
+    expect(
       SourceInference.consoleFrom(romPath: r'D:\Roms\game.sfc'),
       ConsoleSystem.snes,
     );

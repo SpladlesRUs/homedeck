@@ -43,10 +43,16 @@ answer.
    `importEa`. Humans use Settings → Scan EA App; Ally uses bare **O**
    (`WM_HOMEDECK_SCAN_EA` → `scanEa`). Optional `HOMEDECK_EA_ROOT` points
    at a fixture Games / install tree (`__Installer\installerdata.xml`).
-   Games-only filtering of Steam tools/redistributables, Start Menu
-   entries, Epic manifests, GOG info files, Ubisoft installs, or EA
-   installs is left open with library scope (Epic skips incomplete
-   installs only).
+   Battle.net scan uses `discoverBattlenet()` → `importBattlenet`. Humans
+   use Settings → Scan Battle.net; Ally uses bare **N**
+   (`WM_HOMEDECK_SCAN_BATTLENET` → `scanBattlenet`). Optional
+   `HOMEDECK_BATTLENET_ROOT` points at a fixture Games / Agent
+   `product.db` / install tree (`battlenetgame-*.info`). Games-only
+   filtering of Steam tools/redistributables, Start Menu entries, Epic
+   manifests, GOG info files, Ubisoft installs, EA installs, or
+   Battle.net installs is left open with library scope (Epic skips
+   incomplete installs only; Battle.net skips Agent/client component
+   uids only).
 
 ## Official app icon
 
@@ -299,6 +305,21 @@ window.
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
    **`u`** / **`h`** / **`a`** / Delete.
 
+### Ally M14 Battle.net smoke
+
+1. Optional fixture: set `HOMEDECK_BATTLENET_ROOT` to a Games-like tree of
+   1–2 folders each with `battlenetgame-*.info` (or an Agent `product.db`
+   / install folder), or use a real Battle.net install on the Ally box.
+2. Launch HomeDeck; bare SendKeys **`n`** (no Settings UIA) runs
+   discoverBattlenet → importBattlenet.
+3. Open Library → By app → Battle.net; new tiles appear. Focus one; bare
+   **`h`** pins to Home; SendKeys Enter launches (URI via
+   `battlenet://…` when present — best-effort if Battle.net is not
+   installed; else resolved `.exe`).
+4. SendKeys **`n`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** /
+   **`u`** / **`o`** / **`h`** / **`a`** / Delete.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -315,6 +336,7 @@ Keyboard:
 - G scans GOG Galaxy installs into Library (no Home pins)
 - U scans Ubisoft Connect installs into Library (no Home pins)
 - O scans EA App / Origin installs into Library (no Home pins)
+- N scans Battle.net installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”
