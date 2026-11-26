@@ -133,6 +133,45 @@ void main() {
       );
     });
 
+    test('skips ACL-denied WindowsApps and still imports fixture root',
+        () async {
+      final windowsApps = win.join(r'C:\Program Files\WindowsApps');
+      final games = win.join(r'C:\XboxGames');
+      final smoke = win.join(games, 'SmokeXb1');
+      final content = win.join(smoke, 'Content');
+      final info = win.join(content, 'xboxgame-SMOKEXB1.info');
+
+      final io = MemoryWindowsIo(
+        directories: {windowsApps, games, smoke, content},
+        directoryEntries: {
+          // WindowsApps exists but listing throws Access Denied (real ACL).
+          games: ['SmokeXb1'],
+          smoke: ['Content'],
+          content: ['xboxgame-SMOKEXB1.info'],
+        },
+        permissionDenied: {windowsApps},
+        textFiles: {
+          info: '{"name":"SmokeXb1","productId":"SMOKEXB1"}',
+        },
+      );
+
+      final scanner = XboxLibraryScanner(
+        io: io,
+        // Denied root first — must not abort HOMEDECK_XBOX_ROOT / XboxGames.
+        candidateRoots: () => [windowsApps, games],
+        registryInstalls: () async => const [],
+      );
+
+      final found = await scanner.discover();
+      expect(found, hasLength(1));
+      expect(found.single.displayName, 'SmokeXb1');
+      expect(found.single.target.value, 'msxbox://game/?id=SMOKEXB1');
+      expect(
+        SourceInference.storeFrom(found.single.target.value),
+        Storefront.xbox,
+      );
+    });
+
     test('discovers MicrosoftGame.config folders as msxbox URIs', () async {
       final root = win.join(r'D:\XboxGames\SeaOfThieves\Content');
       final config = win.join(root, 'MicrosoftGame.config');

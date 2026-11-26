@@ -66,8 +66,16 @@ class MemoryWindowsIo implements WindowsIo {
       directories.contains(path) || directoryEntries.containsKey(path);
 
   @override
-  Future<List<String>> listDirectory(String path) async =>
-      List<String>.from(directoryEntries[path] ?? const []);
+  Future<List<String>> listDirectory(String path) async {
+    if (permissionDenied.contains(path)) {
+      throw FileSystemException(
+        'Access denied',
+        path,
+        const OSError('Access denied', 5),
+      );
+    }
+    return List<String>.from(directoryEntries[path] ?? const []);
+  }
 
   @override
   Future<String> readTextFile(String path) async {

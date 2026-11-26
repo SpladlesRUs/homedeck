@@ -272,27 +272,34 @@ class XboxLibraryScanner {
 
     final roots = await _resolveScanRoots();
     for (final root in roots) {
-      await _collectInfoFiles(root, byKey);
-      await _collectConfigFolder(root, byKey);
+      // WindowsApps (and similar) often exists but is ACL-locked; one
+      // unreadable root must not abort fixture / XboxGames discovery.
+      try {
+        await _collectInfoFiles(root, byKey);
+        await _collectConfigFolder(root, byKey);
 
-      final names = await _io.listDirectory(root);
-      for (final name in names) {
-        if (_skipDirName(name)) {
-          continue;
-        }
-        final child = _path.join(root, name);
-        if (!await _io.directoryExists(child)) {
-          continue;
-        }
-        await _collectInfoFiles(child, byKey);
-        await _collectConfigFolder(child, byKey);
+        final names = await _io.listDirectory(root);
+        for (final name in names) {
+          if (_skipDirName(name)) {
+            continue;
+          }
+          final child = _path.join(root, name);
+          if (!await _io.directoryExists(child)) {
+            continue;
+          }
+          await _collectInfoFiles(child, byKey);
+          await _collectConfigFolder(child, byKey);
 
-        // XboxGames\<Title>\Content layout.
-        final content = _path.join(child, 'Content');
-        if (await _io.directoryExists(content)) {
-          await _collectInfoFiles(content, byKey);
-          await _collectConfigFolder(content, byKey);
+          // XboxGames\<Title>\Content layout.
+          final content = _path.join(child, 'Content');
+          if (await _io.directoryExists(content)) {
+            await _collectInfoFiles(content, byKey);
+            await _collectConfigFolder(content, byKey);
+          }
         }
+      } catch (_) {
+        // Access denied / unreadable — skip this root, keep scanning others.
+        continue;
       }
     }
 
@@ -309,7 +316,13 @@ class XboxLibraryScanner {
     String folder,
     Map<String, DiscoveredApp> byKey,
   ) async {
-    final names = await _io.listDirectory(folder);
+    List<String> names;
+    try {
+      names = await _io.listDirectory(folder);
+    } catch (_) {
+      // ACL-denied / unreadable folder — caller may still scan siblings.
+      return;
+    }
     for (final name in names) {
       if (!_isXboxInfoFile(name)) {
         continue;
@@ -867,7 +880,12 @@ Future<String?> findPrimaryExe(
     if (!await io.directoryExists(folder)) {
       return null;
     }
-    final names = await io.listDirectory(folder);
+    List<String> names;
+    try {
+      names = await io.listDirectory(folder);
+    } catch (_) {
+      return null;
+    }
     String? first;
     for (final name in names) {
       if (!name.toLowerCase().endsWith('.exe')) {
