@@ -168,10 +168,12 @@ class SourceInference {
       return Storefront.epic;
     }
     if (value.startsWith('origin:') ||
+        value.startsWith('origin2:') ||
         value.startsWith('eaapp:') ||
         value.contains(r'\origin') ||
         value.contains('ea desktop') ||
         value.contains(r'\ea games') ||
+        value.contains(r'\origin games') ||
         value.contains('electronic arts')) {
       return Storefront.ea;
     }

@@ -101,6 +101,11 @@ class ScanUbisoftLibraryIntent extends Intent {
   const ScanUbisoftLibraryIntent();
 }
 
+/// EA App / Origin library discover → import (Settings scan / Ally bare `O`).
+class ScanEaLibraryIntent extends Intent {
+  const ScanEaLibraryIntent();
+}
+
 /// Pin the focused Library record onto Home (UI Add to Home / Ally bare `H`).
 class PinFocusedToHomeIntent extends Intent {
   const PinFocusedToHomeIntent();

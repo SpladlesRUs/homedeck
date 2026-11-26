@@ -33,6 +33,12 @@ void main() {
     expect(WindowsPaths.isLaunchUri('goggalaxy://openGameView/123'), isTrue);
     expect(WindowsPaths.isLaunchUri('uplay://launch/1234/0'), isTrue);
     expect(WindowsPaths.isLaunchUri('ubisoftconnect://launch/1234/0'), isTrue);
+    expect(WindowsPaths.isLaunchUri('origin://launchgame/71715'), isTrue);
+    expect(
+      WindowsPaths.isLaunchUri('origin2://game/launch?offerIds=71715'),
+      isTrue,
+    );
+    expect(WindowsPaths.isLaunchUri('eaapp://launch/71715'), isTrue);
     expect(WindowsPaths.isLaunchUri('msxbox://game/?id=abc'), isTrue);
     expect(WindowsPaths.isLaunchUri(r'C:\Games\Star.exe'), isFalse);
     expect(WindowsPaths.isLaunchUri('https://example.com/game'), isFalse);
@@ -137,6 +143,14 @@ void main() {
     expect(
       SourceInference.storeFrom('uplay://launch/1234/0'),
       Storefront.ubisoft,
+    );
+    expect(
+      SourceInference.storeFrom('origin://launchgame/71715'),
+      Storefront.ea,
+    );
+    expect(
+      SourceInference.storeFrom('origin2://game/launch?offerIds=71715'),
+      Storefront.ea,
     );
     expect(
       SourceInference.consoleFrom(romPath: r'D:\Roms\game.sfc'),
