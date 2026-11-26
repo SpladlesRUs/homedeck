@@ -13,6 +13,7 @@ import 'package:homedeck/core/placeholder_png.dart';
 import 'package:homedeck/core/windows_paths.dart';
 import 'package:homedeck/platform/platform_adapter.dart';
 import 'package:homedeck/platform/epic_library.dart';
+import 'package:homedeck/platform/gog_library.dart';
 import 'package:homedeck/platform/rom_library.dart';
 import 'package:homedeck/platform/start_menu_library.dart';
 import 'package:homedeck/platform/steam_library.dart';
@@ -33,6 +34,8 @@ typedef FilePickerFn = Future<String?> Function({
 /// [discoverRoms] walks a configured ROM folder for common ROM extensions.
 /// [discoverEpic] reads Epic Games Launcher `*.item` manifests for
 /// `com.epicgames.launcher://apps/…` (or resolved `.exe`) targets.
+/// [discoverGog] reads GOG `goggame-*.info` installs for
+/// `goggalaxy://openGameView/…` (or resolved `.exe`) targets.
 /// Icons prefer a real PE / shortcut extract into [IconCache]; generated
 /// initial tiles remain the fallback (see docs/DECISIONS.md).
 class WindowsAdapter implements PlatformAdapter {
@@ -44,13 +47,15 @@ class WindowsAdapter implements PlatformAdapter {
     StartMenuScanner? startMenuScanner,
     RomFolderScanner? romScanner,
     EpicLibraryScanner? epicScanner,
+    GogLibraryScanner? gogScanner,
   }) : _io = io,
        _filePicker = filePicker ?? _defaultPicker,
        _iconExtractor = iconExtractor ?? Win32IconExtractor(),
        _steamScanner = steamScanner ?? SteamLibraryScanner(io: io),
        _startMenuScanner = startMenuScanner ?? StartMenuScanner(io: io),
        _romScanner = romScanner,
-       _epicScanner = epicScanner ?? EpicLibraryScanner(io: io);
+       _epicScanner = epicScanner ?? EpicLibraryScanner(io: io),
+       _gogScanner = gogScanner ?? GogLibraryScanner(io: io);
 
   final WindowsIo _io;
   final FilePickerFn _filePicker;
@@ -59,6 +64,7 @@ class WindowsAdapter implements PlatformAdapter {
   final StartMenuScanner _startMenuScanner;
   final RomFolderScanner? _romScanner;
   final EpicLibraryScanner _epicScanner;
+  final GogLibraryScanner _gogScanner;
 
   static Future<String?> _defaultPicker({
     required String label,
@@ -125,6 +131,9 @@ class WindowsAdapter implements PlatformAdapter {
 
   @override
   Future<List<DiscoveredApp>> discoverEpic() => _epicScanner.discover();
+
+  @override
+  Future<List<DiscoveredApp>> discoverGog() => _gogScanner.discover();
 
   @override
   Future<String?> resolveIcon({

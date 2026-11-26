@@ -31,10 +31,13 @@ answer.
    `HOMEDECK_EMULATOR` fixture the folder and emulator. Epic Games scan uses
    `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games;
    Ally uses bare **E** (`WM_HOMEDECK_SCAN_EPIC` → `scanEpic`). Optional
-   `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. Games-only
-   filtering of Steam tools/redistributables, Start Menu entries, or Epic
-   manifests is left open with library scope (Epic skips incomplete installs
-   only).
+   `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. GOG Galaxy
+   scan uses `discoverGog()` → `importGog`. Humans use Settings → Scan GOG;
+   Ally uses bare **G** (`WM_HOMEDECK_SCAN_GOG` → `scanGog`). Optional
+   `HOMEDECK_GOG_ROOT` points at a fixture Games / install tree. Games-only
+   filtering of Steam tools/redistributables, Start Menu entries, Epic
+   manifests, or GOG info files is left open with library scope (Epic skips
+   incomplete installs only).
 
 ## Official app icon
 
@@ -103,6 +106,7 @@ Do not treat Deck as a separate app.
 | Unpin / remove focused tile | Implemented; UI Remove / bare **Delete**/**Backspace** |
 | ROM-folder scanner | Implemented; Settings → Scan ROM folder / bare **R** |
 | Epic Games scanner (Windows) | Implemented; Settings → Scan Epic Games / bare **E** |
+| GOG Galaxy scanner (Windows) | Implemented; Settings → Scan GOG / bare **G** |
 | macOS / Android launch | Not implemented |
 | Linux / Steam Deck launch | Not implemented |
 | Accounts, cloud sync | Out of scope |
@@ -155,8 +159,9 @@ Dart FFI / CreateProcess / `cmd /c start`. Ally Phase2 drives keys with
 `WScript.Shell.SendKeys` (not top-level `WM_KEYDOWN`), so the runner installs
 a `WH_KEYBOARD_LL` hook for F11 chrome, Enter→focused path, A→classic Open,
 S→Steam scan, P→Start Menu scan, R→ROM-folder scan, E→Epic Games scan,
-H→pin focused Library tile to Home, and Delete/Backspace→unpin / Library
-remove while HomeDeck is foreground; Dart mirrors the focused launch target,
+G→GOG Galaxy scan, H→pin focused Library tile to Home, and
+Delete/Backspace→unpin / Library remove while HomeDeck is foreground; Dart
+mirrors the focused launch target,
 handles a native `launchFocused` fallback when the mirror is empty, and
 persists native `addPickedPath` results. While Library remove confirm is
 pending, Enter is `confirmFocused` (not ShellExecute). Dart FFI FindWindow remains a fallback
@@ -237,6 +242,21 @@ window.
 5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`h`** / **`a`** /
    Delete.
 
+### Ally M11 GOG Galaxy smoke
+
+1. Optional fixture: set `HOMEDECK_GOG_ROOT` to a Games-like tree of 1–2
+   folders each with `goggame-*.info` (or a single install folder), or use a
+   real GOG Galaxy install on the Ally box.
+2. Launch HomeDeck; bare SendKeys **`g`** (no Settings UIA) runs
+   discoverGog → importGog.
+3. Open Library → By app → GOG; new tiles appear. Focus one; bare **`h`**
+   pins to Home; SendKeys Enter launches (URI via
+   `goggalaxy://openGameView/…` when present — best-effort if Galaxy is not
+   installed; else resolved `.exe`).
+4. SendKeys **`g`** again: `apps.length` unchanged (no duplicate targets).
+5. Spot-check F11 and bare **`s`** / **`p`** / **`r`** / **`e`** / **`h`** /
+   **`a`** / Delete.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -250,6 +270,7 @@ Keyboard:
 - P scans Start Menu Programs into Library (no Home pins)
 - R scans the configured ROM folder into Library as emulated tiles (no Home pins)
 - E scans Epic Games Launcher installs into Library (no Home pins)
+- G scans GOG Galaxy installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”

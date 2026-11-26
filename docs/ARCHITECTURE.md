@@ -80,7 +80,13 @@ empty so Manual Add / edit can finish it. Settings → Scan ROM folder and bare
 does not invent games-only filtering. Settings → Scan Epic Games and bare
 **E** (`WM_HOMEDECK_SCAN_EPIC` → Dart `scanEpic`) call
 `LibraryController.importEpic` (Library only; no Home pins; re-scan skips
-duplicate targets).
+duplicate targets). GOG Galaxy discovery walks Galaxy / `GOG Games` roots
+(registry client + `GOG.com\Games\{id}\path`, optional `HOMEDECK_GOG_ROOT`)
+for `goggame-*.info`, prefers `goggalaxy://openGameView/{gameId}` (else
+primary playTask `.exe`), and does not invent games-only filtering.
+Settings → Scan GOG and bare **G** (`WM_HOMEDECK_SCAN_GOG` → Dart
+`scanGog`) call `LibraryController.importGog` (Library only; no Home pins;
+re-scan skips duplicate targets).
 
 `PreferencesRepository` seeds and writes `library.json` in the application
 support directory (`%AppData%\Horton Press\HomeDeck\` on Windows), then
@@ -98,9 +104,9 @@ SendKeys `a` is handled by the runner `WH_KEYBOARD_LL` hook →
 Shortcuts alone never saw harness `a` @82a5a20). Optional
 `HOMEDECK_ADD_PATH` skips the modal. The same hook handles F11 chrome,
 Enter→focused launch (with a Dart `launchFocused` fallback when the
-mirrored path is empty), bare **E** → `scanEpic`, bare **H** →
-`pinFocusedToHome`, and bare **Delete** / **Backspace** → `removeFocused`
-(Library confirm Enter → `confirmFocused`, not ShellExecute).
+mirrored path is empty), bare **E** → `scanEpic`, bare **G** → `scanGog`,
+bare **H** → `pinFocusedToHome`, and bare **Delete** / **Backspace** →
+`removeFocused` (Library confirm Enter → `confirmFocused`, not ShellExecute).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

@@ -70,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _romScanMessage;
   bool _epicScanBusy = false;
   String? _epicScanMessage;
+  bool _gogScanBusy = false;
+  String? _gogScanMessage;
   bool _detailsOpen = false;
   bool _addOpen = false;
   bool _menuOpen = false;
@@ -110,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanStartMenu = _scanStartMenuFromNative;
       WindowsNativeBridge.onScanRoms = _scanRomsFromNative;
       WindowsNativeBridge.onScanEpic = _scanEpicFromNative;
+      WindowsNativeBridge.onScanGog = _scanGogFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -176,6 +179,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onScanEpic, _scanEpicFromNative)) {
         WindowsNativeBridge.onScanEpic = null;
+      }
+      if (identical(WindowsNativeBridge.onScanGog, _scanGogFromNative)) {
+        WindowsNativeBridge.onScanGog = null;
       }
       if (identical(
         WindowsNativeBridge.onPinFocusedToHome,
@@ -307,6 +313,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _scanEpicLibrary();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `G` / WM_HOMEDECK_SCAN_GOG — same import as
+  /// Settings → Scan GOG (Ally without Settings UIA).
+  Future<void> _scanGogFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+      return;
+    }
+    await _scanGogLibrary();
   }
 
   /// Runner WH_KEYBOARD_LL bare `H` / WM_HOMEDECK_PIN_HOME — same as UI
@@ -551,6 +569,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _scanGogLibrary() async {
+    if (_gogScanBusy) {
+      return;
+    }
+    setState(() {
+      _gogScanBusy = true;
+      _gogScanMessage = null;
+    });
+    try {
+      final added = await _library.importGog(pinToHome: false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _gogScanBusy = false;
+        if (added == 0) {
+          _gogScanMessage =
+              'No new GOG titles found. Install GOG Galaxy games (or set HOMEDECK_GOG_ROOT), then scan again.';
+        } else if (added == 1) {
+          _gogScanMessage =
+              'Added 1 GOG title to Library. Open Library → By app → GOG.';
+        } else {
+          _gogScanMessage =
+              'Added $added GOG titles to Library. Open Library → By app → GOG.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _gogScanBusy = false;
+        _gogScanMessage = 'GOG scan failed: $error';
+      });
+    }
+  }
+
   void _onLibrary() {
     if (mounted) {
       setState(() {});
@@ -628,6 +683,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const ScanRomFolderIntent(),
     const SingleActivator(LogicalKeyboardKey.keyE):
         const ScanEpicLibraryIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyG):
+        const ScanGogLibraryIntent(),
     const SingleActivator(LogicalKeyboardKey.keyH):
         const PinFocusedToHomeIntent(),
     const SingleActivator(LogicalKeyboardKey.comma, control: true):
@@ -715,6 +772,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ScanEpicLibraryIntent: CallbackAction<ScanEpicLibraryIntent>(
         onInvoke: (_) {
           unawaited(_scanEpicLibrary());
+          return null;
+        },
+      ),
+      ScanGogLibraryIntent: CallbackAction<ScanGogLibraryIntent>(
+        onInvoke: (_) {
+          unawaited(_scanGogLibrary());
           return null;
         },
       ),
@@ -1889,12 +1952,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       epicScanBusy: _epicScanBusy,
                       epicScanMessage: _epicScanMessage,
                       onScanEpic: _scanEpicLibrary,
+                      gogScanBusy: _gogScanBusy,
+                      gogScanMessage: _gogScanMessage,
+                      onScanGog: _scanGogLibrary,
                       onClose: () => setState(() {
                         _settingsOpen = false;
                         _steamScanMessage = null;
                         _startMenuScanMessage = null;
                         _romScanMessage = null;
                         _epicScanMessage = null;
+                        _gogScanMessage = null;
                       }),
                       onToggleFullscreen: _toggleFullscreen,
                       onToggleBorderless: _toggleBorderless,
