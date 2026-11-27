@@ -2547,6 +2547,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           _searchOpen = true;
                         });
                       },
+                      onRecents: () {
+                        setState(() {
+                          _menuOpen = false;
+                          _recentsOpen = true;
+                        });
+                      },
                       // Library + menu: Steam / Start Menu / ROM + storefront
                       // rescans (same import paths as Settings / harness).
                       onScanSteam: _tab != HomeTab.allApps
