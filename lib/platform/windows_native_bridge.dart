@@ -31,10 +31,12 @@ import 'package:flutter/services.dart';
 /// `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not ShellExecute). Bare
 /// VK_OEM_PLUS / VK_ADD posts `WM_HOMEDECK_OPEN_MENU` → [onOpenMenu] (same
 /// as OpenMenuIntent — idle-hide drops Shortcuts focus so Ally SendKeys
-/// `=` never opened the menu). The same hook handles F11 chrome and
-/// Enter→focused path; Dart mirrors the target via [setFocusedLaunch] and
-/// handles a native [onLaunchFocused] fallback when the mirrored path is
-/// empty.
+/// `=` never opened the menu). Bare VK_OEM_MINUS posts
+/// `WM_HOMEDECK_OPEN_DETAILS` → [onOpenDetails] (same as OpenDetailsIntent
+/// — idle-hide drops Shortcuts focus so Ally SendKeys `-` never opened
+/// Details). The same hook handles F11 chrome and Enter→focused path; Dart
+/// mirrors the target via [setFocusedLaunch] and handles a native
+/// [onLaunchFocused] fallback when the mirrored path is empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -100,6 +102,10 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare VK_OEM_PLUS / VK_ADD / `WM_HOMEDECK_OPEN_MENU`
   /// asks Dart to open the TileMenu (same as OpenMenuIntent).
   static Future<void> Function()? onOpenMenu;
+
+  /// Runner WH_KEYBOARD_LL bare VK_OEM_MINUS / `WM_HOMEDECK_OPEN_DETAILS`
+  /// asks Dart to open the Details menu (same as OpenDetailsIntent).
+  static Future<void> Function()? onOpenDetails;
 
   /// Runner WH_KEYBOARD_LL Enter while remove-armed / `WM_HOMEDECK_CONFIRM`
   /// asks Dart `_handleConfirm` (Library remove) without ShellExecute.
@@ -231,6 +237,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'openMenu') {
         final handler = onOpenMenu;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'openDetails') {
+        final handler = onOpenDetails;
         if (handler != null) {
           await handler();
         }

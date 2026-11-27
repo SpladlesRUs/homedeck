@@ -450,6 +450,32 @@ scan rows. Bare harness keys and Settings buttons are unchanged.
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M21 Details menu smoke
+
+Focused game/app **Details** is a real action menu (not a title/path card):
+**Add to Home** / **Remove from Home** / **Remove from Library** when
+applicable, plus **Close · B**. Kind/path stay as a header subtitle.
+Empty slot / no usable focus keeps today’s no-op or close-only sheet —
+no invented empty-slot widgets. Do not invent Manage Media, artwork
+scrape, RetroAchievements, or per-game settings.
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenDetailsIntent alone
+never sees harness `-`. Harness opens via WH_KEYBOARD_LL bare
+**VK_OEM_MINUS** → `WM_HOMEDECK_OPEN_DETAILS` → Dart `openDetails` (same
+`_openDetails`), or UIA Invoke on `(-) Details` / `details-open-hit`
+(`Semantics.onTap`). Action keys: `details-add-to-home`,
+`details-remove-from-home`, `details-remove`, `details-close`.
+
+1. Focus a Library game; open Details via VK_OEM_MINUS **or** UIA Invoke
+   `(-) Details` / `details-open-hit` → menu with Add to Home (when not
+   pinned); close with B.
+2. On a Home pin: Details → Remove from Home works (or Delete still works —
+   spot-check).
+3. Spot-check title-pill / dock / focus, Enter / Delete, F11, menu-open
+   `+` / `menu-open-hit`, Library rescans, and bare **`s`** / **`p`** /
+   **`r`** / **`e`** / **`g`** / **`u`** / **`o`** / **`n`** / **`w`** /
+   **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus

@@ -139,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onOpenMenu = _openMenuFromNative;
+      WindowsNativeBridge.onOpenDetails = _openDetailsFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -241,6 +242,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (identical(WindowsNativeBridge.onOpenMenu, _openMenuFromNative)) {
         WindowsNativeBridge.onOpenMenu = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onOpenDetails,
+        _openDetailsFromNative,
+      )) {
+        WindowsNativeBridge.onOpenDetails = null;
       }
       if (identical(
         WindowsNativeBridge.onConfirmFocused,
@@ -442,6 +449,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _menuOpen = true);
+  }
+
+  /// Runner WH_KEYBOARD_LL bare VK_OEM_MINUS / WM_HOMEDECK_OPEN_DETAILS —
+  /// same as OpenDetailsIntent / `_openDetails`. Ally idle-hide drops
+  /// Shortcuts focus so SendKeys `-` never opened Details without this.
+  Future<void> _openDetailsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _openDetails();
   }
 
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
@@ -2675,104 +2692,117 @@ class _DetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.45),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B2433),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: HomeDeckColors.cyan, width: 2),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(28 * scale),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    name,
-                    key: const Key('details-title'),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 24 * scale,
-                    ),
-                  ),
-                  if (kindLabel != null) ...[
-                    SizedBox(height: 8 * scale),
-                    Text(
-                      kindLabel!,
-                      key: const Key('details-kind'),
-                      style: TextStyle(
-                        color: HomeDeckColors.cyan,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14 * scale,
-                      ),
-                    ),
-                  ],
-                  if (path != null) ...[
-                    SizedBox(height: 10 * scale),
-                    Text(
-                      path!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: HomeDeckColors.muted,
-                        fontSize: 13 * scale,
-                      ),
-                    ),
-                  ],
-                  if (romPath != null) ...[
-                    SizedBox(height: 6 * scale),
-                    Text(
-                      romPath!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: HomeDeckColors.muted,
-                        fontSize: 13 * scale,
-                      ),
-                    ),
-                  ],
-                  SizedBox(height: 22 * scale),
-                  if (onAddToHome != null)
-                    TextButton(
-                      key: const Key('details-add-to-home'),
-                      onPressed: onAddToHome,
-                      child: const Text('Add to Home'),
-                    ),
-                  if (onRemoveFromHome != null)
-                    TextButton(
-                      key: const Key('details-remove-from-home'),
-                      onPressed: onRemoveFromHome,
-                      child: const Text('Remove from Home'),
-                    ),
-                  SizedBox(height: 8 * scale),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+    final subtitle = [
+      if (kindLabel != null && kindLabel!.isNotEmpty) kindLabel!,
+      if (path != null && path!.isNotEmpty) path!,
+      if (romPath != null && romPath!.isNotEmpty) romPath!,
+    ].join('  ·  ');
+    return Actions(
+      actions: {
+        DismissOverlayIntent: CallbackAction<DismissOverlayIntent>(
+          onInvoke: (_) {
+            onClose();
+            return null;
+          },
+        ),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.45),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Material(
+                key: const Key('details-menu'),
+                color: const Color(0xFF1B2433),
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  side: const BorderSide(color: HomeDeckColors.cyan, width: 2),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(22 * scale),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      TextButton(
-                        onPressed: onClose,
-                        child: const Text('Close  ·  B'),
+                      Text(
+                        name,
+                        key: const Key('details-title'),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22 * scale,
+                        ),
                       ),
-                      if (onRemove != null) ...[
-                        const SizedBox(width: 16),
-                        FilledButton(
-                          onPressed: onRemove,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: HomeDeckColors.danger,
+                      if (subtitle.isNotEmpty) ...[
+                        SizedBox(height: 6 * scale),
+                        Text(
+                          subtitle,
+                          key: const Key('details-kind'),
+                          style: TextStyle(
+                            color: HomeDeckColors.muted,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13 * scale,
                           ),
-                          child: const Text('Remove'),
                         ),
                       ],
+                      SizedBox(height: 12 * scale),
+                      if (onAddToHome != null)
+                        _detailsRow(
+                          key: const Key('details-add-to-home'),
+                          label: 'Add to Home',
+                          onTap: onAddToHome!,
+                        ),
+                      if (onRemoveFromHome != null)
+                        _detailsRow(
+                          key: const Key('details-remove-from-home'),
+                          label: 'Remove from Home',
+                          onTap: onRemoveFromHome!,
+                        ),
+                      if (onRemove != null)
+                        _detailsRow(
+                          key: const Key('details-remove'),
+                          label: 'Remove from Library',
+                          onTap: onRemove!,
+                          danger: true,
+                        ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          key: const Key('details-close'),
+                          onPressed: onClose,
+                          child: const Text('Close  ·  B'),
+                        ),
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _detailsRow({
+    required Key key,
+    required String label,
+    required VoidCallback onTap,
+    bool danger = false,
+  }) {
+    return ListTile(
+      key: key,
+      title: Text(
+        label,
+        style: TextStyle(
+          color: danger ? HomeDeckColors.danger : Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }
