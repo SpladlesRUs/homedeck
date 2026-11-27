@@ -2232,9 +2232,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           _searchOpen = true;
                         });
                       },
-                      // Library + menu: Steam / Start Menu / ROM rescans only.
-                      // Epic/GOG/Ubisoft/EA/Battle.net/Xbox stay Settings-only
-                      // this milestone so the menu stays short.
+                      // Library + menu: Steam / Start Menu / ROM + storefront
+                      // rescans (same import paths as Settings / harness).
                       onScanSteam: _tab != HomeTab.allApps
                           ? null
                           : () {
@@ -2252,6 +2251,42 @@ class _HomeScreenState extends State<HomeScreen> {
                           : () {
                               setState(() => _menuOpen = false);
                               unawaited(_scanRomFolder());
+                            },
+                      onScanEpic: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanEpicLibrary());
+                            },
+                      onScanGog: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanGogLibrary());
+                            },
+                      onScanUbisoft: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanUbisoftLibrary());
+                            },
+                      onScanEa: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanEaLibrary());
+                            },
+                      onScanBattlenet: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanBattlenetLibrary());
+                            },
+                      onScanXbox: _tab != HomeTab.allApps
+                          ? null
+                          : () {
+                              setState(() => _menuOpen = false);
+                              unawaited(_scanXboxLibrary());
                             },
                       onReorder: _tab != HomeTab.home
                           ? null

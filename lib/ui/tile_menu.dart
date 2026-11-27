@@ -19,6 +19,12 @@ class TileMenu extends StatelessWidget {
     this.onScanSteam,
     this.onScanStartMenu,
     this.onScanRoms,
+    this.onScanEpic,
+    this.onScanGog,
+    this.onScanUbisoft,
+    this.onScanEa,
+    this.onScanBattlenet,
+    this.onScanXbox,
     this.onReorder,
     this.onNewPage,
     this.onAddToHome,
@@ -44,6 +50,18 @@ class TileMenu extends StatelessWidget {
   final VoidCallback? onScanStartMenu;
   /// Library-only: same import path as Settings / harness **R**.
   final VoidCallback? onScanRoms;
+  /// Library-only: same import path as Settings / harness **E**.
+  final VoidCallback? onScanEpic;
+  /// Library-only: same import path as Settings / harness **G**.
+  final VoidCallback? onScanGog;
+  /// Library-only: same import path as Settings / harness **U**.
+  final VoidCallback? onScanUbisoft;
+  /// Library-only: same import path as Settings / harness **O**.
+  final VoidCallback? onScanEa;
+  /// Library-only: same import path as Settings / harness **N**.
+  final VoidCallback? onScanBattlenet;
+  /// Library-only: same import path as Settings / harness **W**.
+  final VoidCallback? onScanXbox;
   final VoidCallback? onReorder;
   final VoidCallback? onNewPage;
   final VoidCallback? onAddToHome;
@@ -80,109 +98,152 @@ class TileMenu extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(22 * scale),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        title ?? app?.displayName ?? 'Menu',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22 * scale,
-                        ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            title ?? app?.displayName ?? 'Menu',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 22 * scale,
+                            ),
+                          ),
+                          SizedBox(height: 12 * scale),
+                          _row(
+                            key: const Key('menu-add-game'),
+                            label: 'Add game',
+                            onTap: onAddGame,
+                          ),
+                          if (onSearch != null)
+                            _row(
+                              key: const Key('menu-search'),
+                              label: 'Global Search',
+                              onTap: onSearch!,
+                            ),
+                          if (onScanSteam != null)
+                            _row(
+                              key: const Key('menu-scan-steam'),
+                              label: 'Rescan Steam',
+                              onTap: onScanSteam!,
+                            ),
+                          if (onScanStartMenu != null)
+                            _row(
+                              key: const Key('menu-scan-start-menu'),
+                              label: 'Rescan Start Menu',
+                              onTap: onScanStartMenu!,
+                            ),
+                          if (onScanRoms != null)
+                            _row(
+                              key: const Key('menu-scan-roms'),
+                              label: 'Rescan ROM folder',
+                              onTap: onScanRoms!,
+                            ),
+                          if (onScanEpic != null)
+                            _row(
+                              key: const Key('menu-scan-epic'),
+                              label: 'Rescan Epic Games',
+                              onTap: onScanEpic!,
+                            ),
+                          if (onScanGog != null)
+                            _row(
+                              key: const Key('menu-scan-gog'),
+                              label: 'Rescan GOG',
+                              onTap: onScanGog!,
+                            ),
+                          if (onScanUbisoft != null)
+                            _row(
+                              key: const Key('menu-scan-ubisoft'),
+                              label: 'Rescan Ubisoft Connect',
+                              onTap: onScanUbisoft!,
+                            ),
+                          if (onScanEa != null)
+                            _row(
+                              key: const Key('menu-scan-ea'),
+                              label: 'Rescan EA App',
+                              onTap: onScanEa!,
+                            ),
+                          if (onScanBattlenet != null)
+                            _row(
+                              key: const Key('menu-scan-battlenet'),
+                              label: 'Rescan Battle.net',
+                              onTap: onScanBattlenet!,
+                            ),
+                          if (onScanXbox != null)
+                            _row(
+                              key: const Key('menu-scan-xbox'),
+                              label: 'Rescan Xbox / Microsoft Store',
+                              onTap: onScanXbox!,
+                            ),
+                          if (onReorder != null)
+                            _row(
+                              key: const Key('menu-reorder'),
+                              label: 'Reorder home',
+                              onTap: onReorder!,
+                            ),
+                          if (onNewPage != null)
+                            _row(
+                              key: const Key('menu-new-page'),
+                              label: 'New Collection',
+                              onTap: onNewPage!,
+                            ),
+                          if (app != null && !pinned && onAddToHome != null)
+                            _row(
+                              key: const Key('menu-add-to-home'),
+                              label: 'Add to Home',
+                              onTap: onAddToHome!,
+                            ),
+                          if (app != null && pinned && onRemoveFromHome != null)
+                            _row(
+                              key: const Key('menu-remove-from-home'),
+                              label: 'Remove from Home',
+                              onTap: onRemoveFromHome!,
+                            ),
+                          if (onHome && app != null && onMove != null)
+                            _row(
+                              key: const Key('menu-move'),
+                              label: 'Move',
+                              onTap: onMove!,
+                            ),
+                          if (app != null && onDetails != null)
+                            _row(
+                              key: const Key('menu-details'),
+                              label: 'Details',
+                              onTap: onDetails!,
+                            ),
+                          if (onRemoveFromLibrary != null)
+                            _row(
+                              key: const Key('menu-remove-library'),
+                              label: 'Remove from Library',
+                              onTap: onRemoveFromLibrary!,
+                            ),
+                          _row(
+                            key: const Key('menu-settings'),
+                            label: 'Settings',
+                            onTap: onSettings,
+                          ),
+                          _row(
+                            key: const Key('settings-exit'),
+                            label: 'Exit  ·  Power',
+                            onTap: onExit,
+                            danger: true,
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: onClose,
+                              child: const Text('Close  ·  B'),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 12 * scale),
-                      _row(
-                        key: const Key('menu-add-game'),
-                        label: 'Add game',
-                        onTap: onAddGame,
-                      ),
-                      if (onSearch != null)
-                        _row(
-                          key: const Key('menu-search'),
-                          label: 'Global Search',
-                          onTap: onSearch!,
-                        ),
-                      if (onScanSteam != null)
-                        _row(
-                          key: const Key('menu-scan-steam'),
-                          label: 'Rescan Steam',
-                          onTap: onScanSteam!,
-                        ),
-                      if (onScanStartMenu != null)
-                        _row(
-                          key: const Key('menu-scan-start-menu'),
-                          label: 'Rescan Start Menu',
-                          onTap: onScanStartMenu!,
-                        ),
-                      if (onScanRoms != null)
-                        _row(
-                          key: const Key('menu-scan-roms'),
-                          label: 'Rescan ROM folder',
-                          onTap: onScanRoms!,
-                        ),
-                      if (onReorder != null)
-                        _row(
-                          key: const Key('menu-reorder'),
-                          label: 'Reorder home',
-                          onTap: onReorder!,
-                        ),
-                      if (onNewPage != null)
-                        _row(
-                          key: const Key('menu-new-page'),
-                          label: 'New Collection',
-                          onTap: onNewPage!,
-                        ),
-                      if (app != null && !pinned && onAddToHome != null)
-                        _row(
-                          key: const Key('menu-add-to-home'),
-                          label: 'Add to Home',
-                          onTap: onAddToHome!,
-                        ),
-                      if (app != null && pinned && onRemoveFromHome != null)
-                        _row(
-                          key: const Key('menu-remove-from-home'),
-                          label: 'Remove from Home',
-                          onTap: onRemoveFromHome!,
-                        ),
-                      if (onHome && app != null && onMove != null)
-                        _row(
-                          key: const Key('menu-move'),
-                          label: 'Move',
-                          onTap: onMove!,
-                        ),
-                      if (app != null && onDetails != null)
-                        _row(
-                          key: const Key('menu-details'),
-                          label: 'Details',
-                          onTap: onDetails!,
-                        ),
-                      if (onRemoveFromLibrary != null)
-                        _row(
-                          key: const Key('menu-remove-library'),
-                          label: 'Remove from Library',
-                          onTap: onRemoveFromLibrary!,
-                        ),
-                      _row(
-                        key: const Key('menu-settings'),
-                        label: 'Settings',
-                        onTap: onSettings,
-                      ),
-                      _row(
-                        key: const Key('settings-exit'),
-                        label: 'Exit  ·  Power',
-                        onTap: onExit,
-                        danger: true,
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: onClose,
-                          child: const Text('Close  ·  B'),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),

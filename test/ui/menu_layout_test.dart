@@ -314,9 +314,9 @@ void main() {
     expect(find.byType(EmptySlot), findsNWidgets(14));
   });
 
-  testWidgets('Library + menu shows scan rows; Home Customize Home does not', (
-    tester,
-  ) async {
+  testWidgets(
+    'Library + menu shows Steam/Start/ROM + storefront scan rows; Home does not',
+    (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -334,6 +334,12 @@ void main() {
     expect(find.byKey(const Key('menu-scan-steam')), findsNothing);
     expect(find.byKey(const Key('menu-scan-start-menu')), findsNothing);
     expect(find.byKey(const Key('menu-scan-roms')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-epic')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-gog')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-ubisoft')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-ea')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-battlenet')), findsNothing);
+    expect(find.byKey(const Key('menu-scan-xbox')), findsNothing);
     harness.gamepad.emit(GamepadButton.b);
     await tester.pump();
     expect(find.byKey(const Key('tile-menu')), findsNothing);
@@ -349,10 +355,23 @@ void main() {
     expect(find.byKey(const Key('menu-scan-steam')), findsOneWidget);
     expect(find.byKey(const Key('menu-scan-start-menu')), findsOneWidget);
     expect(find.byKey(const Key('menu-scan-roms')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-epic')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-gog')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-ubisoft')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-ea')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-battlenet')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-xbox')), findsOneWidget);
     expect(find.text('Rescan Steam'), findsOneWidget);
     expect(find.text('Rescan Start Menu'), findsOneWidget);
     expect(find.text('Rescan ROM folder'), findsOneWidget);
-  });
+    expect(find.text('Rescan Epic Games'), findsOneWidget);
+    expect(find.text('Rescan GOG'), findsOneWidget);
+    expect(find.text('Rescan Ubisoft Connect'), findsOneWidget);
+    expect(find.text('Rescan EA App'), findsOneWidget);
+    expect(find.text('Rescan Battle.net'), findsOneWidget);
+    expect(find.text('Rescan Xbox / Microsoft Store'), findsOneWidget);
+  },
+  );
 
   testWidgets('menu-open-hit Semantics opens TileMenu (Ally UIA path)', (
     tester,
