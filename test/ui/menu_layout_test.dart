@@ -415,6 +415,60 @@ void main() {
     expect(find.text('Customize Home'), findsOneWidget);
   });
 
+  testWidgets('Home + menu Recents row opens recents drawer', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.byKey(const Key('menu-recents')), findsOneWidget);
+    expect(find.text('Recents'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('menu-recents')));
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsNothing);
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+    expect(find.byKey(const Key('recents-empty')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
+  });
+
+  testWidgets('Library + menu Recents row opens recents drawer', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.byKey(const Key('menu-recents')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('menu-recents')));
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsNothing);
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
+  });
+
   testWidgets('native openMenu callback opens TileMenu', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;

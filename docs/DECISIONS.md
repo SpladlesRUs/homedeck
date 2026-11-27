@@ -689,6 +689,23 @@ not merged into the title-only Name. Do not invent new copy; do not touch
 2. Optional: Recents **D** empty copy in UIA (`No recent apps`).
 3. Spot-check D/F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
 
+### Ally M31 + menu Recents row
+
+Recents drawer already ships via Ally **D** (M29). Humans without that
+key path need the same drawer from Customize Home / Library **+** menu.
+
+**Menu path (no new WH_KEYBOARD_LL keys):** `TileMenu` optional
+`onRecents` → row label **Recents**, key `menu-recents`. Home and Library
+wire it like Search: close menu, set `_recentsOpen` (same drawer as
+`_openRecents` / bare **D**). Esc / B / `recents-close` still dismiss.
+Do not regress `ModifierHeld` / `modifierHeld`. Do not edit LL hooks
+unless unavoidable.
+
+1. Open Menu (OEM_PLUS); **Recents** / `menu-recents` present; invoke →
+   `recents-drawer` opens; Esc closes.
+2. Bare **D** still opens Recents.
+3. Spot-check F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/empty UIA/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 
