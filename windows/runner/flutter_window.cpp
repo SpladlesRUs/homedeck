@@ -111,6 +111,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleOpenDetailsKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_OPEN_SEARCH) {
+    win32_.HandleOpenSearchKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_CONFIRM) {
     win32_.HandleConfirmKey();
     return 0;

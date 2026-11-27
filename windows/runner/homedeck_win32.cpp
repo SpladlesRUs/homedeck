@@ -977,6 +977,19 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M22: OpenSearchIntent is Shortcuts-only; idle-hide drops focus
+      // so SendKeys `y` never open Global Search. Bare 'Y' (0x59) →
+      // openSearch (same as OpenSearchIntent / `_openSearch`). Consume so
+      // Shortcuts cannot double-open when focus is still alive.
+      if (info->vkCode == 'Y' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_SEARCH, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1270,6 +1283,18 @@ void HomedeckWin32::HandleOpenDetailsKey() {
   OutputDebugStringW(
       L"homedeck: HandleOpenDetailsKey → Dart openDetails\n");
   channel_->InvokeMethod("openDetails", nullptr);
+}
+
+void HomedeckWin32::HandleOpenSearchKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleOpenSearchKey → Dart openSearch\n");
+  channel_->InvokeMethod("openSearch", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

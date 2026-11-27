@@ -140,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
       WindowsNativeBridge.onOpenMenu = _openMenuFromNative;
       WindowsNativeBridge.onOpenDetails = _openDetailsFromNative;
+      WindowsNativeBridge.onOpenSearch = _openSearchFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -248,6 +249,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _openDetailsFromNative,
       )) {
         WindowsNativeBridge.onOpenDetails = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onOpenSearch,
+        _openSearchFromNative,
+      )) {
+        WindowsNativeBridge.onOpenSearch = null;
       }
       if (identical(
         WindowsNativeBridge.onConfirmFocused,
@@ -459,6 +466,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     _openDetails();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `Y` / WM_HOMEDECK_OPEN_SEARCH — same as
+  /// OpenSearchIntent / `_openSearch`. Ally idle-hide drops Shortcuts
+  /// focus so SendKeys `y` never opened Global Search without this.
+  Future<void> _openSearchFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _openSearch();
   }
 
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
