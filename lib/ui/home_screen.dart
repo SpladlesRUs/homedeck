@@ -25,6 +25,7 @@ import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
 import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
+import 'package:homedeck/ui/notifications_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
@@ -91,6 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _menuOpen = false;
   bool _chipsFocused = false;
   bool _searchOpen = false;
+  bool _notificationsOpen = false;
+  final List<String> _notificationLines = <String>[];
   bool _dockForced = false;
   bool _dockIdleHidden = false;
   /// Bumped on every force-show / tab shift so a stale idle timer cannot
@@ -141,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onOpenMenu = _openMenuFromNative;
       WindowsNativeBridge.onOpenDetails = _openDetailsFromNative;
       WindowsNativeBridge.onOpenSearch = _openSearchFromNative;
+      WindowsNativeBridge.onOpenNotifications = _openNotificationsFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -257,6 +261,12 @@ class _HomeScreenState extends State<HomeScreen> {
         WindowsNativeBridge.onOpenSearch = null;
       }
       if (identical(
+        WindowsNativeBridge.onOpenNotifications,
+        _openNotificationsFromNative,
+      )) {
+        WindowsNativeBridge.onOpenNotifications = null;
+      }
+      if (identical(
         WindowsNativeBridge.onConfirmFocused,
         _confirmFocusedFromNative,
       )) {
@@ -334,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     // Allow while Settings is open so a human/hotkey scan still updates the
     // message; skip only while Add/OFN-style overlays own the session.
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanSteamLibrary();
@@ -346,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanStartMenu();
@@ -358,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanRomFolder();
@@ -370,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanEpicLibrary();
@@ -382,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanGogLibrary();
@@ -394,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanUbisoftLibrary();
@@ -406,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanEaLibrary();
@@ -418,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanBattlenetLibrary();
@@ -430,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _scanXboxLibrary();
@@ -442,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _failure != null) {
+    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
       return;
     }
     await _pinFocusedToHome();
@@ -478,6 +488,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _openSearch();
   }
 
+  /// Runner WH_KEYBOARD_LL bare `T` / WM_HOMEDECK_OPEN_NOTIFICATIONS — same
+  /// as OpenNotificationsIntent / `_openNotifications`. Ally idle-hide drops
+  /// Shortcuts focus so SendKeys `t` never opened Notifications without this.
+  Future<void> _openNotificationsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _openNotifications();
+  }
+
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
   /// as RemoveFocusedIntent / `_requestRemove` (Ally without menu UIA).
   Future<void> _removeFocusedFromNative() async {
@@ -487,6 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_addOpen ||
         _menuOpen ||
         _searchOpen ||
+        _notificationsOpen ||
         _failure != null ||
         _pendingRemoveId != null) {
       // Native already armed Delete; disarm so Enter can launch again.
@@ -572,6 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _steamScanMessage =
               'Added $added Steam games to Library. Open Library → By app → Steam.';
         }
+        _rememberNotification(_steamScanMessage);
       });
     } catch (error) {
       if (!mounted) {
@@ -580,6 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _steamScanBusy = false;
         _steamScanMessage = 'Steam scan failed: $error';
+        _rememberNotification(_steamScanMessage);
       });
     }
   }
@@ -934,6 +957,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _addOpen ||
       _menuOpen ||
       _searchOpen ||
+      _notificationsOpen ||
       _pendingRemoveId != null;
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
@@ -1090,6 +1114,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const SingleActivator(LogicalKeyboardKey.keyY): const OpenSearchIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonY):
         const OpenSearchIntent(),
+    const SingleActivator(LogicalKeyboardKey.keyT):
+        const OpenNotificationsIntent(),
     const SingleActivator(LogicalKeyboardKey.arrowLeft):
         const DirectionalFocusIntent(TraversalDirection.left),
     const SingleActivator(LogicalKeyboardKey.arrowRight):
@@ -1245,6 +1271,12 @@ class _HomeScreenState extends State<HomeScreen> {
       OpenSearchIntent: CallbackAction<OpenSearchIntent>(
         onInvoke: (_) {
           _openSearch();
+          return null;
+        },
+      ),
+      OpenNotificationsIntent: CallbackAction<OpenNotificationsIntent>(
+        onInvoke: (_) {
+          _openNotifications();
           return null;
         },
       ),
@@ -1424,6 +1456,24 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _searchOpen = true);
   }
 
+  void _openNotifications() {
+    if (_failure != null || _pendingRemoveId != null) {
+      return;
+    }
+    setState(() => _notificationsOpen = true);
+  }
+
+  void _rememberNotification(String? line) {
+    final trimmed = line?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return;
+    }
+    _notificationLines.insert(0, trimmed);
+    if (_notificationLines.length > 40) {
+      _notificationLines.removeRange(40, _notificationLines.length);
+    }
+  }
+
   Future<void> _toggleFullscreen() async {
     await _window.toggleFullscreen();
     await _library.setWindowPrefs(_chromeWindowPrefs());
@@ -1495,6 +1545,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (_searchOpen) {
+      return;
+    }
+    if (_notificationsOpen) {
       return;
     }
     if (_menuOpen) {
@@ -1570,6 +1623,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _searchOpen = false);
       return;
     }
+    if (_notificationsOpen) {
+      _click(UiClick.back);
+      setState(() => _notificationsOpen = false);
+      return;
+    }
     if (_menuOpen) {
       _click(UiClick.back);
       setState(() => _menuOpen = false);
@@ -1627,6 +1685,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String get _selectedTitle {
+    if (_notificationsOpen) {
+      return 'Notifications';
+    }
     if (_searchOpen) {
       return 'Search';
     }
@@ -2161,6 +2222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         pageCount: _tab == HomeTab.home ? pages : null,
                         page: _tab == HomeTab.home ? page : null,
                         onSelectPage: _tab == HomeTab.home ? _goToPage : null,
+                        onNotifications: _openNotifications,
                       ),
                       Expanded(
                         child: Padding(
@@ -2434,6 +2496,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         _focusId(app.id, click: false);
                         _launch(app);
                       },
+                    ),
+                  if (_notificationsOpen)
+                    NotificationsPanel(
+                      scale: metrics.scale,
+                      lines: List<String>.unmodifiable(_notificationLines),
+                      onClear: () {
+                        setState(() => _notificationLines.clear());
+                      },
+                      onClose: () => setState(() => _notificationsOpen = false),
                     ),
                   if (_settingsOpen)
                     SettingsStub(

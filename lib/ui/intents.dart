@@ -71,6 +71,11 @@ class OpenSearchIntent extends Intent {
   const OpenSearchIntent();
 }
 
+/// Open the RT-style Notifications panel (StatusCluster bell / Ally bare `T`).
+class OpenNotificationsIntent extends Intent {
+  const OpenNotificationsIntent();
+}
+
 /// Steam library discover → import (Settings scan / Ally bare `S`).
 class ScanSteamLibraryIntent extends Intent {
   const ScanSteamLibraryIntent();

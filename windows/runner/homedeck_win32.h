@@ -122,10 +122,18 @@
 #endif
 
 // Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `y` (or a real Y key)
-// should open Global Search. Uses 0x59 ('Y'); free of A/S/P/R/E/G/U/O/N/W/H,
-// REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU, and OPEN_DETAILS.
+// should open Global Search. Uses 0x59 ('Y'); free of A/S/P/R/E/G/U/O/N/W/H/T,
+// REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU, OPEN_DETAILS, and OPEN_NOTIFICATIONS.
 #ifndef WM_HOMEDECK_OPEN_SEARCH
 #define WM_HOMEDECK_OPEN_SEARCH (WM_APP + 0x59)  // 'Y'
+#endif
+
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `t` (or a real T key)
+// should open the Notifications panel. Uses 0x54 ('T'); free of
+// A/S/P/R/E/G/U/O/N/W/H/Y, REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU,
+// OPEN_DETAILS, and OPEN_SEARCH.
+#ifndef WM_HOMEDECK_OPEN_NOTIFICATIONS
+#define WM_HOMEDECK_OPEN_NOTIFICATIONS (WM_APP + 0x54)  // 'T'
 #endif
 
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
@@ -136,7 +144,8 @@
 // Battle.net scan, bare W → Xbox / Microsoft Store scan, bare H → pin
 // focused Library tile to Home, bare Delete/Backspace → unpin /
 // Library remove, bare VK_OEM_PLUS / VK_ADD → open TileMenu, bare
-// VK_OEM_MINUS → open Details menu, and bare Y → open Global Search.
+// VK_OEM_MINUS → open Details menu, bare Y → open Global Search, and
+// bare T → open Notifications.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -162,7 +171,10 @@
 // OpenDetailsIntent / `_openDetails`). Bare `y` posts
 // WM_HOMEDECK_OPEN_SEARCH → Dart `openSearch` (same as OpenSearchIntent /
 // `_openSearch`; idle-hide drops Shortcuts focus so Ally SendKeys `y` never
-// opened search). The same hook handles F11 chrome and Enter→mirrored path
+// opened search). Bare `t` posts WM_HOMEDECK_OPEN_NOTIFICATIONS → Dart
+// `openNotifications` (same as OpenNotificationsIntent / `_openNotifications`;
+// idle-hide drops Shortcuts focus so Ally SendKeys `t` never opened
+// Notifications). The same hook handles F11 chrome and Enter→mirrored path
 // (with a Dart launchFocused fallback when the mirror is empty).
 class HomedeckWin32 {
  public:
@@ -283,6 +295,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_OPEN_SEARCH: ask Dart to open Global
   // Search (same as OpenSearchIntent / `_openSearch`).
   void HandleOpenSearchKey();
+
+  // UI-thread handler for WM_HOMEDECK_OPEN_NOTIFICATIONS: ask Dart to open
+  // Notifications (same as OpenNotificationsIntent / `_openNotifications`).
+  void HandleOpenNotificationsKey();
 
   // UI-thread handler for WM_HOMEDECK_CONFIRM: ask Dart `_handleConfirm`
   // (Library remove Enter) without ShellExecute.
