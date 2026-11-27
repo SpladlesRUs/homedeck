@@ -2787,6 +2787,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     WidgetsPanel(
                       scale: metrics.scale,
                       onClose: () => setState(() => _widgetsOpen = false),
+                      onNowPlaying: () {
+                        setState(() => _widgetsOpen = false);
+                        _goToPage(0);
+                        _focusId(nowPlayingId);
+                      },
                     ),
                   if (_settingsOpen)
                     SettingsStub(

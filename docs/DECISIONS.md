@@ -743,6 +743,25 @@ scrape widgets.
 2. Library menu: no Widgets row.
 3. Spot-check Refresh Home, Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
 
+### Ally M34 Widgets Now Playing row
+
+M33 shipped empty Widgets chrome (`widgets-empty` / “No widgets yet”).
+iiSU’s music widget is the first real entry: when the panel lists **Now
+playing**, omit the empty-only copy. Library menu still has no Widgets
+row. No new WH_KEYBOARD_LL keys; do not invent theme packs, scrapers, or
+extra widgets. Do not touch ModifierHeld / `homedeck_win32.cpp`.
+
+**Panel path:** `WidgetsPanel` optional `onNowPlaying` → row label **Now
+playing**, key `widgets-now-playing`. Wire from Home: onTap → `onClose` +
+`_goToPage(0)` + `_focusId(nowPlayingId)` (`__homedeck_nowplaying__`).
+Esc / B / Close still dismiss via the M28 path.
+
+1. Home: OEM_PLUS → Widgets / `menu-widgets` → `widgets-panel` shows
+   **Now playing** / `widgets-now-playing` (no empty-only “No widgets
+   yet”); invoke → page 0 + Now playing focused; Esc closes if still open.
+2. Library menu: no Widgets row.
+3. Spot-check Refresh Home, Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 

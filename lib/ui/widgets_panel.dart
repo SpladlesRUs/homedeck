@@ -5,20 +5,27 @@ import 'package:material_ui/material_ui.dart';
 /// Empty-state copy for the Widgets slide-over (Ally UIA / M30 pattern).
 const String kWidgetsEmptyCopy = 'No widgets yet';
 
-/// Lightweight Widgets panel (iiSU Customize Home chrome). Empty stub only —
-/// no music/theme packs, no scrape, no widget catalog this milestone.
+/// Lightweight Widgets panel (iiSU Customize Home chrome). M34 ships one
+/// actionable **Now playing** row; no theme packs, scrapers, or catalog.
 class WidgetsPanel extends StatelessWidget {
   const WidgetsPanel({
     super.key,
     required this.scale,
     required this.onClose,
+    this.onNowPlaying,
   });
 
   final double scale;
   final VoidCallback onClose;
 
+  /// When set, shows the **Now playing** row (`widgets-now-playing`) and
+  /// omits the empty-only copy. Invoke closes the panel then focuses Home's
+  /// featured NowPlayingTile.
+  final VoidCallback? onNowPlaying;
+
   @override
   Widget build(BuildContext context) {
+    final hasNowPlaying = onNowPlaying != null;
     return Actions(
       actions: {
         DismissOverlayIntent: CallbackAction<DismissOverlayIntent>(
@@ -93,22 +100,39 @@ class WidgetsPanel extends StatelessWidget {
                         ),
                         SizedBox(height: 16 * scale),
                         Expanded(
-                          child: Center(
-                            child: Semantics(
-                              key: const Key('widgets-empty'),
-                              container: true,
-                              label: kWidgetsEmptyCopy,
-                              excludeSemantics: true,
-                              child: Text(
-                                kWidgetsEmptyCopy,
-                                style: TextStyle(
-                                  color: HomeDeckColors.muted,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15 * scale,
+                          child: hasNowPlaying
+                              ? ListView(
+                                  children: [
+                                    ListTile(
+                                      key: const Key('widgets-now-playing'),
+                                      title: Text(
+                                        'Now playing',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15 * scale,
+                                        ),
+                                      ),
+                                      onTap: onNowPlaying,
+                                    ),
+                                  ],
+                                )
+                              : Center(
+                                  child: Semantics(
+                                    key: const Key('widgets-empty'),
+                                    container: true,
+                                    label: kWidgetsEmptyCopy,
+                                    excludeSemantics: true,
+                                    child: Text(
+                                      kWidgetsEmptyCopy,
+                                      style: TextStyle(
+                                        color: HomeDeckColors.muted,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15 * scale,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
                         ),
                       ],
                     ),
