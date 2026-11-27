@@ -11,9 +11,12 @@ class FriendsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // explicitChildNodes so the empty-copy Semantics label is not swallowed
+    // by the tab title merge (Ally UIA needs Name to contain empty copy).
     return Semantics(
       key: const Key('friends-tab'),
       label: 'Friends',
+      explicitChildNodes: true,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -33,13 +36,17 @@ class FriendsView extends StatelessWidget {
               ),
             ),
             SizedBox(height: 6 * metrics.scale),
-            Text(
+            Semantics(
               key: const Key('friends-empty'),
-              kFriendsEmptyCopy,
-              style: TextStyle(
-                color: HomeDeckColors.muted,
-                fontWeight: FontWeight.w600,
-                fontSize: 14 * metrics.scale,
+              label: kFriendsEmptyCopy,
+              excludeSemantics: true,
+              child: Text(
+                kFriendsEmptyCopy,
+                style: TextStyle(
+                  color: HomeDeckColors.muted,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14 * metrics.scale,
+                ),
               ),
             ),
           ],

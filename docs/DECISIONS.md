@@ -669,6 +669,26 @@ Esc dismiss reuses the M28 path (`WM_HOMEDECK_DISMISS`).
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M30 Empty-tab UIA labels
+
+M25–M27 empty chrome was visually correct but Ally UIA often saw only the
+tab title (`Games` / `Achievements` / `Friends`) — the empty-copy `Text`
+was swallowed by the parent `Semantics` merge. Recents empty (`No recent
+apps`) had the same risk.
+
+**Fix (no new WH_KEYBOARD_LL keys):** wrap each empty-copy `Text` in
+`Semantics(label: <same visible string>, excludeSemantics: true)` with
+keys `games-empty` / `achievements-empty` / `friends-empty` /
+`recents-empty` (`container: true` on Recents so Focus merge cannot hide
+it). Dock tab roots use `explicitChildNodes: true` so the empty label is
+not merged into the title-only Name. Do not invent new copy; do not touch
+`ModifierHeld` / `modifierHeld`.
+
+1. Games / Achievements / Friends tabs: empty copy visible in UIA (or
+   Name contains the empty string) — not only the title.
+2. Optional: Recents **D** empty copy in UIA (`No recent apps`).
+3. Spot-check D/F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 

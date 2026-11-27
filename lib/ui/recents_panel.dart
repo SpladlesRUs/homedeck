@@ -98,13 +98,18 @@ class RecentsPanel extends StatelessWidget {
                         Expanded(
                           child: titles.isEmpty
                               ? Center(
-                                  child: Text(
+                                  child: Semantics(
                                     key: const Key('recents-empty'),
-                                    kRecentsEmptyCopy,
-                                    style: TextStyle(
-                                      color: HomeDeckColors.muted,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15 * scale,
+                                    container: true,
+                                    label: kRecentsEmptyCopy,
+                                    excludeSemantics: true,
+                                    child: Text(
+                                      kRecentsEmptyCopy,
+                                      style: TextStyle(
+                                        color: HomeDeckColors.muted,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15 * scale,
+                                      ),
                                     ),
                                   ),
                                 )
