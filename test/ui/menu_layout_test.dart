@@ -136,8 +136,10 @@ void main() {
 
     harness.gamepad.emit(GamepadButton.rb);
     await tester.pump();
-    expect(find.text('Games'), findsOneWidget);
-    expect(find.text('Placeholder in milestone 1'), findsOneWidget);
+    expect(find.byKey(const Key('games-tab')), findsOneWidget);
+    expect(find.byKey(const Key('games-empty')), findsOneWidget);
+    expect(find.text('No games yet'), findsOneWidget);
+    expect(find.text('Placeholder in milestone 1'), findsNothing);
 
     harness.gamepad.emit(GamepadButton.lb);
     await tester.pump();
