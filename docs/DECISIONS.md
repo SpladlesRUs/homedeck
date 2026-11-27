@@ -556,8 +556,8 @@ T / Y / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` / `o` /
 
 Dock **Achievements** tab is real empty chrome (title Achievements, copy
 “No achievements yet”) — not Placeholder. No RetroAchievements login,
-scrape, or per-game cards this milestone. Games and Friends dock tabs stay
-placeholders. Keys: `achievements-tab`, `achievements-empty`.
+scrape, or per-game cards this milestone. Friends dock tab stays
+placeholder. Keys: `achievements-tab`, `achievements-empty`.
 
 **Ally jump (shipped):** idle-hide drops Shortcuts focus, so
 GotoAchievementsIntent alone never sees harness `c`. Harness jumps via
@@ -573,6 +573,27 @@ reach the tab as today.
 2. LB/RB away and back still works; dock idle hide still OK.
 3. Spot-check F friends, T notifications, Y search, Details OEM_MINUS, Menu
    OEM_PLUS, title-pill / dock / focus, Enter / Delete, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
+### Ally M26 Games dock tab smoke
+
+Dock **Games** tab is real empty chrome (title Games, copy “No games yet” /
+“Pin games from Library”) — not Placeholder. Not a second Library scanner
+or grid; Library remains the real library. Friends dock tab stays
+placeholder. Keys: `games-tab`, `games-empty`.
+
+**Ally navigation (dock-only this PR):** no bare **V** /
+`WM_HOMEDECK_GOTO_GAMES` hook. Reach Games via LB/RB or PageDown/PageUp
+(same dock cycle as today). Do not steal C / F / T / Y / OEM_PLUS /
+OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` /
+`a` / Delete.
+
+1. From Home: LB/RB or PageDown/PageUp to Games → `games-tab` / empty state
+   visible (not Placeholder).
+2. Cycle away and back; dock idle hide still OK; Achievements **C** still
+   works.
+3. Spot-check F / T / Y / OEM_± / Enter / Delete / F11 and bare
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
