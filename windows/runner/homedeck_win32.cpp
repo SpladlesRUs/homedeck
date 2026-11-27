@@ -1025,7 +1025,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // cannot double-open when focus is still alive. Free of
       // F/T/Y/C/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete/Esc.
       // Do not bind B to open the drawer.
-      if (info->vkCode == 'D' && !modifierHeld()) {
+      if (info->vkCode == 'D' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
