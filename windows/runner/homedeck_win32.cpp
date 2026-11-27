@@ -781,6 +781,9 @@ bool HomedeckWin32::ModifierHeld() {
          (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
 }
 
+// MSVC is case-sensitive; workers keep typing modifierHeld. Keep both.
+static bool modifierHeld() { return HomedeckWin32::ModifierHeld(); }
+
 LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
                                                      WPARAM w_param,
                                                      LPARAM l_param) {
