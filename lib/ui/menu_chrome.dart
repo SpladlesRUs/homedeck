@@ -667,9 +667,17 @@ class CornerHints extends StatelessWidget {
                     child: Text('(A) Select', style: style),
                   ),
                   SizedBox(width: 14 * metrics.scale),
-                  GestureDetector(
+                  Semantics(
+                    key: const Key('menu-open-hit'),
+                    button: true,
+                    label: 'Open menu',
+                    // Ally UIA Invoke needs Semantics.onTap;
+                    // GestureDetector alone is Name-only.
                     onTap: onMenu,
-                    child: Text('(+) Menu', style: style),
+                    child: GestureDetector(
+                      onTap: onMenu,
+                      child: Text('(+) Menu', style: style),
+                    ),
                   ),
                 ],
               ),

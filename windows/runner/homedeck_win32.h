@@ -105,14 +105,21 @@
 #define WM_HOMEDECK_GAME_EXIT (WM_APP + 0x47)  // 'G'
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `=` / `+` (or a real
+// OEM+ / numpad + key) should open the TileMenu. Uses 0xBB (VK_OEM_PLUS);
+// free of A/S/P/R/E/G/U/O/N/W/H, REMOVE, CONFIRM, and GAME_EXIT.
+#ifndef WM_HOMEDECK_OPEN_MENU
+#define WM_HOMEDECK_OPEN_MENU (WM_APP + 0xBB)  // VK_OEM_PLUS
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
 // ROM-folder scan, bare E → Epic Games scan, bare G → GOG Galaxy scan,
 // bare U → Ubisoft Connect scan, bare O → EA App / Origin scan, bare N →
 // Battle.net scan, bare W → Xbox / Microsoft Store scan, bare H → pin
-// focused Library tile to Home, and bare Delete/Backspace → unpin /
-// Library remove.
+// focused Library tile to Home, bare Delete/Backspace → unpin /
+// Library remove, and bare VK_OEM_PLUS / VK_ADD → open TileMenu.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -131,9 +138,11 @@
 // UIA). Bare Delete/Backspace posts WM_HOMEDECK_REMOVE → Dart `removeFocused`
 // (same as RemoveFocusedIntent / `_requestRemove`). While Library remove
 // confirm is pending, Enter posts WM_HOMEDECK_CONFIRM (not ShellExecute) until
-// Dart clears remove-armed. The same hook handles F11 chrome and
-// Enter→mirrored path (with a Dart launchFocused fallback when the mirror is
-// empty).
+// Dart clears remove-armed. Bare VK_OEM_PLUS / VK_ADD posts
+// WM_HOMEDECK_OPEN_MENU → Dart `openMenu` (same as OpenMenuIntent; idle-hide
+// drops Shortcuts focus so Ally SendKeys `=` never opened the menu). The same
+// hook handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
+// fallback when the mirror is empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -241,6 +250,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_REMOVE: ask Dart to unpin (Home) or
   // show Library remove confirm (same as RemoveFocusedIntent).
   void HandleRemoveKey();
+
+  // UI-thread handler for WM_HOMEDECK_OPEN_MENU: ask Dart to open the
+  // TileMenu (same as OpenMenuIntent / `_menuOpen = true`).
+  void HandleOpenMenuKey();
 
   // UI-thread handler for WM_HOMEDECK_CONFIRM: ask Dart `_handleConfirm`
   // (Library remove Enter) without ShellExecute.

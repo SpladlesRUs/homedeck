@@ -138,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onScanXbox = _scanXboxFromNative;
       WindowsNativeBridge.onPinFocusedToHome = _pinFocusedToHomeFromNative;
       WindowsNativeBridge.onRemoveFocused = _removeFocusedFromNative;
+      WindowsNativeBridge.onOpenMenu = _openMenuFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -237,6 +238,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _removeFocusedFromNative,
       )) {
         WindowsNativeBridge.onRemoveFocused = null;
+      }
+      if (identical(WindowsNativeBridge.onOpenMenu, _openMenuFromNative)) {
+        WindowsNativeBridge.onOpenMenu = null;
       }
       if (identical(
         WindowsNativeBridge.onConfirmFocused,
@@ -428,6 +432,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await _pinFocusedToHome();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare VK_OEM_PLUS / VK_ADD / WM_HOMEDECK_OPEN_MENU —
+  /// same as OpenMenuIntent (`_menuOpen = true`). Ally idle-hide drops
+  /// Shortcuts focus so SendKeys `=` never opened the menu without this.
+  Future<void> _openMenuFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _menuOpen = true);
   }
 
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same

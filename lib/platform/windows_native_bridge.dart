@@ -28,10 +28,13 @@ import 'package:flutter/services.dart';
 /// [onPinFocusedToHome] (same as UI Add to Home — no UIA on the menu). Bare
 /// Delete/Backspace posts `WM_HOMEDECK_REMOVE` → [onRemoveFocused] (same as
 /// RemoveFocusedIntent). While Library remove is pending, Enter posts
-/// `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not ShellExecute). The same
-/// hook handles F11 chrome and Enter→focused path; Dart mirrors the target
-/// via [setFocusedLaunch] and handles a native [onLaunchFocused] fallback
-/// when the mirrored path is empty.
+/// `WM_HOMEDECK_CONFIRM` → [onConfirmFocused] (not ShellExecute). Bare
+/// VK_OEM_PLUS / VK_ADD posts `WM_HOMEDECK_OPEN_MENU` → [onOpenMenu] (same
+/// as OpenMenuIntent — idle-hide drops Shortcuts focus so Ally SendKeys
+/// `=` never opened the menu). The same hook handles F11 chrome and
+/// Enter→focused path; Dart mirrors the target via [setFocusedLaunch] and
+/// handles a native [onLaunchFocused] fallback when the mirrored path is
+/// empty.
 class WindowsNativeBridge {
   WindowsNativeBridge._();
 
@@ -93,6 +96,10 @@ class WindowsNativeBridge {
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / `WM_HOMEDECK_REMOVE` asks
   /// Dart to unpin (Home) or show Library remove confirm (`_requestRemove`).
   static Future<void> Function()? onRemoveFocused;
+
+  /// Runner WH_KEYBOARD_LL bare VK_OEM_PLUS / VK_ADD / `WM_HOMEDECK_OPEN_MENU`
+  /// asks Dart to open the TileMenu (same as OpenMenuIntent).
+  static Future<void> Function()? onOpenMenu;
 
   /// Runner WH_KEYBOARD_LL Enter while remove-armed / `WM_HOMEDECK_CONFIRM`
   /// asks Dart `_handleConfirm` (Library remove) without ShellExecute.
@@ -217,6 +224,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'removeFocused') {
         final handler = onRemoveFocused;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'openMenu') {
+        final handler = onOpenMenu;
         if (handler != null) {
           await handler();
         }

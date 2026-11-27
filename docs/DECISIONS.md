@@ -404,22 +404,27 @@ is the primary pager chrome. Pill stays truly centered.
 
 ### Ally M19 context-sensitive + menu smoke
 
-Home `+` (`=` / Start / OpenMenuIntent) stays **Customize Home**: Add game,
-Global Search, Reorder home, New Collection, Settings, Exit — no Library
-scan rows. Library (root or inside a folder) `+` is Library-focused: Add
-game, Global Search, **Rescan Steam** / **Rescan Start Menu** / **Rescan ROM
-folder** (same import paths as Settings and harness bare **S** / **P** /
-**R** — keys `menu-scan-steam` / `menu-scan-start-menu` / `menu-scan-roms`),
-Details / Add to Home when a tile is focused, Settings, Exit. Home-only
-Reorder / New Collection stay null on Library. Storefront rescans
-(Epic / GOG / Ubisoft / EA / Battle.net / Xbox) stay Settings-only this
-milestone so the menu stays short; bare **E** / **G** / **U** / **O** /
-**N** / **W** are unchanged.
+Home `+` stays **Customize Home**: Add game, Global Search, Reorder home,
+New Collection, Settings, Exit — no Library scan rows. Library (root or
+inside a folder) `+` is Library-focused: Add game, Global Search, **Rescan
+Steam** / **Rescan Start Menu** / **Rescan ROM folder** (same import paths
+as Settings and harness bare **S** / **P** / **R** — keys `menu-scan-steam`
+/ `menu-scan-start-menu` / `menu-scan-roms`), Details / Add to Home when a
+tile is focused, Settings, Exit. Home-only Reorder / New Collection stay
+null on Library. Storefront rescans (Epic / GOG / Ubisoft / EA / Battle.net
+/ Xbox) stay Settings-only this milestone so the menu stays short; bare
+**E** / **G** / **U** / **O** / **N** / **W** are unchanged.
 
-1. Home: open + menu → Customize Home; Reorder / New Collection present; no
+**Ally open:** idle-hide drops Shortcuts focus, so OpenMenuIntent alone never
+sees harness `=` / `+`. Harness opens via WH_KEYBOARD_LL bare **VK_OEM_PLUS**
+/ **VK_ADD** → `WM_HOMEDECK_OPEN_MENU` → Dart `openMenu` (same `_menuOpen =
+true`), or UIA Invoke on `(+) Menu` / `menu-open-hit` (`Semantics.onTap`).
+
+1. Home: open menu via `=` / `+` / VK_OEM_PLUS **or** UIA Invoke `(+) Menu` /
+   `menu-open-hit` → Customize Home; Reorder / New Collection present; no
    Library scan rows.
-2. Library: open + menu → Rescan Steam / Start Menu / ROMs present; invoke
-   one → tiles import (or scan message); close menu.
+2. Library: open menu → Rescan Steam / Start Menu / ROMs present; invoke
+   `menu-scan-steam` → tiles import (or scan message); close menu.
 3. Spot-check title-pill dots on Home, dock idle, focus ring, Enter/Delete,
    F11, and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** /
    **`o`** / **`n`** / **`w`** / **`h`** / **`a`**.

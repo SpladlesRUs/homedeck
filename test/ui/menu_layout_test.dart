@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homedeck/core/gamepad.dart';
+import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/app_tile.dart';
 import 'package:homedeck/ui/home_screen.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
@@ -351,6 +352,68 @@ void main() {
     expect(find.text('Rescan Steam'), findsOneWidget);
     expect(find.text('Rescan Start Menu'), findsOneWidget);
     expect(find.text('Rescan ROM folder'), findsOneWidget);
+  });
+
+  testWidgets('menu-open-hit Semantics opens TileMenu (Ally UIA path)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    expect(find.byKey(const Key('menu-open-hit')), findsOneWidget);
+    expect(find.byKey(const Key('tile-menu')), findsNothing);
+    expect(find.text('(+) Menu'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('menu-open-hit')));
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.text('Customize Home'), findsOneWidget);
+    expect(find.byKey(const Key('menu-reorder')), findsOneWidget);
+    expect(find.byKey(const Key('menu-scan-steam')), findsNothing);
+  });
+
+  testWidgets('OpenMenuIntent (=) opens TileMenu', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.equal);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.text('Customize Home'), findsOneWidget);
+  });
+
+  testWidgets('native openMenu callback opens TileMenu', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    // Simulate runner MethodChannel `openMenu` (WH_KEYBOARD_LL path). On
+    // non-Windows the bridge never registers, so invoke the same handler
+    // HomeScreen wires when Platform.isWindows.
+    final open = WindowsNativeBridge.onOpenMenu;
+    if (open == null) {
+      // Mac/Linux widget tests: exercise Semantics Invokable instead.
+      await tester.tap(find.byKey(const Key('menu-open-hit')));
+    } else {
+      await open();
+    }
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.text('Customize Home'), findsOneWidget);
   });
 
   testWidgets('Delete unpins focused Home tile without menu', (tester) async {
