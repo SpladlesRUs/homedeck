@@ -145,9 +145,10 @@ ShellExecute), bare **VK_OEM_PLUS** / **VK_ADD** → `openMenu`
 Semantics Invokable for Ally UIA), bare **VK_OEM_MINUS** →
 `openDetails` (same as OpenDetailsIntent; `(-) Details` /
 `details-open-hit`), bare **Y** → `openSearch` (same as
-OpenSearchIntent; dock Search / `search-open-hit`), and bare **T** →
+OpenSearchIntent; dock Search / `search-open-hit`), bare **T** →
 `openNotifications` (same as OpenNotificationsIntent; StatusCluster
-bell / `notifications-open-hit`).
+bell / `notifications-open-hit`), and bare **F** → `openFriends` (same
+as OpenFriendsIntent; ProfileCluster / `friends-open-hit`).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

@@ -25,6 +25,7 @@ import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
 import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
+import 'package:homedeck/ui/friends_panel.dart';
 import 'package:homedeck/ui/notifications_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
@@ -93,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _chipsFocused = false;
   bool _searchOpen = false;
   bool _notificationsOpen = false;
+  bool _friendsOpen = false;
   final List<String> _notificationLines = <String>[];
   bool _dockForced = false;
   bool _dockIdleHidden = false;
@@ -145,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onOpenDetails = _openDetailsFromNative;
       WindowsNativeBridge.onOpenSearch = _openSearchFromNative;
       WindowsNativeBridge.onOpenNotifications = _openNotificationsFromNative;
+      WindowsNativeBridge.onOpenFriends = _openFriendsFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -267,6 +270,12 @@ class _HomeScreenState extends State<HomeScreen> {
         WindowsNativeBridge.onOpenNotifications = null;
       }
       if (identical(
+        WindowsNativeBridge.onOpenFriends,
+        _openFriendsFromNative,
+      )) {
+        WindowsNativeBridge.onOpenFriends = null;
+      }
+      if (identical(
         WindowsNativeBridge.onConfirmFocused,
         _confirmFocusedFromNative,
       )) {
@@ -344,7 +353,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     // Allow while Settings is open so a human/hotkey scan still updates the
     // message; skip only while Add/OFN-style overlays own the session.
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanSteamLibrary();
@@ -356,7 +370,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanStartMenu();
@@ -368,7 +387,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanRomFolder();
@@ -380,7 +404,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanEpicLibrary();
@@ -392,7 +421,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanGogLibrary();
@@ -404,7 +438,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanUbisoftLibrary();
@@ -416,7 +455,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanEaLibrary();
@@ -428,7 +472,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanBattlenetLibrary();
@@ -440,7 +489,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _scanXboxLibrary();
@@ -452,7 +506,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    if (_addOpen || _menuOpen || _searchOpen || _notificationsOpen || _failure != null) {
+    if (_addOpen ||
+        _menuOpen ||
+        _searchOpen ||
+        _notificationsOpen ||
+        _friendsOpen ||
+        _failure != null) {
       return;
     }
     await _pinFocusedToHome();
@@ -498,6 +557,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _openNotifications();
   }
 
+  /// Runner WH_KEYBOARD_LL bare `F` / WM_HOMEDECK_OPEN_FRIENDS — same as
+  /// OpenFriendsIntent / `_openFriends`. Ally idle-hide drops Shortcuts
+  /// focus so SendKeys `f` never opened Friends without this.
+  Future<void> _openFriendsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _openFriends();
+  }
+
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
   /// as RemoveFocusedIntent / `_requestRemove` (Ally without menu UIA).
   Future<void> _removeFocusedFromNative() async {
@@ -508,6 +577,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _menuOpen ||
         _searchOpen ||
         _notificationsOpen ||
+        _friendsOpen ||
         _failure != null ||
         _pendingRemoveId != null) {
       // Native already armed Delete; disarm so Enter can launch again.
@@ -958,6 +1028,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _menuOpen ||
       _searchOpen ||
       _notificationsOpen ||
+      _friendsOpen ||
       _pendingRemoveId != null;
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
@@ -1094,8 +1165,9 @@ class _HomeScreenState extends State<HomeScreen> {
         const OpenMenuIntent(),
     const SingleActivator(LogicalKeyboardKey.gameButtonSelect):
         const OpenDetailsIntent(),
-    const SingleActivator(LogicalKeyboardKey.keyF):
-        const ToggleFavoriteIntent(),
+    // keyF opens Friends (Ally bare F / ProfileCluster). ToggleFavoriteIntent
+    // stays Actions-only — no Shortcuts activator (F was previously favorite).
+    const SingleActivator(LogicalKeyboardKey.keyF): const OpenFriendsIntent(),
     const SingleActivator(LogicalKeyboardKey.bracketLeft):
         const PrevTabIntent(),
     const SingleActivator(LogicalKeyboardKey.bracketRight):
@@ -1277,6 +1349,12 @@ class _HomeScreenState extends State<HomeScreen> {
       OpenNotificationsIntent: CallbackAction<OpenNotificationsIntent>(
         onInvoke: (_) {
           _openNotifications();
+          return null;
+        },
+      ),
+      OpenFriendsIntent: CallbackAction<OpenFriendsIntent>(
+        onInvoke: (_) {
+          _openFriends();
           return null;
         },
       ),
@@ -1463,6 +1541,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _notificationsOpen = true);
   }
 
+  void _openFriends() {
+    if (_failure != null || _pendingRemoveId != null) {
+      return;
+    }
+    setState(() => _friendsOpen = true);
+  }
+
   void _rememberNotification(String? line) {
     final trimmed = line?.trim() ?? '';
     if (trimmed.isEmpty) {
@@ -1550,6 +1635,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_notificationsOpen) {
       return;
     }
+    if (_friendsOpen) {
+      return;
+    }
     if (_menuOpen) {
       setState(() => _menuOpen = false);
       return;
@@ -1628,6 +1716,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _notificationsOpen = false);
       return;
     }
+    if (_friendsOpen) {
+      _click(UiClick.back);
+      setState(() => _friendsOpen = false);
+      return;
+    }
     if (_menuOpen) {
       _click(UiClick.back);
       setState(() => _menuOpen = false);
@@ -1685,6 +1778,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String get _selectedTitle {
+    if (_friendsOpen) {
+      return 'Friends';
+    }
     if (_notificationsOpen) {
       return 'Notifications';
     }
@@ -2223,6 +2319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         page: _tab == HomeTab.home ? page : null,
                         onSelectPage: _tab == HomeTab.home ? _goToPage : null,
                         onNotifications: _openNotifications,
+                        onFriends: _openFriends,
                       ),
                       Expanded(
                         child: Padding(
@@ -2505,6 +2602,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         setState(() => _notificationLines.clear());
                       },
                       onClose: () => setState(() => _notificationsOpen = false),
+                    ),
+                  if (_friendsOpen)
+                    FriendsPanel(
+                      scale: metrics.scale,
+                      onClose: () => setState(() => _friendsOpen = false),
                     ),
                   if (_settingsOpen)
                     SettingsStub(

@@ -502,9 +502,9 @@ with Shortcuts.
 
 RT-style **Notifications** panel (title Notifications, list or empty
 “No notifications”, **Clear notifications**, close with B / Esc). Clock /
-battery stay as today. No Friends panel, no Discord, no system-tray
-integration. Do not invent fake scrape jobs — empty is OK; optional
-in-app scan/status lines only when a real Library scan finishes.
+battery stay as today. No Discord, no system-tray integration. Do not
+invent fake scrape jobs — empty is OK; optional in-app scan/status lines
+only when a real Library scan finishes.
 
 **Ally open:** idle-hide drops Shortcuts focus, so OpenNotificationsIntent
 alone never sees harness `t`. Harness opens via WH_KEYBOARD_LL bare **T**
@@ -524,6 +524,33 @@ Panel keys: `notifications-panel`, `notifications-clear`,
    dock / focus, Enter / Delete, F11, and bare **`s`** / **`p`** /
    **`r`** / **`e`** / **`g`** / **`u`** / **`o`** / **`n`** / **`w`** /
    **`h`** / **`a`**.
+
+### Ally M24 Friends slide-over smoke
+
+LT-style **Friends** panel (title Friends, empty / stub list “No friends
+online”, “0 pinned” OK, close with B / Esc). ProfileCluster avatars + LT
+badge stay display chrome; open is via the cluster hit / bare **F**. No
+Discord, no OAuth, no real presence APIs — chrome parity only. Dock
+Friends tab stays a placeholder this milestone (do not replace its body
+unless trivial reuse of the same panel).
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenFriendsIntent alone
+never sees harness `f`. Harness opens via WH_KEYBOARD_LL bare **F**
+(`'F'` / `0x46`) → `WM_HOMEDECK_OPEN_FRIENDS` → Dart `openFriends` (same
+`_openFriends` guards), or UIA Invoke on ProfileCluster /
+`friends-open-hit` (`Semantics.onTap`, label **Open friends**). Consume
+the key in the LL hook to avoid double-open with Shortcuts. Do not steal
+T / Y / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` / `o` /
+`n` / `w` / `h` / `a` / Delete. Panel keys: `friends-panel`,
+`friends-close`.
+
+1. From Home: bare **F** or UIA Invoke profile / `friends-open-hit` →
+   `friends-panel` opens; B or Esc closes.
+2. From Library: same open still works.
+3. Spot-check T notifications, Y search, Details OEM_MINUS, Menu
+   OEM_PLUS, title-pill / dock / focus, Enter / Delete, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
 
 Keyboard:
 

@@ -39,7 +39,10 @@ import 'package:flutter/services.dart';
 /// SendKeys `y` never opened Global Search). Bare `t` posts
 /// `WM_HOMEDECK_OPEN_NOTIFICATIONS` → [onOpenNotifications] (same as
 /// OpenNotificationsIntent — idle-hide drops Shortcuts focus so Ally
-/// SendKeys `t` never opened Notifications). The same hook handles F11
+/// SendKeys `t` never opened Notifications). Bare `f` posts
+/// `WM_HOMEDECK_OPEN_FRIENDS` → [onOpenFriends] (same as
+/// OpenFriendsIntent — idle-hide drops Shortcuts focus so Ally
+/// SendKeys `f` never opened Friends). The same hook handles F11
 /// chrome and Enter→focused path; Dart mirrors the target via
 /// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
 /// the mirrored path is empty.
@@ -121,6 +124,10 @@ class WindowsNativeBridge {
   /// Dart to open Notifications (same as OpenNotificationsIntent /
   /// `_openNotifications`).
   static Future<void> Function()? onOpenNotifications;
+
+  /// Runner WH_KEYBOARD_LL bare `F` / `WM_HOMEDECK_OPEN_FRIENDS` asks Dart
+  /// to open Friends (same as OpenFriendsIntent / `_openFriends`).
+  static Future<void> Function()? onOpenFriends;
 
   /// Runner WH_KEYBOARD_LL Enter while remove-armed / `WM_HOMEDECK_CONFIRM`
   /// asks Dart `_handleConfirm` (Library remove) without ShellExecute.
@@ -273,6 +280,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'openNotifications') {
         final handler = onOpenNotifications;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'openFriends') {
+        final handler = onOpenFriends;
         if (handler != null) {
           await handler();
         }

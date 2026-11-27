@@ -995,13 +995,27 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // openNotifications (same as OpenNotificationsIntent /
       // `_openNotifications`). Consume so Shortcuts cannot double-open when
       // focus is still alive. Free of Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/
-      // w/h/a/Delete.
+      // w/h/a/Delete/F.
       if (info->vkCode == 'T' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
         if (hwnd != nullptr) {
           PostMessageW(hwnd, WM_HOMEDECK_OPEN_NOTIFICATIONS, 0, 0);
+          return 1;
+        }
+      }
+      // Ally M24: OpenFriendsIntent is Shortcuts-only; idle-hide drops focus
+      // so SendKeys `f` never open Friends. Bare 'F' (0x46) → openFriends
+      // (same as OpenFriendsIntent / `_openFriends`). Consume so Shortcuts
+      // cannot double-open when focus is still alive. Free of
+      // T/Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
+      if (info->vkCode == 'F' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_FRIENDS, 0, 0);
           return 1;
         }
       }
@@ -1322,6 +1336,18 @@ void HomedeckWin32::HandleOpenNotificationsKey() {
   OutputDebugStringW(
       L"homedeck: HandleOpenNotificationsKey → Dart openNotifications\n");
   channel_->InvokeMethod("openNotifications", nullptr);
+}
+
+void HomedeckWin32::HandleOpenFriendsKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleOpenFriendsKey → Dart openFriends\n");
+  channel_->InvokeMethod("openFriends", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

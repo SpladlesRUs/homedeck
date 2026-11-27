@@ -76,6 +76,11 @@ class OpenNotificationsIntent extends Intent {
   const OpenNotificationsIntent();
 }
 
+/// Open the LT-style Friends panel (ProfileCluster / Ally bare `F`).
+class OpenFriendsIntent extends Intent {
+  const OpenFriendsIntent();
+}
+
 /// Steam library discover → import (Settings scan / Ally bare `S`).
 class ScanSteamLibraryIntent extends Intent {
   const ScanSteamLibraryIntent();

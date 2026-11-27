@@ -119,6 +119,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleOpenNotificationsKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_OPEN_FRIENDS) {
+    win32_.HandleOpenFriendsKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_CONFIRM) {
     win32_.HandleConfirmKey();
     return 0;
