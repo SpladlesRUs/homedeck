@@ -152,6 +152,15 @@
 #define WM_HOMEDECK_GOTO_ACHIEVEMENTS (WM_APP + 0x43)  // 'C'
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys Escape (or a real Esc
+// key) should dismiss the open overlay. Uses 0x1B (VK_ESCAPE); free of
+// A/S/P/R/E/G/U/O/N/W/H/Y/T/F/C, REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU,
+// OPEN_DETAILS, OPEN_SEARCH, OPEN_NOTIFICATIONS, OPEN_FRIENDS, and
+// GOTO_ACHIEVEMENTS.
+#ifndef WM_HOMEDECK_DISMISS
+#define WM_HOMEDECK_DISMISS (WM_APP + 0x1B)  // VK_ESCAPE
+#endif
+
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
 // PE/.lnk icon extraction, classic GetOpenFileName for Phase2 FindWindow,
 // bare S → Steam library scan, bare P → Start Menu Programs scan, bare R →
@@ -161,8 +170,8 @@
 // focused Library tile to Home, bare Delete/Backspace → unpin /
 // Library remove, bare VK_OEM_PLUS / VK_ADD → open TileMenu, bare
 // VK_OEM_MINUS → open Details menu, bare Y → open Global Search,
-// bare T → open Notifications, bare F → open Friends, and bare C →
-// select Achievements.
+// bare T → open Notifications, bare F → open Friends, bare C →
+// select Achievements, and bare Esc → dismiss overlay.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -196,7 +205,10 @@
 // Shortcuts focus so Ally SendKeys `f` never opened Friends). Bare `c` posts
 // WM_HOMEDECK_GOTO_ACHIEVEMENTS → Dart `gotoAchievements` (same as
 // GotoAchievementsIntent / `_gotoAchievements`; idle-hide drops Shortcuts
-// focus so Ally SendKeys `c` never selected Achievements). The same hook
+// focus so Ally SendKeys `c` never selected Achievements). Bare Esc posts
+// WM_HOMEDECK_DISMISS → Dart `dismissOverlay` (same as DismissOverlayIntent /
+// `_dismiss`; idle-hide drops Shortcuts focus so Ally SendKeys Escape never
+// closed Friends / Notifications / Search / Menu / Details). The same hook
 // handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
 // fallback when the mirror is empty).
 class HomedeckWin32 {
@@ -331,6 +343,10 @@ class HomedeckWin32 {
   // the Achievements dock tab (same as GotoAchievementsIntent /
   // `_gotoAchievements`).
   void HandleGotoAchievementsKey();
+
+  // UI-thread handler for WM_HOMEDECK_DISMISS: ask Dart to dismiss the open
+  // overlay (same as DismissOverlayIntent / `_dismiss`).
+  void HandleDismissKey();
 
   // UI-thread handler for WM_HOMEDECK_CONFIRM: ask Dart `_handleConfirm`
   // (Library remove Enter) without ShellExecute.
