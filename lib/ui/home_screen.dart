@@ -30,6 +30,7 @@ import 'package:homedeck/ui/friends_panel.dart';
 import 'package:homedeck/ui/friends_view.dart';
 import 'package:homedeck/ui/games_view.dart';
 import 'package:homedeck/ui/notifications_panel.dart';
+import 'package:homedeck/ui/recents_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
@@ -98,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _searchOpen = false;
   bool _notificationsOpen = false;
   bool _friendsOpen = false;
+  bool _recentsOpen = false;
   final List<String> _notificationLines = <String>[];
   bool _dockForced = false;
   bool _dockIdleHidden = false;
@@ -151,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onOpenSearch = _openSearchFromNative;
       WindowsNativeBridge.onOpenNotifications = _openNotificationsFromNative;
       WindowsNativeBridge.onOpenFriends = _openFriendsFromNative;
+      WindowsNativeBridge.onOpenRecents = _openRecentsFromNative;
       WindowsNativeBridge.onGotoAchievements = _gotoAchievementsFromNative;
       WindowsNativeBridge.onDismissOverlay = _dismissOverlayFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
@@ -281,6 +284,12 @@ class _HomeScreenState extends State<HomeScreen> {
         WindowsNativeBridge.onOpenFriends = null;
       }
       if (identical(
+        WindowsNativeBridge.onOpenRecents,
+        _openRecentsFromNative,
+      )) {
+        WindowsNativeBridge.onOpenRecents = null;
+      }
+      if (identical(
         WindowsNativeBridge.onGotoAchievements,
         _gotoAchievementsFromNative,
       )) {
@@ -375,6 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -392,6 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -409,6 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -426,6 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -443,6 +456,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -460,6 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -477,6 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -494,6 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -511,6 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -528,6 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null) {
       return;
     }
@@ -584,6 +603,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _openFriends();
   }
 
+  /// Runner WH_KEYBOARD_LL bare `D` / WM_HOMEDECK_OPEN_RECENTS — same as
+  /// OpenRecentsIntent / `_openRecents`. Ally idle-hide drops Shortcuts
+  /// focus so SendKeys `d` never opened Recents without this.
+  Future<void> _openRecentsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _openRecents();
+  }
+
   /// Runner WH_KEYBOARD_LL bare `C` / WM_HOMEDECK_GOTO_ACHIEVEMENTS — same as
   /// GotoAchievementsIntent / `_gotoAchievements`. Ally idle-hide drops
   /// Shortcuts focus so SendKeys `c` never selected Achievements without this.
@@ -615,6 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchOpen ||
         _notificationsOpen ||
         _friendsOpen ||
+        _recentsOpen ||
         _failure != null ||
         _pendingRemoveId != null) {
       // Native already armed Delete; disarm so Enter can launch again.
@@ -1066,6 +1096,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchOpen ||
       _notificationsOpen ||
       _friendsOpen ||
+        _recentsOpen ||
       _pendingRemoveId != null;
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
@@ -1205,6 +1236,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // keyF opens Friends (Ally bare F / ProfileCluster). ToggleFavoriteIntent
     // stays Actions-only — no Shortcuts activator (F was previously favorite).
     const SingleActivator(LogicalKeyboardKey.keyF): const OpenFriendsIntent(),
+    // keyD opens Recents / app drawer (Ally bare D). B stays Back only.
+    const SingleActivator(LogicalKeyboardKey.keyD): const OpenRecentsIntent(),
     // keyC jumps to Achievements dock tab (Ally bare C / cup).
     const SingleActivator(LogicalKeyboardKey.keyC):
         const GotoAchievementsIntent(),
@@ -1395,6 +1428,12 @@ class _HomeScreenState extends State<HomeScreen> {
       OpenFriendsIntent: CallbackAction<OpenFriendsIntent>(
         onInvoke: (_) {
           _openFriends();
+          return null;
+        },
+      ),
+      OpenRecentsIntent: CallbackAction<OpenRecentsIntent>(
+        onInvoke: (_) {
+          _openRecents();
           return null;
         },
       ),
@@ -1594,6 +1633,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _friendsOpen = true);
   }
 
+  void _openRecents() {
+    if (_failure != null || _pendingRemoveId != null) {
+      return;
+    }
+    setState(() => _recentsOpen = true);
+  }
+
   /// Select the Achievements dock tab (GotoAchievementsIntent / Ally bare `C`).
   void _gotoAchievements() {
     if (_overlayOpen) {
@@ -1703,6 +1749,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_friendsOpen) {
       return;
     }
+    if (_recentsOpen) {
+      return;
+    }
     if (_menuOpen) {
       setState(() => _menuOpen = false);
       return;
@@ -1786,6 +1835,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _friendsOpen = false);
       return;
     }
+    if (_recentsOpen) {
+      _click(UiClick.back);
+      setState(() => _recentsOpen = false);
+      return;
+    }
     if (_menuOpen) {
       _click(UiClick.back);
       setState(() => _menuOpen = false);
@@ -1845,6 +1899,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _selectedTitle {
     if (_friendsOpen) {
       return 'Friends';
+    }
+    if (_recentsOpen) {
+      return 'Recents';
     }
     if (_notificationsOpen) {
       return 'Notifications';
@@ -2672,6 +2729,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     FriendsPanel(
                       scale: metrics.scale,
                       onClose: () => setState(() => _friendsOpen = false),
+                    ),
+                  if (_recentsOpen)
+                    RecentsPanel(
+                      scale: metrics.scale,
+                      onClose: () => setState(() => _recentsOpen = false),
                     ),
                   if (_settingsOpen)
                     SettingsStub(

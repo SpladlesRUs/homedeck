@@ -622,10 +622,10 @@ goto-tab key is added, call **`ModifierHeld`** (PascalCase) only.
 ### Ally M28 Esc dismiss overlays smoke
 
 Bare **Esc** dismisses whichever overlay is open (Friends / Notifications /
-Search / Menu / Details / Settings / Add / remove-confirm) the same way as
-DismissOverlayIntent / B-close — even when Flutter Shortcuts focus is gone
-after dock idle-hide. Close buttons stay Semantics Invokable
-(`friends-close`, notifications clear/close, etc.). No new overlays.
+Recents / Search / Menu / Details / Settings / Add / remove-confirm) the
+same way as DismissOverlayIntent / B-close — even when Flutter Shortcuts
+focus is gone after dock idle-hide. Close buttons stay Semantics Invokable
+(`friends-close`, notifications clear/close, `recents-close`, etc.).
 
 **Ally dismiss:** idle-hide drops Shortcuts focus, so DismissOverlayIntent
 alone never sees harness Escape (M24 noted Esc/B flaky under idle-hide for
@@ -633,16 +633,41 @@ Friends close). Harness dismisses via WH_KEYBOARD_LL bare **Esc**
 (`VK_ESCAPE` / `0x1B`) → `WM_HOMEDECK_DISMISS` → Dart `dismissOverlay`
 (same `_dismiss` path). Always post and consume; Dart no-ops when nothing
 is open. Modifier check uses **`ModifierHeld`** (PascalCase). Do not steal
-F / T / Y / C / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` /
-`o` / `n` / `w` / `h` / `a` / Delete / Enter / F11 / dock tabs.
+F / T / Y / C / D / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` /
+`u` / `o` / `n` / `w` / `h` / `a` / Delete / Enter / F11 / dock tabs.
 
 1. Open Friends (**F**); bare **Esc** closes `friends-panel` (not only
    click Close).
 2. Open Notifications (**T**); Esc closes. Open Search (**Y**); Esc
-   closes. Optional: Menu OEM_PLUS / Details OEM_MINUS then Esc.
-3. Spot-check F/T/Y/C/OEM_±/Enter/Delete/F11/dock tabs and bare
+   closes. Open Recents (**D**); Esc closes. Optional: Menu OEM_PLUS /
+   Details OEM_MINUS then Esc.
+3. Spot-check F/T/Y/C/D/OEM_±/Enter/Delete/F11/dock tabs and bare
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
+
+### Ally M29 Recents / app drawer smoke
+
+**Recents** slide-over / app-drawer chrome (title Recents, empty
+“No recent apps” OK, close with Esc / B / `recents-close`). **B remains
+Back only** — do not bind B to open the drawer. No Android / Play Games
+scrapers; empty is fine (optional in-memory recent titles only when
+trivial). Keys: `recents-drawer`, `recents-empty`, `recents-close`.
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenRecentsIntent alone
+never sees harness `d`. Harness opens via WH_KEYBOARD_LL bare **D**
+(`'D'` / `0x44`) → `WM_HOMEDECK_OPEN_RECENTS` → Dart `openRecents` (same
+`_openRecents` guards). Consume the key in the LL hook to avoid
+double-open with Shortcuts. Modifier check uses **`modifierHeld`**
+(PascalCase). Do not steal F / T / Y / C / OEM_PLUS / OEM_MINUS / Esc /
+`s` / `p` / `r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` / `a` / Delete.
+Esc dismiss reuses the M28 path (`WM_HOMEDECK_DISMISS`).
+
+1. From Home: bare **D** → `recents-drawer` opens; **Esc** closes.
+2. Open again; close via Close / `recents-close` if present (B / Semantics).
+3. Spot-check F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/dock and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 
 Keyboard:
 
@@ -664,6 +689,7 @@ Keyboard:
 - N scans Battle.net installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
 - C selects the Achievements dock tab (Ally: `WM_HOMEDECK_GOTO_ACHIEVEMENTS`)
+- D opens Recents / app drawer (Ally: `WM_HOMEDECK_OPEN_RECENTS`; B stays Back)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”
   is ON (default); Esc / F11 still exit

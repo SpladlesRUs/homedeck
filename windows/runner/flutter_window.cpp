@@ -123,6 +123,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleOpenFriendsKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_OPEN_RECENTS) {
+    win32_.HandleOpenRecentsKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_GOTO_ACHIEVEMENTS) {
     win32_.HandleGotoAchievementsKey();
     return 0;

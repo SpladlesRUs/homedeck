@@ -147,8 +147,9 @@ Semantics Invokable for Ally UIA), bare **VK_OEM_MINUS** →
 `details-open-hit`), bare **Y** → `openSearch` (same as
 OpenSearchIntent; dock Search / `search-open-hit`), bare **T** →
 `openNotifications` (same as OpenNotificationsIntent; StatusCluster
-bell / `notifications-open-hit`), and bare **F** → `openFriends` (same
-as OpenFriendsIntent; ProfileCluster / `friends-open-hit`).
+bell / `notifications-open-hit`), bare **F** → `openFriends` (same
+as OpenFriendsIntent; ProfileCluster / `friends-open-hit`), and bare
+**D** → `openRecents` (same as OpenRecentsIntent; Recents / app drawer).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.
