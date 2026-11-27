@@ -597,6 +597,28 @@ OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` /
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M27 Friends dock tab smoke
+
+Dock **Friends** tab is real empty chrome (title Friends, copy “No friends
+online”) — not Placeholder. Keys: `friends-tab`, `friends-empty`. Shared
+empty copy with the LT slide-over (`kFriendsEmptyCopy`). Keep bare **F** /
+`friends-open-hit` → `friends-panel` as-is (no Discord / presence APIs).
+
+**Ally navigation (dock-only this PR):** no new LL letter /
+`WM_HOMEDECK_GOTO_FRIENDS` hook — **F** already opens the overlay. Reach
+the Friends dock tab via LB/RB or PageDown/PageUp (same dock cycle as
+today). Do not steal C / F / T / Y / OEM_PLUS / OEM_MINUS / `s` / `p` /
+`r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` / `a` / Delete. If a future
+goto-tab key is added, call **`ModifierHeld`** (PascalCase) only.
+
+1. From Home: PageDown/PageUp or LB/RB to Friends → `friends-tab` / empty
+   (not Placeholder). Bare **F** still opens the slide-over panel.
+2. Cycle away/back; dock idle hide still OK; Games + Achievements **C**
+   still OK.
+3. Spot-check T/Y/OEM_±/Enter/Delete/F11 and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
