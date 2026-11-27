@@ -18,6 +18,8 @@ class TileMenu extends StatelessWidget {
     this.onSearch,
     this.onRecents,
     this.onWidgets,
+    this.onWifi,
+    this.onBluetooth,
     this.onScanSteam,
     this.onScanStartMenu,
     this.onScanRoms,
@@ -51,6 +53,10 @@ class TileMenu extends StatelessWidget {
   final VoidCallback? onRecents;
   /// Home-only: close menu and open the empty Widgets panel.
   final VoidCallback? onWidgets;
+  /// Close menu and open Windows Settings Wi-Fi (`ms-settings:network-wifi`).
+  final VoidCallback? onWifi;
+  /// Close menu and open Windows Settings Bluetooth (`ms-settings:bluetooth`).
+  final VoidCallback? onBluetooth;
   /// Library-only: same import path as Settings / harness **S**.
   final VoidCallback? onScanSteam;
   /// Library-only: same import path as Settings / harness **P**.
@@ -258,6 +264,18 @@ class TileMenu extends StatelessWidget {
                             label: 'Settings',
                             onTap: onSettings,
                           ),
+                          if (onWifi != null)
+                            _row(
+                              key: const Key('menu-wifi'),
+                              label: 'Wi-Fi',
+                              onTap: onWifi!,
+                            ),
+                          if (onBluetooth != null)
+                            _row(
+                              key: const Key('menu-bluetooth'),
+                              label: 'Bluetooth',
+                              onTap: onBluetooth!,
+                            ),
                           _row(
                             key: const Key('settings-exit'),
                             label: 'Exit  ·  Power',

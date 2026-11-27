@@ -17,6 +17,7 @@ import 'package:homedeck/core/window_mode.dart';
 import 'package:homedeck/core/models/app_platform.dart';
 import 'package:homedeck/platform/windows_adapter.dart';
 import 'package:homedeck/platform/windows_native_bridge.dart';
+import 'package:homedeck/platform/windows_shell.dart';
 import 'package:homedeck/ui/add_tile_sheet.dart';
 import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/home_grid.dart';
@@ -59,6 +60,21 @@ class HomeScreen extends StatefulWidget {
   /// Chosen: 2.5s (iiSU-like short idle; documented in docs/DECISIONS.md).
   /// Tests may shorten or zero this.
   static Duration dockIdleHideDelay = const Duration(milliseconds: 2500);
+
+  /// Opens a Windows Settings URI (`ms-settings:…`). Tests may replace this
+  /// to count invocations without ShellExecute.
+  static Future<void> Function(String uri) openSystemSettingsUri =
+      _defaultOpenSystemSettingsUri;
+
+  static Future<void> _defaultOpenSystemSettingsUri(String uri) async {
+    if (!Platform.isWindows) {
+      return;
+    }
+    if (await WindowsNativeBridge.launch(uri)) {
+      return;
+    }
+    WindowsShell.open(uri);
+  }
 
   final LibraryController controller;
   final WindowModeController windowMode;
@@ -2672,6 +2688,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           _menuOpen = false;
                           _settingsOpen = true;
                         });
+                      },
+                      onWifi: () {
+                        setState(() => _menuOpen = false);
+                        unawaited(
+                          HomeScreen.openSystemSettingsUri(
+                            'ms-settings:network-wifi',
+                          ),
+                        );
+                      },
+                      onBluetooth: () {
+                        setState(() => _menuOpen = false);
+                        unawaited(
+                          HomeScreen.openSystemSettingsUri(
+                            'ms-settings:bluetooth',
+                          ),
+                        );
                       },
                       onExit: () => _window.close(),
                       onAddToHome: focused == null

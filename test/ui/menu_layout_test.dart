@@ -635,6 +635,79 @@ void main() {
     expect(find.byKey(const Key('recents-drawer')), findsNothing);
   });
 
+  testWidgets(
+    'Home + Library menus expose Wi-Fi / Bluetooth and invoke openSystemSettingsUri',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final launched = <String>[];
+      final previous = HomeScreen.openSystemSettingsUri;
+      HomeScreen.openSystemSettingsUri = (uri) async {
+        launched.add(uri);
+      };
+      addTearDown(() {
+        HomeScreen.openSystemSettingsUri = previous;
+      });
+
+      final harness = await createHarnessForWidgets(tester);
+      await pumpHomeDeck(tester, harness);
+
+      harness.gamepad.emit(GamepadButton.start);
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+      expect(find.byKey(const Key('menu-wifi')), findsOneWidget);
+      expect(find.text('Wi-Fi'), findsOneWidget);
+      expect(find.byKey(const Key('menu-bluetooth')), findsOneWidget);
+      expect(find.text('Bluetooth'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('menu-wifi')));
+      await tester.tap(find.byKey(const Key('menu-wifi')));
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsNothing);
+      expect(launched, ['ms-settings:network-wifi']);
+
+      harness.gamepad.emit(GamepadButton.start);
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('menu-bluetooth')));
+      await tester.tap(find.byKey(const Key('menu-bluetooth')));
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsNothing);
+      expect(launched, [
+        'ms-settings:network-wifi',
+        'ms-settings:bluetooth',
+      ]);
+
+      launched.clear();
+      await tester.tap(find.byKey(const Key('tab-allApps')));
+      await tester.pump();
+      harness.gamepad.emit(GamepadButton.start);
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+      expect(find.byKey(const Key('menu-wifi')), findsOneWidget);
+      expect(find.byKey(const Key('menu-bluetooth')), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('menu-wifi')));
+      await tester.tap(find.byKey(const Key('menu-wifi')));
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsNothing);
+      expect(launched, ['ms-settings:network-wifi']);
+
+      harness.gamepad.emit(GamepadButton.start);
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('menu-bluetooth')));
+      await tester.tap(find.byKey(const Key('menu-bluetooth')));
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsNothing);
+      expect(launched, [
+        'ms-settings:network-wifi',
+        'ms-settings:bluetooth',
+      ]);
+    },
+  );
+
   testWidgets('native openMenu callback opens TileMenu', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
