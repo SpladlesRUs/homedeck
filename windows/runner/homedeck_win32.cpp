@@ -1010,7 +1010,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // (same as OpenFriendsIntent / `_openFriends`). Consume so Shortcuts
       // cannot double-open when focus is still alive. Free of
       // T/Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
-      if (info->vkCode == 'F' && !modifierHeld()) {
+      if (info->vkCode == 'F' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
