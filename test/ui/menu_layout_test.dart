@@ -1178,6 +1178,71 @@ void main() {
     expect(find.byKey(const Key('dock-games')), findsOneWidget);
   });
 
+  testWidgets(
+    'Games / Achievements / Friends empty copy is Semantics-visible (Ally UIA)',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final harness = await createHarnessForWidgets(tester);
+      await pumpHomeDeck(tester, harness);
+
+      final semantics = tester.ensureSemantics();
+      try {
+        await tester.tap(find.byKey(const Key('tab-games')));
+        await tester.pump();
+        expect(find.byKey(const Key('games-empty')), findsOneWidget);
+        expect(find.text('No games yet'), findsOneWidget);
+        expect(
+          tester.getSemantics(find.byKey(const Key('games-empty'))),
+          matchesSemantics(label: 'No games yet'),
+        );
+
+        await tester.tap(find.byKey(const Key('tab-achievements')));
+        await tester.pump();
+        expect(find.byKey(const Key('achievements-empty')), findsOneWidget);
+        expect(find.text('No achievements yet'), findsOneWidget);
+        expect(
+          tester.getSemantics(find.byKey(const Key('achievements-empty'))),
+          matchesSemantics(label: 'No achievements yet'),
+        );
+
+        await tester.tap(find.byKey(const Key('tab-friends')));
+        await tester.pump();
+        expect(find.byKey(const Key('friends-empty')), findsOneWidget);
+        expect(find.text('No friends online'), findsOneWidget);
+        expect(
+          tester.getSemantics(find.byKey(const Key('friends-empty'))),
+          matchesSemantics(label: 'No friends online'),
+        );
+
+        // Open Recents via native bridge (or D from Home) — Shortcuts focus
+        // can be gone after dock tab taps, same as Ally idle-hide.
+        final openRecents = WindowsNativeBridge.onOpenRecents;
+        if (openRecents != null) {
+          await openRecents();
+        } else {
+          await tester.tap(find.byKey(const Key('tab-home')));
+          await tester.pump();
+          await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+        }
+        await tester.pump();
+        expect(find.byKey(const Key('recents-empty')), findsOneWidget);
+        expect(find.text('No recent apps'), findsOneWidget);
+        // Focus/Material may merge overlay chrome; Ally accepts Name containing
+        // the empty copy (exact node when container:true boundary wins).
+        expect(
+          tester.getSemantics(find.byKey(const Key('recents-empty'))).label,
+          contains('No recent apps'),
+        );
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
   testWidgets('Friends dock tab shows empty chrome (not Placeholder)', (
     tester,
   ) async {

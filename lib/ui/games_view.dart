@@ -10,9 +10,12 @@ class GamesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // explicitChildNodes so the empty-copy Semantics label is not swallowed
+    // by the tab title merge (Ally UIA needs Name to contain empty copy).
     return Semantics(
       key: const Key('games-tab'),
       label: 'Games',
+      explicitChildNodes: true,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -32,13 +35,17 @@ class GamesView extends StatelessWidget {
               ),
             ),
             SizedBox(height: 6 * metrics.scale),
-            Text(
+            Semantics(
               key: const Key('games-empty'),
-              'No games yet',
-              style: TextStyle(
-                color: HomeDeckColors.muted,
-                fontWeight: FontWeight.w600,
-                fontSize: 14 * metrics.scale,
+              label: 'No games yet',
+              excludeSemantics: true,
+              child: Text(
+                'No games yet',
+                style: TextStyle(
+                  color: HomeDeckColors.muted,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14 * metrics.scale,
+                ),
               ),
             ),
             SizedBox(height: 4 * metrics.scale),
