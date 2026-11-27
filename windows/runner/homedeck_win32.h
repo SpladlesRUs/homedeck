@@ -389,6 +389,8 @@ class HomedeckWin32 {
   void BringHomeDeckToForeground();
   // MSVC is case-sensitive: definition + hook calls must match this name.
   static bool ModifierHeld();
+  // File-scope lowercase alias in .cpp — workers keep typing modifierHeld.
+  friend bool modifierHeld();
 
   static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
                                                LPARAM l_param);

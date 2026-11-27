@@ -658,7 +658,8 @@ never sees harness `d`. Harness opens via WH_KEYBOARD_LL bare **D**
 (`'D'` / `0x44`) → `WM_HOMEDECK_OPEN_RECENTS` → Dart `openRecents` (same
 `_openRecents` guards). Consume the key in the LL hook to avoid
 double-open with Shortcuts. Modifier check uses **`ModifierHeld`**
-(PascalCase). Do not steal F / T / Y / C / OEM_PLUS / OEM_MINUS / Esc /
+(PascalCase). Ally LL hooks may use `ModifierHeld` or the lowercase alias;
+prefer PascalCase. Do not steal F / T / Y / C / OEM_PLUS / OEM_MINUS / Esc /
 `s` / `p` / `r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` / `a` / Delete.
 Esc dismiss reuses the M28 path (`WM_HOMEDECK_DISMISS`).
 
