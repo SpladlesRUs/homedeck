@@ -1025,7 +1025,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // `_gotoAchievements`). Consume so Shortcuts cannot double-fire when
       // focus is still alive. Free of
       // F/T/Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
-      if (info->vkCode == 'C' && !modifierHeld()) {
+      if (info->vkCode == 'C' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
