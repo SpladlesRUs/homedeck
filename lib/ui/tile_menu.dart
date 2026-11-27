@@ -127,6 +127,51 @@ class TileMenu extends StatelessWidget {
                               label: 'Global Search',
                               onTap: onSearch!,
                             ),
+                          if (onReorder != null)
+                            _row(
+                              key: const Key('menu-reorder'),
+                              label: 'Reorder home',
+                              onTap: onReorder!,
+                            ),
+                          if (onNewPage != null)
+                            _row(
+                              key: const Key('menu-new-page'),
+                              label: 'New Collection',
+                              onTap: onNewPage!,
+                            ),
+                          if (app != null && !pinned && onAddToHome != null)
+                            _row(
+                              key: const Key('menu-add-to-home'),
+                              label: 'Add to Home',
+                              onTap: onAddToHome!,
+                            ),
+                          if (app != null && pinned && onRemoveFromHome != null)
+                            _row(
+                              key: const Key('menu-remove-from-home'),
+                              label: 'Remove from Home',
+                              onTap: onRemoveFromHome!,
+                            ),
+                          if (onHome && app != null && onMove != null)
+                            _row(
+                              key: const Key('menu-move'),
+                              label: 'Move',
+                              onTap: onMove!,
+                            ),
+                          if (app != null && onDetails != null)
+                            _row(
+                              key: const Key('menu-details'),
+                              label: 'Details',
+                              onTap: onDetails!,
+                            ),
+                          if (onRemoveFromLibrary != null)
+                            _row(
+                              key: const Key('menu-remove-library'),
+                              label: 'Remove from Library',
+                              onTap: onRemoveFromLibrary!,
+                            ),
+                          // Library rescans after tile actions so Add to Home /
+                          // Details stay on-screen when many storefront rows
+                          // force the menu to scroll.
                           if (onScanSteam != null)
                             _row(
                               key: const Key('menu-scan-steam'),
@@ -180,48 +225,6 @@ class TileMenu extends StatelessWidget {
                               key: const Key('menu-scan-xbox'),
                               label: 'Rescan Xbox / Microsoft Store',
                               onTap: onScanXbox!,
-                            ),
-                          if (onReorder != null)
-                            _row(
-                              key: const Key('menu-reorder'),
-                              label: 'Reorder home',
-                              onTap: onReorder!,
-                            ),
-                          if (onNewPage != null)
-                            _row(
-                              key: const Key('menu-new-page'),
-                              label: 'New Collection',
-                              onTap: onNewPage!,
-                            ),
-                          if (app != null && !pinned && onAddToHome != null)
-                            _row(
-                              key: const Key('menu-add-to-home'),
-                              label: 'Add to Home',
-                              onTap: onAddToHome!,
-                            ),
-                          if (app != null && pinned && onRemoveFromHome != null)
-                            _row(
-                              key: const Key('menu-remove-from-home'),
-                              label: 'Remove from Home',
-                              onTap: onRemoveFromHome!,
-                            ),
-                          if (onHome && app != null && onMove != null)
-                            _row(
-                              key: const Key('menu-move'),
-                              label: 'Move',
-                              onTap: onMove!,
-                            ),
-                          if (app != null && onDetails != null)
-                            _row(
-                              key: const Key('menu-details'),
-                              label: 'Details',
-                              onTap: onDetails!,
-                            ),
-                          if (onRemoveFromLibrary != null)
-                            _row(
-                              key: const Key('menu-remove-library'),
-                              label: 'Remove from Library',
-                              onTap: onRemoveFromLibrary!,
                             ),
                           _row(
                             key: const Key('menu-settings'),

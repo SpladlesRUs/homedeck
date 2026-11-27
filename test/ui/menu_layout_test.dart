@@ -302,6 +302,8 @@ void main() {
     harness.gamepad.emit(GamepadButton.start);
     await tester.pump();
     expect(find.byKey(const Key('menu-add-to-home')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('menu-add-to-home')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('menu-add-to-home')));
     await tester.pump();
     expect(harness.controller.isOnHome('app-1'), isTrue);
