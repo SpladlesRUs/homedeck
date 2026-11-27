@@ -138,9 +138,11 @@ Enter→focused launch (with a Dart `launchFocused` fallback when the
 mirrored path is empty), bare **E** → `scanEpic`, bare **G** → `scanGog`,
 bare **U** → `scanUbisoft`, bare **O** → `scanEa`, bare **N** →
 `scanBattlenet`, bare **W** → `scanXbox`, bare **H** →
-`pinFocusedToHome`, and bare **Delete** / **Backspace** →
+`pinFocusedToHome`, bare **Delete** / **Backspace** →
 `removeFocused` (Library confirm Enter → `confirmFocused`, not
-ShellExecute).
+ShellExecute), and bare **VK_OEM_PLUS** / **VK_ADD** → `openMenu`
+(same as OpenMenuIntent; `(+) Menu` also exposes `menu-open-hit`
+Semantics Invokable for Ally UIA).
 `IconCache` writes PNG tiles under `icons/` in that same tree.
 Menu music is ten bundled `.m4a` tracks (`assets/audio/music/`). Playback
 starts at a random index, then walks the playlist in order and wraps.

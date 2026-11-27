@@ -103,6 +103,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleRemoveKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_OPEN_MENU) {
+    win32_.HandleOpenMenuKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_CONFIRM) {
     win32_.HandleConfirmKey();
     return 0;

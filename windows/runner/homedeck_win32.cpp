@@ -950,6 +950,20 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M19: OpenMenuIntent is Shortcuts-only; idle-hide drops focus so
+      // SendKeys `=` / `{+}` never open TileMenu. Bare VK_OEM_PLUS (0xBB) /
+      // VK_ADD (numpad +) → openMenu (same as OpenMenuIntent). Consume so
+      // Shortcuts cannot double-open when focus is still alive.
+      if ((info->vkCode == VK_OEM_PLUS || info->vkCode == VK_ADD) &&
+          !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_MENU, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1220,6 +1234,17 @@ void HomedeckWin32::HandleRemoveKey() {
   OutputDebugStringW(
       L"homedeck: HandleRemoveKey → Dart removeFocused\n");
   channel_->InvokeMethod("removeFocused", nullptr);
+}
+
+void HomedeckWin32::HandleOpenMenuKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(L"homedeck: HandleOpenMenuKey → Dart openMenu\n");
+  channel_->InvokeMethod("openMenu", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

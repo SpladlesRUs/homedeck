@@ -11,25 +11,28 @@ answer.
 2. **Manual add vs discovery.** Manual Add remains the primary path (native
    `.exe` / `.lnk` / store URI, or emulator + ROM + `{rom}` args). Windows
    Steam library scan feeds Library via `PlatformAdapter.discover()` →
-   `LibraryController.importDiscovered`. Humans use Settings → Scan Steam;
+   `LibraryController.importDiscovered`. Humans use Settings → Scan Steam or
+   Library `+` → Rescan Steam;
    Ally Phase2 uses bare **S** (WH_KEYBOARD_LL → `WM_HOMEDECK_SCAN_STEAM` →
    Dart `scanSteam`, same as the Settings button — no Settings UIA). Optional
    `HOMEDECK_STEAM_ROOT` points the scanner at a fixture Steam tree. Start Menu
    Programs scan uses `discoverStartMenu()` → `importStartMenu` (same import
-   path). Humans use Settings → Scan Start Menu; Ally uses bare **P**
-   (`WM_HOMEDECK_SCAN_START_MENU` → `scanStartMenu`). Optional
-   `HOMEDECK_START_MENU_ROOT` points at a fixture Programs tree. Pinning a
-   focused Library tile to Home: humans use Menu / Details → Add to Home;
-   Ally uses bare **H** (`WM_HOMEDECK_PIN_HOME` → `pinFocusedToHome`, same
-   `LibraryController.pinToHome` — menu UIA is not required). Unpin / Library
-   remove: humans use Menu / Details; Ally uses bare **Delete** / **Backspace**
-   (`WM_HOMEDECK_REMOVE` → `removeFocused`, same `_requestRemove` — menu UIA
-   is not required). Library confirm Enter is `WM_HOMEDECK_CONFIRM` (not
-   ShellExecute). ROM-folder discovery uses `discoverRoms()` → `importRoms`.
-   Humans use Settings → Choose ROM folder / Scan ROM folder; Ally uses bare
-   **R** (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
+   path). Humans use Settings → Scan Start Menu or Library `+` → Rescan Start
+   Menu; Ally uses bare **P** (`WM_HOMEDECK_SCAN_START_MENU` →
+   `scanStartMenu`). Optional `HOMEDECK_START_MENU_ROOT` points at a fixture
+   Programs tree. Pinning a focused Library tile to Home: humans use Menu /
+   Details → Add to Home; Ally uses bare **H** (`WM_HOMEDECK_PIN_HOME` →
+   `pinFocusedToHome`, same `LibraryController.pinToHome` — menu UIA is not
+   required). Unpin / Library remove: humans use Menu / Details; Ally uses
+   bare **Delete** / **Backspace** (`WM_HOMEDECK_REMOVE` → `removeFocused`,
+   same `_requestRemove` — menu UIA is not required). Library confirm Enter is
+   `WM_HOMEDECK_CONFIRM` (not ShellExecute). ROM-folder discovery uses
+   `discoverRoms()` → `importRoms`. Humans use Settings → Choose ROM folder /
+   Scan ROM folder or Library `+` → Rescan ROM folder; Ally uses bare **R**
+   (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
    `HOMEDECK_EMULATOR` fixture the folder and emulator. Epic Games scan uses
-   `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games;
+   `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games
+   (storefront scans stay Settings-only on the `+` menu this milestone);
    Ally uses bare **E** (`WM_HOMEDECK_SCAN_EPIC` → `scanEpic`). Optional
    `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. GOG Galaxy
    scan uses `discoverGog()` → `importGog`. Humans use Settings → Scan GOG;
@@ -398,6 +401,33 @@ is the primary pager chrome. Pill stays truly centered.
 3. Spot-check dock idle hide, focus ring, Enter/Delete, F11, and bare
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
+
+### Ally M19 context-sensitive + menu smoke
+
+Home `+` stays **Customize Home**: Add game, Global Search, Reorder home,
+New Collection, Settings, Exit — no Library scan rows. Library (root or
+inside a folder) `+` is Library-focused: Add game, Global Search, **Rescan
+Steam** / **Rescan Start Menu** / **Rescan ROM folder** (same import paths
+as Settings and harness bare **S** / **P** / **R** — keys `menu-scan-steam`
+/ `menu-scan-start-menu` / `menu-scan-roms`), Details / Add to Home when a
+tile is focused, Settings, Exit. Home-only Reorder / New Collection stay
+null on Library. Storefront rescans (Epic / GOG / Ubisoft / EA / Battle.net
+/ Xbox) stay Settings-only this milestone so the menu stays short; bare
+**E** / **G** / **U** / **O** / **N** / **W** are unchanged.
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenMenuIntent alone never
+sees harness `=` / `+`. Harness opens via WH_KEYBOARD_LL bare **VK_OEM_PLUS**
+/ **VK_ADD** → `WM_HOMEDECK_OPEN_MENU` → Dart `openMenu` (same `_menuOpen =
+true`), or UIA Invoke on `(+) Menu` / `menu-open-hit` (`Semantics.onTap`).
+
+1. Home: open menu via `=` / `+` / VK_OEM_PLUS **or** UIA Invoke `(+) Menu` /
+   `menu-open-hit` → Customize Home; Reorder / New Collection present; no
+   Library scan rows.
+2. Library: open menu → Rescan Steam / Start Menu / ROMs present; invoke
+   `menu-scan-steam` → tiles import (or scan message); close menu.
+3. Spot-check title-pill dots on Home, dock idle, focus ring, Enter/Delete,
+   F11, and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** /
+   **`o`** / **`n`** / **`w`** / **`h`** / **`a`**.
 
 Keyboard:
 
