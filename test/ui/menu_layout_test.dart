@@ -5,6 +5,7 @@ import 'package:homedeck/platform/windows_native_bridge.dart';
 import 'package:homedeck/ui/app_tile.dart';
 import 'package:homedeck/ui/home_screen.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
+import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 
@@ -497,27 +498,70 @@ void main() {
     expect(find.byKey(const Key('menu-widgets')), findsOneWidget);
     expect(find.text('Widgets'), findsOneWidget);
 
-    final semantics = tester.ensureSemantics();
-    try {
+    await tester.tap(find.byKey(const Key('menu-widgets')));
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsNothing);
+    expect(find.byKey(const Key('widgets-panel')), findsOneWidget);
+    expect(find.byKey(const Key('widgets-now-playing')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('widgets-panel')),
+        matching: find.text('Now playing'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('widgets-empty')), findsNothing);
+    expect(find.text('No widgets yet'), findsNothing);
+    expect(find.byKey(const Key('widgets-close')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('widgets-panel')), findsNothing);
+  });
+
+  testWidgets(
+    'Widgets Now playing focuses featured tile on page 0',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final harness = await createHarnessForWidgets(tester, seedDemo: true);
+      await pumpHomeDeck(tester, harness);
+
+      expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('page-dot-1')));
+      await tester.pump();
+      expect(find.byKey(const Key('now-playing-tile')), findsNothing);
+
+      harness.gamepad.emit(GamepadButton.start);
+      await tester.pump();
       await tester.tap(find.byKey(const Key('menu-widgets')));
       await tester.pump();
-      expect(find.byKey(const Key('tile-menu')), findsNothing);
       expect(find.byKey(const Key('widgets-panel')), findsOneWidget);
-      expect(find.byKey(const Key('widgets-empty')), findsOneWidget);
-      expect(find.text('No widgets yet'), findsOneWidget);
-      expect(
-        tester.getSemantics(find.byKey(const Key('widgets-empty'))),
-        matchesSemantics(label: 'No widgets yet'),
-      );
-      expect(find.byKey(const Key('widgets-close')), findsOneWidget);
+      expect(find.byKey(const Key('widgets-now-playing')), findsOneWidget);
+      expect(find.byKey(const Key('widgets-empty')), findsNothing);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.tap(find.byKey(const Key('widgets-now-playing')));
       await tester.pump();
       expect(find.byKey(const Key('widgets-panel')), findsNothing);
-    } finally {
-      semantics.dispose();
-    }
-  });
+      expect(find.byKey(const Key('now-playing-tile')), findsOneWidget);
+      expect(
+        tester
+            .widget<NowPlayingTile>(find.byKey(const Key('now-playing-tile')))
+            .focused,
+        isTrue,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('title-pill')),
+          matching: find.byKey(const ValueKey('page-dot-0')),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('Library + menu has no Widgets row', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
