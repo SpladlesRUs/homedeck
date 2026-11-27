@@ -574,20 +574,28 @@ class TabDock extends StatelessWidget {
           const HintBadge(label: 'RB'),
           if (onSearch != null) ...[
             SizedBox(width: 10 * metrics.scale),
-            GestureDetector(
-              key: const Key('dock-search'),
+            Semantics(
+              key: const Key('search-open-hit'),
+              button: true,
+              label: 'Open search',
+              // Ally UIA Invoke needs Semantics.onTap;
+              // GestureDetector alone is Name-only.
               onTap: onSearch,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.search_rounded,
-                    color: HomeDeckColors.muted,
-                    size: metrics.dockSize * 0.55,
-                  ),
-                  SizedBox(height: 4 * metrics.scale),
-                  const HintBadge(label: 'Y'),
-                ],
+              child: GestureDetector(
+                key: const Key('dock-search'),
+                onTap: onSearch,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      color: HomeDeckColors.muted,
+                      size: metrics.dockSize * 0.55,
+                    ),
+                    SizedBox(height: 4 * metrics.scale),
+                    const HintBadge(label: 'Y'),
+                  ],
+                ),
               ),
             ),
           ],

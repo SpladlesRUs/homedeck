@@ -771,12 +771,74 @@ void main() {
     harness.gamepad.emit(GamepadButton.y);
     await tester.pump();
     expect(find.byKey(const Key('global-search')), findsOneWidget);
+    expect(
+      find.text(
+        'Press A to open   Press X to navigate   Press B to close',
+      ),
+      findsOneWidget,
+    );
     await tester.enterText(find.byKey(const Key('search-field')), 'Star');
     await tester.pump();
     expect(find.text('Star Pilot'), findsOneWidget);
     harness.gamepad.emit(GamepadButton.b);
     await tester.pump();
     expect(find.byKey(const Key('global-search')), findsNothing);
+  });
+
+  testWidgets('search-open-hit Semantics opens Global Search (Ally UIA path)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    expect(find.byKey(const Key('search-open-hit')), findsOneWidget);
+    expect(find.byKey(const Key('global-search')), findsNothing);
+
+    // Dock Search sits under CornerHints for pointer hits; Ally UIA
+    // Invoke uses Semantics.onTap (same path as menu/details-open-hit).
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.semantics.tap(find.semantics.byLabel('Open search'));
+      await tester.pump();
+      expect(find.byKey(const Key('global-search')), findsOneWidget);
+      expect(find.byKey(const Key('search-field')), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('native openSearch callback opens Global Search', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    // Simulate runner MethodChannel `openSearch` (WH_KEYBOARD_LL path).
+    final open = WindowsNativeBridge.onOpenSearch;
+    if (open == null) {
+      final semantics = tester.ensureSemantics();
+      try {
+        tester.semantics.tap(find.semantics.byLabel('Open search'));
+        await tester.pump();
+        expect(find.byKey(const Key('global-search')), findsOneWidget);
+        expect(find.byKey(const Key('search-field')), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+      return;
+    }
+    await open();
+    await tester.pump();
+    expect(find.byKey(const Key('global-search')), findsOneWidget);
+    expect(find.byKey(const Key('search-field')), findsOneWidget);
   });
 
   testWidgets('title pill follows the focused folder and game', (tester) async {

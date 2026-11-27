@@ -140,7 +140,7 @@ class _GlobalSearchSheetState extends State<GlobalSearchSheet> {
                     ),
                     SizedBox(height: 8 * widget.scale),
                     Text(
-                      'Press A to open   Press B to close',
+                      'Press A to open   Press X to navigate   Press B to close',
                       style: TextStyle(
                         color: HomeDeckColors.muted,
                         fontSize: 12 * widget.scale,

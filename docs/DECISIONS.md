@@ -476,6 +476,28 @@ never sees harness `-`. Harness opens via WH_KEYBOARD_LL bare
    **`r`** / **`e`** / **`g`** / **`u`** / **`o`** / **`n`** / **`w`** /
    **`h`** / **`a`**.
 
+### Ally M22 Global Search open smoke
+
+`GlobalSearchSheet` + OpenSearchIntent / **Y** already exist but are
+Shortcuts-only — same Ally idle-hide gap as pre-fix Menu / Details. Do not
+invent new search backends, scrapers, or collections. Sheet keeps
+`global-search` / `search-field` / hit keys; hint line includes
+**Press X to navigate** (iisu parity) without changing navigation.
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenSearchIntent alone
+never sees harness `y`. Harness opens via WH_KEYBOARD_LL bare **Y**
+(`0x59`) → `WM_HOMEDECK_OPEN_SEARCH` → Dart `openSearch` (same
+`_openSearch` guards), or UIA Invoke on dock Search / `search-open-hit`
+(`Semantics.onTap`). Consume the key in the LL hook to avoid double-open
+with Shortcuts.
+
+1. From Home (after idle ok): bare **Y** or SendKeys `y` → Global Search
+   opens (`global-search`); type a letter or browse hits; B / Esc closes.
+2. From Library: same Y opens search; activate a hit if easy.
+3. Spot-check Details OEM_MINUS, Menu OEM_PLUS, title-pill / dock / focus,
+   Enter / Delete, F11, and bare **`s`** / **`p`** / **`r`** / **`e`** /
+   **`g`** / **`u`** / **`o`** / **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
