@@ -107,9 +107,16 @@
 
 // Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `=` / `+` (or a real
 // OEM+ / numpad + key) should open the TileMenu. Uses 0xBB (VK_OEM_PLUS);
-// free of A/S/P/R/E/G/U/O/N/W/H, REMOVE, CONFIRM, and GAME_EXIT.
+// free of A/S/P/R/E/G/U/O/N/W/H, REMOVE, CONFIRM, GAME_EXIT, and OPEN_DETAILS.
 #ifndef WM_HOMEDECK_OPEN_MENU
 #define WM_HOMEDECK_OPEN_MENU (WM_APP + 0xBB)  // VK_OEM_PLUS
+#endif
+
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `-` (or a real OEM-
+// key) should open the Details menu. Uses 0xBD (VK_OEM_MINUS); free of
+// A/S/P/R/E/G/U/O/N/W/H, REMOVE, CONFIRM, GAME_EXIT, and OPEN_MENU.
+#ifndef WM_HOMEDECK_OPEN_DETAILS
+#define WM_HOMEDECK_OPEN_DETAILS (WM_APP + 0xBD)  // VK_OEM_MINUS
 #endif
 
 // Native Win32 helpers for Ally: launch, F11 chrome, Enter→focused path,
@@ -119,7 +126,8 @@
 // bare U → Ubisoft Connect scan, bare O → EA App / Origin scan, bare N →
 // Battle.net scan, bare W → Xbox / Microsoft Store scan, bare H → pin
 // focused Library tile to Home, bare Delete/Backspace → unpin /
-// Library remove, and bare VK_OEM_PLUS / VK_ADD → open TileMenu.
+// Library remove, bare VK_OEM_PLUS / VK_ADD → open TileMenu, and bare
+// VK_OEM_MINUS → open Details menu.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -140,9 +148,11 @@
 // confirm is pending, Enter posts WM_HOMEDECK_CONFIRM (not ShellExecute) until
 // Dart clears remove-armed. Bare VK_OEM_PLUS / VK_ADD posts
 // WM_HOMEDECK_OPEN_MENU → Dart `openMenu` (same as OpenMenuIntent; idle-hide
-// drops Shortcuts focus so Ally SendKeys `=` never opened the menu). The same
-// hook handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
-// fallback when the mirror is empty).
+// drops Shortcuts focus so Ally SendKeys `=` never opened the menu). Bare
+// VK_OEM_MINUS posts WM_HOMEDECK_OPEN_DETAILS → Dart `openDetails` (same as
+// OpenDetailsIntent / `_openDetails`). The same hook handles F11 chrome and
+// Enter→mirrored path (with a Dart launchFocused fallback when the mirror is
+// empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -254,6 +264,10 @@ class HomedeckWin32 {
   // UI-thread handler for WM_HOMEDECK_OPEN_MENU: ask Dart to open the
   // TileMenu (same as OpenMenuIntent / `_menuOpen = true`).
   void HandleOpenMenuKey();
+
+  // UI-thread handler for WM_HOMEDECK_OPEN_DETAILS: ask Dart to open the
+  // Details menu (same as OpenDetailsIntent / `_openDetails`).
+  void HandleOpenDetailsKey();
 
   // UI-thread handler for WM_HOMEDECK_CONFIRM: ask Dart `_handleConfirm`
   // (Library remove Enter) without ShellExecute.

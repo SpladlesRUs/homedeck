@@ -640,9 +640,17 @@ class CornerHints extends StatelessWidget {
                     child: Text('(B) Back', style: style),
                   ),
                   SizedBox(width: 14 * metrics.scale),
-                  GestureDetector(
+                  Semantics(
+                    key: const Key('details-open-hit'),
+                    button: true,
+                    label: 'Open details',
+                    // Ally UIA Invoke needs Semantics.onTap;
+                    // GestureDetector alone is Name-only.
                     onTap: onDetails,
-                    child: Text('(-) Details', style: style),
+                    child: GestureDetector(
+                      onTap: onDetails,
+                      child: Text('(-) Details', style: style),
+                    ),
                   ),
                 ],
               ),

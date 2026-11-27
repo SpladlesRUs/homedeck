@@ -964,6 +964,19 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M21: OpenDetailsIntent is Shortcuts-only; idle-hide drops focus
+      // so SendKeys `-` never open Details. Bare VK_OEM_MINUS (0xBD) →
+      // openDetails (same as OpenDetailsIntent / `_openDetails`). Consume so
+      // Shortcuts cannot double-open when focus is still alive.
+      if (info->vkCode == VK_OEM_MINUS && !modifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_DETAILS, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1245,6 +1258,18 @@ void HomedeckWin32::HandleOpenMenuKey() {
   }
   OutputDebugStringW(L"homedeck: HandleOpenMenuKey → Dart openMenu\n");
   channel_->InvokeMethod("openMenu", nullptr);
+}
+
+void HomedeckWin32::HandleOpenDetailsKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleOpenDetailsKey → Dart openDetails\n");
+  channel_->InvokeMethod("openDetails", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

@@ -437,6 +437,76 @@ void main() {
     expect(find.text('Customize Home'), findsOneWidget);
   });
 
+  testWidgets('details-open-hit Semantics opens Details menu (Ally UIA path)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    expect(find.byKey(const Key('details-open-hit')), findsOneWidget);
+    expect(find.byKey(const Key('details-menu')), findsNothing);
+    expect(find.text('(-) Details'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('details-open-hit')));
+    await tester.pump();
+    expect(find.byKey(const Key('details-menu')), findsOneWidget);
+    expect(find.byKey(const Key('details-title')), findsOneWidget);
+    expect(find.byKey(const Key('details-remove-from-home')), findsOneWidget);
+    expect(find.byKey(const Key('details-remove')), findsOneWidget);
+    expect(find.byKey(const Key('details-close')), findsOneWidget);
+  });
+
+  testWidgets('OpenDetailsIntent (-) opens Details menu', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.minus);
+    await tester.pump();
+    expect(find.byKey(const Key('details-menu')), findsOneWidget);
+    expect(find.byKey(const Key('details-remove-from-home')), findsOneWidget);
+  });
+
+  testWidgets('native openDetails callback opens Details menu', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await addSampleAppsForWidgets(tester, harness, count: 1);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+
+    // Simulate runner MethodChannel `openDetails` (WH_KEYBOARD_LL path).
+    final open = WindowsNativeBridge.onOpenDetails;
+    if (open == null) {
+      await tester.tap(find.byKey(const Key('details-open-hit')));
+    } else {
+      await open();
+    }
+    await tester.pump();
+    expect(find.byKey(const Key('details-menu')), findsOneWidget);
+    expect(find.byKey(const Key('details-remove-from-home')), findsOneWidget);
+  });
+
   testWidgets('Delete unpins focused Home tile without menu', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
@@ -822,10 +892,21 @@ void main() {
     await tester.pump();
     harness.gamepad.emit(GamepadButton.back);
     await tester.pump();
+    expect(find.byKey(const Key('details-menu')), findsOneWidget);
     expect(find.byKey(const Key('details-add-to-home')), findsOneWidget);
+    expect(find.byKey(const Key('details-remove')), findsOneWidget);
     await tester.tap(find.byKey(const Key('details-add-to-home')));
     await tester.pump();
     expect(harness.controller.isOnHome('app-1'), isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('tile-app-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('details-open-hit')));
+    await tester.pump();
+    expect(find.byKey(const Key('details-remove-from-home')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('details-remove-from-home')));
+    await tester.pump();
+    expect(harness.controller.isOnHome('app-1'), isFalse);
   });
 
   testWidgets('LB/RB never skip a dock tab', (tester) async {
