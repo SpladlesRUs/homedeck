@@ -706,6 +706,23 @@ unless unavoidable.
 2. Bare **D** still opens Recents.
 3. Spot-check F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/empty UIA/s/p/r/e/g/u/o/n/w/h/a.
 
+### Ally M32 Refresh Home menu row
+
+iiSU Customize Home includes **Refresh Home**; HomeDeck Home `+` menu had
+Reorder / New Collection / Recents / Search but no refresh. Library menu
+must not show this row.
+
+**Menu path (no new WH_KEYBOARD_LL keys):** `TileMenu` optional
+`onRefreshHome` → row label **Refresh Home**, key `menu-refresh-home`.
+Wire only when `_tab == HomeTab.home`: close menu, `_goToPage(0)`, and
+clear `_moveMode` if set. Do not touch `ModifierHeld` /
+`homedeck_win32.cpp`.
+
+1. Home page > 0 if possible; OEM_PLUS → **Refresh Home** /
+   `menu-refresh-home` → lands page 0 (title-pill dots / page).
+2. Library menu: no Refresh Home row.
+3. Spot-check menu Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 

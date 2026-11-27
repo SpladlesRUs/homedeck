@@ -2617,6 +2617,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _moveMode = true;
                               });
                             },
+                      onRefreshHome: _tab != HomeTab.home
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _moveMode = false;
+                              });
+                              _goToPage(0);
+                            },
                       onNewPage: _tab != HomeTab.home
                           ? null
                           : () {
