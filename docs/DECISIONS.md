@@ -762,6 +762,29 @@ Esc / B / Close still dismiss via the M28 path.
 2. Library menu: no Widgets row.
 3. Spot-check Refresh Home, Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
 
+### Ally M35 Wi-Fi / Bluetooth menu rows
+
+iiSU Customize Home left rail has Settings, Wi-Fi, Bluetooth; HomeDeck Home
+and Library `+` menus had Settings / Exit only. Do not invent in-app Wi-Fi
+or Bluetooth UIs — open the matching Windows Settings page.
+
+**Menu path (no new WH_KEYBOARD_LL keys):** `TileMenu` optional `onWifi` /
+`onBluetooth` → labels **Wi-Fi** / **Bluetooth**, keys `menu-wifi` /
+`menu-bluetooth`. Place after Settings (before Exit). Wire from Home and
+Library: close menu, launch via existing ShellExecute path
+(`WindowsNativeBridge.launch` / `WindowsShell.open`):
+- Wi-Fi → `ms-settings:network-wifi`
+- Bluetooth → `ms-settings:bluetooth`
+Non-Windows / tests: no-op (or override `HomeScreen.openSystemSettingsUri`).
+Do not touch `ModifierHeld` / `homedeck_win32.cpp`.
+
+1. Home OEM_PLUS → **Wi-Fi** / `menu-wifi` → Windows Settings Wi-Fi (or
+   Settings opens); **Bluetooth** / `menu-bluetooth` → Bluetooth settings.
+   Menu closes.
+2. Library menu: same two rows work.
+3. Spot-check Widgets/Now playing, Refresh Home, Recents/D,
+   F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 
