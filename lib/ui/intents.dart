@@ -81,6 +81,11 @@ class OpenFriendsIntent extends Intent {
   const OpenFriendsIntent();
 }
 
+/// Select the dock Achievements tab (Ally bare `C` / cup jump).
+class GotoAchievementsIntent extends Intent {
+  const GotoAchievementsIntent();
+}
+
 /// Steam library discover → import (Settings scan / Ally bare `S`).
 class ScanSteamLibraryIntent extends Intent {
   const ScanSteamLibraryIntent();
