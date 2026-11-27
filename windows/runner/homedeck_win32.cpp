@@ -968,7 +968,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // so SendKeys `-` never open Details. Bare VK_OEM_MINUS (0xBD) →
       // openDetails (same as OpenDetailsIntent / `_openDetails`). Consume so
       // Shortcuts cannot double-open when focus is still alive.
-      if (info->vkCode == VK_OEM_MINUS && !modifierHeld()) {
+      if (info->vkCode == VK_OEM_MINUS && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
