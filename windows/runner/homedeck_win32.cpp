@@ -996,7 +996,7 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       // `_openNotifications`). Consume so Shortcuts cannot double-open when
       // focus is still alive. Free of Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/
       // w/h/a/Delete.
-      if (info->vkCode == 'T' && !modifierHeld()) {
+      if (info->vkCode == 'T' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
                         : nullptr;
