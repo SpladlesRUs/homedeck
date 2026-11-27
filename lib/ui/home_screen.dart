@@ -152,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onOpenNotifications = _openNotificationsFromNative;
       WindowsNativeBridge.onOpenFriends = _openFriendsFromNative;
       WindowsNativeBridge.onGotoAchievements = _gotoAchievementsFromNative;
+      WindowsNativeBridge.onDismissOverlay = _dismissOverlayFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -284,6 +285,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _gotoAchievementsFromNative,
       )) {
         WindowsNativeBridge.onGotoAchievements = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onDismissOverlay,
+        _dismissOverlayFromNative,
+      )) {
+        WindowsNativeBridge.onDismissOverlay = null;
       }
       if (identical(
         WindowsNativeBridge.onConfirmFocused,
@@ -585,6 +592,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     _gotoAchievements();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare Esc / WM_HOMEDECK_DISMISS — same as
+  /// DismissOverlayIntent / `_dismiss`. Ally idle-hide drops Shortcuts
+  /// focus so SendKeys Escape never closed overlays without this.
+  Future<void> _dismissOverlayFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _dismiss();
   }
 
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same

@@ -45,7 +45,10 @@ import 'package:flutter/services.dart';
 /// SendKeys `f` never opened Friends). Bare `c` posts
 /// `WM_HOMEDECK_GOTO_ACHIEVEMENTS` → [onGotoAchievements] (same as
 /// GotoAchievementsIntent — idle-hide drops Shortcuts focus so Ally
-/// SendKeys `c` never selected Achievements). The same hook handles F11
+/// SendKeys `c` never selected Achievements). Bare Esc posts
+/// `WM_HOMEDECK_DISMISS` → [onDismissOverlay] (same as
+/// DismissOverlayIntent — idle-hide drops Shortcuts focus so Ally
+/// SendKeys Escape never closed overlays). The same hook handles F11
 /// chrome and Enter→focused path; Dart mirrors the target via
 /// [setFocusedLaunch] and handles a native [onLaunchFocused] fallback when
 /// the mirrored path is empty.
@@ -136,6 +139,10 @@ class WindowsNativeBridge {
   /// Dart to select the Achievements dock tab (same as GotoAchievementsIntent
   /// / `_gotoAchievements`).
   static Future<void> Function()? onGotoAchievements;
+
+  /// Runner WH_KEYBOARD_LL bare Esc / `WM_HOMEDECK_DISMISS` asks Dart to
+  /// dismiss the open overlay (same as DismissOverlayIntent / `_dismiss`).
+  static Future<void> Function()? onDismissOverlay;
 
   /// Runner WH_KEYBOARD_LL Enter while remove-armed / `WM_HOMEDECK_CONFIRM`
   /// asks Dart `_handleConfirm` (Library remove) without ShellExecute.
@@ -302,6 +309,13 @@ class WindowsNativeBridge {
       }
       if (call.method == 'gotoAchievements') {
         final handler = onGotoAchievements;
+        if (handler != null) {
+          await handler();
+        }
+        return;
+      }
+      if (call.method == 'dismissOverlay') {
+        final handler = onDismissOverlay;
         if (handler != null) {
           await handler();
         }

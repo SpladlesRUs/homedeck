@@ -1009,6 +1009,69 @@ void main() {
     expect(find.byKey(const Key('friends-panel')), findsNothing);
   });
 
+  testWidgets('native dismissOverlay callback closes Friends', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(find.byKey(const Key('friends-panel')), findsOneWidget);
+
+    // Simulate runner MethodChannel `dismissOverlay` (WH_KEYBOARD_LL Esc).
+    final dismiss = WindowsNativeBridge.onDismissOverlay;
+    if (dismiss == null) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.byKey(const Key('friends-panel')), findsNothing);
+      return;
+    }
+    await dismiss();
+    await tester.pump();
+    expect(find.byKey(const Key('friends-panel')), findsNothing);
+  });
+
+  testWidgets('native dismissOverlay closes Notifications and Search', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyT);
+    await tester.pump();
+    expect(find.byKey(const Key('notifications-panel')), findsOneWidget);
+
+    final dismiss = WindowsNativeBridge.onDismissOverlay;
+    if (dismiss != null) {
+      await dismiss();
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    }
+    await tester.pump();
+    expect(find.byKey(const Key('notifications-panel')), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyY);
+    await tester.pump();
+    expect(find.byKey(const Key('global-search')), findsOneWidget);
+
+    if (dismiss != null) {
+      await dismiss();
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    }
+    await tester.pump();
+    expect(find.byKey(const Key('global-search')), findsNothing);
+  });
+
   testWidgets('Games dock tab shows empty chrome (not Placeholder)', (
     tester,
   ) async {

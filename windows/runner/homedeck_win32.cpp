@@ -1034,6 +1034,21 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M28: DismissOverlayIntent is Shortcuts-only; idle-hide drops
+      // focus so SendKeys Escape never closes Friends / Notifications /
+      // Search / Menu / Details. Bare VK_ESCAPE (0x1B) → dismissOverlay
+      // (same as DismissOverlayIntent / `_dismiss`). Always post and
+      // consume; Dart no-ops when nothing is open. Free of
+      // F/T/Y/C/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
+      if (info->vkCode == VK_ESCAPE && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_DISMISS, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1375,6 +1390,18 @@ void HomedeckWin32::HandleGotoAchievementsKey() {
   OutputDebugStringW(
       L"homedeck: HandleGotoAchievementsKey → Dart gotoAchievements\n");
   channel_->InvokeMethod("gotoAchievements", nullptr);
+}
+
+void HomedeckWin32::HandleDismissKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleDismissKey → Dart dismissOverlay\n");
+  channel_->InvokeMethod("dismissOverlay", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

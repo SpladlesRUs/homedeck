@@ -127,6 +127,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     win32_.HandleGotoAchievementsKey();
     return 0;
   }
+  if (message == WM_HOMEDECK_DISMISS) {
+    win32_.HandleDismissKey();
+    return 0;
+  }
   if (message == WM_HOMEDECK_CONFIRM) {
     win32_.HandleConfirmKey();
     return 0;

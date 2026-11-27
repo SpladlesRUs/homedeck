@@ -619,6 +619,31 @@ goto-tab key is added, call **`ModifierHeld`** (PascalCase) only.
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M28 Esc dismiss overlays smoke
+
+Bare **Esc** dismisses whichever overlay is open (Friends / Notifications /
+Search / Menu / Details / Settings / Add / remove-confirm) the same way as
+DismissOverlayIntent / B-close — even when Flutter Shortcuts focus is gone
+after dock idle-hide. Close buttons stay Semantics Invokable
+(`friends-close`, notifications clear/close, etc.). No new overlays.
+
+**Ally dismiss:** idle-hide drops Shortcuts focus, so DismissOverlayIntent
+alone never sees harness Escape (M24 noted Esc/B flaky under idle-hide for
+Friends close). Harness dismisses via WH_KEYBOARD_LL bare **Esc**
+(`VK_ESCAPE` / `0x1B`) → `WM_HOMEDECK_DISMISS` → Dart `dismissOverlay`
+(same `_dismiss` path). Always post and consume; Dart no-ops when nothing
+is open. Modifier check uses **`ModifierHeld`** (PascalCase). Do not steal
+F / T / Y / C / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` /
+`o` / `n` / `w` / `h` / `a` / Delete / Enter / F11 / dock tabs.
+
+1. Open Friends (**F**); bare **Esc** closes `friends-panel` (not only
+   click Close).
+2. Open Notifications (**T**); Esc closes. Open Search (**Y**); Esc
+   closes. Optional: Menu OEM_PLUS / Details OEM_MINUS then Esc.
+3. Spot-check F/T/Y/C/OEM_±/Enter/Delete/F11/dock tabs and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -626,7 +651,8 @@ Keyboard:
   Library remove confirm uses Enter → `confirmFocused`, not ShellExecute)
 - Delete / Backspace unpins from Home; in Library it asks to remove the game
   (Ally: `WM_HOMEDECK_REMOVE` — same as UI Remove; menu UIA not required)
-- Esc dismisses overlays
+- Esc dismisses overlays (Ally: `WM_HOMEDECK_DISMISS` — same as
+  DismissOverlayIntent; idle-hide safe)
 - M enters rearrange mode (arrows swap tiles; drag also works)
 - S scans Steam library into Library (no Home pins)
 - P scans Start Menu Programs into Library (no Home pins)
