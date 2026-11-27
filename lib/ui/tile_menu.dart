@@ -27,6 +27,7 @@ class TileMenu extends StatelessWidget {
     this.onScanBattlenet,
     this.onScanXbox,
     this.onReorder,
+    this.onRefreshHome,
     this.onNewPage,
     this.onAddToHome,
     this.onRemoveFromHome,
@@ -66,6 +67,8 @@ class TileMenu extends StatelessWidget {
   /// Library-only: same import path as Settings / harness **W**.
   final VoidCallback? onScanXbox;
   final VoidCallback? onReorder;
+  /// Home-only: jump to page 0 and clear move-mode (iiSU Customize Home).
+  final VoidCallback? onRefreshHome;
   final VoidCallback? onNewPage;
   final VoidCallback? onAddToHome;
   final VoidCallback? onRemoveFromHome;
@@ -141,6 +144,12 @@ class TileMenu extends StatelessWidget {
                               key: const Key('menu-reorder'),
                               label: 'Reorder home',
                               onTap: onReorder!,
+                            ),
+                          if (onRefreshHome != null)
+                            _row(
+                              key: const Key('menu-refresh-home'),
+                              label: 'Refresh Home',
+                              onTap: onRefreshHome!,
                             ),
                           if (onNewPage != null)
                             _row(
