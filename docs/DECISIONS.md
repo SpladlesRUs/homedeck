@@ -31,35 +31,38 @@ answer.
    Scan ROM folder or Library `+` → Rescan ROM folder; Ally uses bare **R**
    (`WM_HOMEDECK_SCAN_ROMS` → `scanRoms`). Optional `HOMEDECK_ROM_ROOT` /
    `HOMEDECK_EMULATOR` fixture the folder and emulator. Epic Games scan uses
-   `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games
-   (storefront scans stay Settings-only on the `+` menu this milestone);
-   Ally uses bare **E** (`WM_HOMEDECK_SCAN_EPIC` → `scanEpic`). Optional
-   `HOMEDECK_EPIC_ROOT` points at a fixture Manifests / Data tree. GOG Galaxy
-   scan uses `discoverGog()` → `importGog`. Humans use Settings → Scan GOG;
-   Ally uses bare **G** (`WM_HOMEDECK_SCAN_GOG` → `scanGog`). Optional
-   `HOMEDECK_GOG_ROOT` points at a fixture Games / install tree. Ubisoft
-   Connect scan uses `discoverUbisoft()` → `importUbisoft`. Humans use
-   Settings → Scan Ubisoft Connect; Ally uses bare **U**
+   `discoverEpic()` → `importEpic`. Humans use Settings → Scan Epic Games or
+   Library `+` → Rescan Epic Games; Ally uses bare **E**
+   (`WM_HOMEDECK_SCAN_EPIC` → `scanEpic`). Optional `HOMEDECK_EPIC_ROOT`
+   points at a fixture Manifests / Data tree. GOG Galaxy scan uses
+   `discoverGog()` → `importGog`. Humans use Settings → Scan GOG or Library
+   `+` → Rescan GOG; Ally uses bare **G** (`WM_HOMEDECK_SCAN_GOG` →
+   `scanGog`). Optional `HOMEDECK_GOG_ROOT` points at a fixture Games /
+   install tree. Ubisoft Connect scan uses `discoverUbisoft()` →
+   `importUbisoft`. Humans use Settings → Scan Ubisoft Connect or Library
+   `+` → Rescan Ubisoft Connect; Ally uses bare **U**
    (`WM_HOMEDECK_SCAN_UBISOFT` → `scanUbisoft`). Optional
    `HOMEDECK_UBISOFT_ROOT` points at a fixture Games / install tree
    (`ubisoftgame-*.info`). EA App / Origin scan uses `discoverEa()` →
-   `importEa`. Humans use Settings → Scan EA App; Ally uses bare **O**
-   (`WM_HOMEDECK_SCAN_EA` → `scanEa`). Optional `HOMEDECK_EA_ROOT` points
-   at a fixture Games / install tree (`__Installer\installerdata.xml`).
-   Battle.net scan uses `discoverBattlenet()` → `importBattlenet`. Humans
-   use Settings → Scan Battle.net; Ally uses bare **N**
+   `importEa`. Humans use Settings → Scan EA App or Library `+` → Rescan
+   EA App; Ally uses bare **O** (`WM_HOMEDECK_SCAN_EA` → `scanEa`).
+   Optional `HOMEDECK_EA_ROOT` points at a fixture Games / install tree
+   (`__Installer\installerdata.xml`). Battle.net scan uses
+   `discoverBattlenet()` → `importBattlenet`. Humans use Settings → Scan
+   Battle.net or Library `+` → Rescan Battle.net; Ally uses bare **N**
    (`WM_HOMEDECK_SCAN_BATTLENET` → `scanBattlenet`). Optional
    `HOMEDECK_BATTLENET_ROOT` points at a fixture Games / Agent
    `product.db` / install tree (`battlenetgame-*.info`). Xbox /
    Microsoft Store / Game Pass PC scan uses `discoverXbox()` →
-   `importXbox`. Humans use Settings → Scan Xbox / Microsoft Store; Ally
-   uses bare **W** (`WM_HOMEDECK_SCAN_XBOX` → `scanXbox`). Optional
-   `HOMEDECK_XBOX_ROOT` points at a fixture XboxGames / GamingRoot /
-   install tree (`xboxgame-*.info` or `MicrosoftGame.config`). Prefer
-   `msxbox:` / `xbox:` / `ms-windows-store:` when a product id is known;
-   else AppX AUMID (`shell:AppsFolder\{PFN}!{AppId}`); else resolved
-   `.exe`. UWP/Game Pass limits: WindowsApps is often ACL-locked; raw
-   `.exe` launch frequently fails — URI/AUMID is best-effort. Games-only
+   `importXbox`. Humans use Settings → Scan Xbox / Microsoft Store or
+   Library `+` → Rescan Xbox / Microsoft Store; Ally uses bare **W**
+   (`WM_HOMEDECK_SCAN_XBOX` → `scanXbox`). Optional `HOMEDECK_XBOX_ROOT`
+   points at a fixture XboxGames / GamingRoot / install tree
+   (`xboxgame-*.info` or `MicrosoftGame.config`). Prefer `msxbox:` /
+   `xbox:` / `ms-windows-store:` when a product id is known; else AppX
+   AUMID (`shell:AppsFolder\{PFN}!{AppId}`); else resolved `.exe`.
+   UWP/Game Pass limits: WindowsApps is often ACL-locked; raw `.exe`
+   launch frequently fails — URI/AUMID is best-effort. Games-only
    filtering of Steam tools/redistributables, Start Menu entries, Epic
    manifests, GOG info files, Ubisoft installs, EA installs, Battle.net
    installs, or Xbox installs is left open with library scope (Epic skips
@@ -411,9 +414,7 @@ Steam** / **Rescan Start Menu** / **Rescan ROM folder** (same import paths
 as Settings and harness bare **S** / **P** / **R** — keys `menu-scan-steam`
 / `menu-scan-start-menu` / `menu-scan-roms`), Details / Add to Home when a
 tile is focused, Settings, Exit. Home-only Reorder / New Collection stay
-null on Library. Storefront rescans (Epic / GOG / Ubisoft / EA / Battle.net
-/ Xbox) stay Settings-only this milestone so the menu stays short; bare
-**E** / **G** / **U** / **O** / **N** / **W** are unchanged.
+null on Library. Storefront rescans were Settings-only in M19; see M20.
 
 **Ally open:** idle-hide drops Shortcuts focus, so OpenMenuIntent alone never
 sees harness `=` / `+`. Harness opens via WH_KEYBOARD_LL bare **VK_OEM_PLUS**
@@ -428,6 +429,26 @@ true`), or UIA Invoke on `(+) Menu` / `menu-open-hit` (`Semantics.onTap`).
 3. Spot-check title-pill dots on Home, dock idle, focus ring, Enter/Delete,
    F11, and bare **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** /
    **`o`** / **`n`** / **`w`** / **`h`** / **`a`**.
+
+### Ally M20 Library + storefront rescans
+
+Library `+` adds storefront Rescan rows (same import paths as Settings and
+harness bare **E** / **G** / **U** / **O** / **N** / **W**): **Rescan Epic
+Games** (`menu-scan-epic`), **Rescan GOG** (`menu-scan-gog`), **Rescan
+Ubisoft Connect** (`menu-scan-ubisoft`), **Rescan EA App** (`menu-scan-ea`),
+**Rescan Battle.net** (`menu-scan-battlenet`), **Rescan Xbox / Microsoft
+Store** (`menu-scan-xbox`). Steam / Start Menu / ROM rows from M19 stay.
+Home Customize Home stays unchanged — no storefront or Steam/Start/ROM
+scan rows. Bare harness keys and Settings buttons are unchanged.
+
+1. Home: open menu (VK_OEM_PLUS or `menu-open-hit`) → Customize Home; no
+   Rescan storefront / Steam / Start / ROM rows.
+2. Library: open menu → Rescan Steam / Start / ROM **and** Epic / GOG /
+   Ubisoft / EA / Battle.net / Xbox present; invoke `menu-scan-epic` (or
+   one storefront) → import / message; close menu.
+3. Spot-check title-pill / dock / focus, Enter / Delete, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
 
 Keyboard:
 
