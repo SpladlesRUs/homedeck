@@ -129,15 +129,21 @@ class HintBadge extends StatelessWidget {
 }
 
 class ProfileCluster extends StatelessWidget {
-  const ProfileCluster({super.key, required this.metrics, this.extra = 2});
+  const ProfileCluster({
+    super.key,
+    required this.metrics,
+    this.extra = 2,
+    this.onFriends,
+  });
 
   final HomeDeckMetrics metrics;
   final int extra;
+  final VoidCallback? onFriends;
 
   @override
   Widget build(BuildContext context) {
     final size = 34 * metrics.scale;
-    return Row(
+    final cluster = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
@@ -179,8 +185,24 @@ class ProfileCluster extends StatelessWidget {
           ),
         ),
         SizedBox(width: 8 * metrics.scale),
+        // LT badge stays display-only (iiSU chrome hint); open via cluster hit / F.
         const HintBadge(label: 'LT'),
       ],
+    );
+    if (onFriends == null) {
+      return cluster;
+    }
+    return Semantics(
+      key: const Key('friends-open-hit'),
+      button: true,
+      label: 'Open friends',
+      // Ally UIA Invoke needs Semantics.onTap;
+      // GestureDetector alone is Name-only.
+      onTap: onFriends,
+      child: GestureDetector(
+        onTap: onFriends,
+        child: cluster,
+      ),
     );
   }
 }
@@ -231,6 +253,7 @@ class HomeTopBar extends StatelessWidget {
     this.page,
     this.onSelectPage,
     this.onNotifications,
+    this.onFriends,
   });
 
   final HomeDeckMetrics metrics;
@@ -244,6 +267,7 @@ class HomeTopBar extends StatelessWidget {
   final int? page;
   final ValueChanged<int>? onSelectPage;
   final VoidCallback? onNotifications;
+  final VoidCallback? onFriends;
 
   @override
   Widget build(BuildContext context) {
@@ -260,7 +284,10 @@ class HomeTopBar extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: ProfileCluster(metrics: metrics),
+              child: ProfileCluster(
+                metrics: metrics,
+                onFriends: onFriends,
+              ),
             ),
             Align(
               alignment: Alignment.topCenter,

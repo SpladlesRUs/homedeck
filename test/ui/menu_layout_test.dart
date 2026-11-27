@@ -926,6 +926,87 @@ void main() {
     expect(find.byKey(const Key('notifications-panel')), findsNothing);
   });
 
+  testWidgets(
+    'friends-open-hit Semantics opens Friends (Ally UIA path)',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final harness = await createHarnessForWidgets(tester);
+      await pumpHomeDeck(tester, harness);
+
+      expect(find.byKey(const Key('friends-open-hit')), findsOneWidget);
+      expect(find.byKey(const Key('friends-panel')), findsNothing);
+
+      final semantics = tester.ensureSemantics();
+      try {
+        tester.semantics.tap(find.semantics.byLabel('Open friends'));
+        await tester.pump();
+        expect(find.byKey(const Key('friends-panel')), findsOneWidget);
+        expect(find.text('Friends'), findsWidgets);
+        expect(find.text('No friends online'), findsOneWidget);
+        expect(find.text('0 pinned'), findsOneWidget);
+        expect(find.byKey(const Key('friends-close')), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+
+      harness.gamepad.emit(GamepadButton.b);
+      await tester.pump();
+      expect(find.byKey(const Key('friends-panel')), findsNothing);
+    },
+  );
+
+  testWidgets('native openFriends callback opens Friends', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    // Simulate runner MethodChannel `openFriends` (WH_KEYBOARD_LL path).
+    final open = WindowsNativeBridge.onOpenFriends;
+    if (open == null) {
+      final semantics = tester.ensureSemantics();
+      try {
+        tester.semantics.tap(find.semantics.byLabel('Open friends'));
+        await tester.pump();
+        expect(find.byKey(const Key('friends-panel')), findsOneWidget);
+        expect(find.text('No friends online'), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+      return;
+    }
+    await open();
+    await tester.pump();
+    expect(find.byKey(const Key('friends-panel')), findsOneWidget);
+    expect(find.text('No friends online'), findsOneWidget);
+  });
+
+  testWidgets('OpenFriendsIntent (F) opens Friends', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(find.byKey(const Key('friends-panel')), findsOneWidget);
+    expect(find.text('No friends online'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('friends-panel')), findsNothing);
+  });
+
   testWidgets('title pill follows the focused folder and game', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
