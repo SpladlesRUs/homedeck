@@ -27,6 +27,7 @@ import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/achievements_view.dart';
 import 'package:homedeck/ui/friends_panel.dart';
+import 'package:homedeck/ui/games_view.dart';
 import 'package:homedeck/ui/notifications_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
@@ -2819,7 +2820,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _tabBody(HomeDeckMetrics metrics, int page, int pages) {
     switch (_tab) {
       case HomeTab.games:
-        return PlaceholderTab(title: 'Games', metrics: metrics);
+        return GamesView(metrics: metrics);
       case HomeTab.achievements:
         return AchievementsView(metrics: metrics);
       case HomeTab.friends:

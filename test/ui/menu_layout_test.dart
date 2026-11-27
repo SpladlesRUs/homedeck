@@ -1007,6 +1007,28 @@ void main() {
     expect(find.byKey(const Key('friends-panel')), findsNothing);
   });
 
+  testWidgets('Games dock tab shows empty chrome (not Placeholder)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-games')));
+    await tester.pump();
+    expect(find.byKey(const Key('games-tab')), findsOneWidget);
+    expect(find.byKey(const Key('games-empty')), findsOneWidget);
+    expect(find.text('Games'), findsWidgets);
+    expect(find.text('No games yet'), findsOneWidget);
+    expect(find.text('Pin games from Library'), findsOneWidget);
+    expect(find.text('Placeholder in milestone 1'), findsNothing);
+    expect(find.byKey(const Key('dock-games')), findsOneWidget);
+  });
+
   testWidgets('Achievements dock tab shows empty chrome (not Placeholder)', (
     tester,
   ) async {
