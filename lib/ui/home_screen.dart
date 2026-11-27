@@ -27,6 +27,7 @@ import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
 import 'package:homedeck/ui/achievements_view.dart';
 import 'package:homedeck/ui/friends_panel.dart';
+import 'package:homedeck/ui/friends_view.dart';
 import 'package:homedeck/ui/games_view.dart';
 import 'package:homedeck/ui/notifications_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
@@ -2824,7 +2825,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case HomeTab.achievements:
         return AchievementsView(metrics: metrics);
       case HomeTab.friends:
-        return PlaceholderTab(title: 'Friends', metrics: metrics);
+        return FriendsView(metrics: metrics);
       case HomeTab.allApps:
         return LibraryView(
           controller: _library,

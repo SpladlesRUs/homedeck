@@ -2,6 +2,9 @@ import 'package:homedeck/ui/branding.dart';
 import 'package:homedeck/ui/intents.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Empty-state copy shared by [FriendsPanel] and the Friends dock tab.
+const String kFriendsEmptyCopy = 'No friends online';
+
 /// LT-style Friends slide-over (iiSU chrome parity). Empty / stub list is OK;
 /// no Discord, OAuth, or real presence APIs — chrome only.
 class FriendsPanel extends StatelessWidget {
@@ -101,7 +104,7 @@ class FriendsPanel extends StatelessWidget {
                         Expanded(
                           child: Center(
                             child: Text(
-                              'No friends online',
+                              kFriendsEmptyCopy,
                               style: TextStyle(
                                 color: HomeDeckColors.muted,
                                 fontWeight: FontWeight.w600,
