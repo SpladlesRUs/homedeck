@@ -81,6 +81,11 @@ class OpenFriendsIntent extends Intent {
   const OpenFriendsIntent();
 }
 
+/// Open the Recents / app-drawer panel (Ally bare `D`).
+class OpenRecentsIntent extends Intent {
+  const OpenRecentsIntent();
+}
+
 /// Select the dock Achievements tab (Ally bare `C` / cup jump).
 class GotoAchievementsIntent extends Intent {
   const GotoAchievementsIntent();

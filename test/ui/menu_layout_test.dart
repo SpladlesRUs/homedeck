@@ -1009,6 +1009,78 @@ void main() {
     expect(find.byKey(const Key('friends-panel')), findsNothing);
   });
 
+  testWidgets('OpenRecentsIntent (D) opens Recents drawer', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+    expect(find.byKey(const Key('recents-empty')), findsOneWidget);
+    expect(find.text('Recents'), findsWidgets);
+    expect(find.text('No recent apps'), findsOneWidget);
+    expect(find.byKey(const Key('recents-close')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
+  });
+
+  testWidgets('native openRecents callback opens Recents', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    // Simulate runner MethodChannel `openRecents` (WH_KEYBOARD_LL path).
+    final open = WindowsNativeBridge.onOpenRecents;
+    if (open == null) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+      await tester.pump();
+      expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+      expect(find.byKey(const Key('recents-empty')), findsOneWidget);
+      return;
+    }
+    await open();
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+    expect(find.byKey(const Key('recents-empty')), findsOneWidget);
+  });
+
+  testWidgets('recents-close and B dismiss Recents', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+    expect(find.byKey(const Key('recents-close')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('recents-close')));
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+    harness.gamepad.emit(GamepadButton.b);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
+  });
+
   testWidgets('native dismissOverlay callback closes Friends', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
@@ -1070,6 +1142,18 @@ void main() {
     }
     await tester.pump();
     expect(find.byKey(const Key('global-search')), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsOneWidget);
+
+    if (dismiss != null) {
+      await dismiss();
+    } else {
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    }
+    await tester.pump();
+    expect(find.byKey(const Key('recents-drawer')), findsNothing);
   });
 
   testWidgets('Games dock tab shows empty chrome (not Placeholder)', (

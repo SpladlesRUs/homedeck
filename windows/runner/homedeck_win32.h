@@ -152,11 +152,20 @@
 #define WM_HOMEDECK_GOTO_ACHIEVEMENTS (WM_APP + 0x43)  // 'C'
 #endif
 
+// Posted by the WH_KEYBOARD_LL hook when Ally SendKeys `d` (or a real D key)
+// should open the Recents / app-drawer panel. Uses 0x44 ('D'); free of
+// A/S/P/R/E/G/U/O/N/W/H/Y/T/F/C, REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU,
+// OPEN_DETAILS, OPEN_SEARCH, OPEN_NOTIFICATIONS, OPEN_FRIENDS,
+// GOTO_ACHIEVEMENTS, and DISMISS.
+#ifndef WM_HOMEDECK_OPEN_RECENTS
+#define WM_HOMEDECK_OPEN_RECENTS (WM_APP + 0x44)  // 'D'
+#endif
+
 // Posted by the WH_KEYBOARD_LL hook when Ally SendKeys Escape (or a real Esc
 // key) should dismiss the open overlay. Uses 0x1B (VK_ESCAPE); free of
-// A/S/P/R/E/G/U/O/N/W/H/Y/T/F/C, REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU,
-// OPEN_DETAILS, OPEN_SEARCH, OPEN_NOTIFICATIONS, OPEN_FRIENDS, and
-// GOTO_ACHIEVEMENTS.
+// A/S/P/R/E/G/U/O/N/W/H/Y/T/F/C/D, REMOVE, CONFIRM, GAME_EXIT, OPEN_MENU,
+// OPEN_DETAILS, OPEN_SEARCH, OPEN_NOTIFICATIONS, OPEN_FRIENDS,
+// GOTO_ACHIEVEMENTS, and OPEN_RECENTS.
 #ifndef WM_HOMEDECK_DISMISS
 #define WM_HOMEDECK_DISMISS (WM_APP + 0x1B)  // VK_ESCAPE
 #endif
@@ -170,8 +179,9 @@
 // focused Library tile to Home, bare Delete/Backspace → unpin /
 // Library remove, bare VK_OEM_PLUS / VK_ADD → open TileMenu, bare
 // VK_OEM_MINUS → open Details menu, bare Y → open Global Search,
-// bare T → open Notifications, bare F → open Friends, bare C →
-// select Achievements, and bare Esc → dismiss overlay.
+// bare T → open Notifications, bare F → open Friends, bare D →
+// open Recents, bare C → select Achievements, and bare Esc →
+// dismiss overlay.
 //
 // Ally SendKeys land on the Flutter view child — Flutter Shortcuts often never
 // see `a`, so pickOpenFile never ran and the harness logged "Open dialog not
@@ -202,15 +212,18 @@
 // idle-hide drops Shortcuts focus so Ally SendKeys `t` never opened
 // Notifications). Bare `f` posts WM_HOMEDECK_OPEN_FRIENDS → Dart
 // `openFriends` (same as OpenFriendsIntent / `_openFriends`; idle-hide drops
-// Shortcuts focus so Ally SendKeys `f` never opened Friends). Bare `c` posts
-// WM_HOMEDECK_GOTO_ACHIEVEMENTS → Dart `gotoAchievements` (same as
-// GotoAchievementsIntent / `_gotoAchievements`; idle-hide drops Shortcuts
-// focus so Ally SendKeys `c` never selected Achievements). Bare Esc posts
-// WM_HOMEDECK_DISMISS → Dart `dismissOverlay` (same as DismissOverlayIntent /
-// `_dismiss`; idle-hide drops Shortcuts focus so Ally SendKeys Escape never
-// closed Friends / Notifications / Search / Menu / Details). The same hook
-// handles F11 chrome and Enter→mirrored path (with a Dart launchFocused
-// fallback when the mirror is empty).
+// Shortcuts focus so Ally SendKeys `f` never opened Friends). Bare `d` posts
+// WM_HOMEDECK_OPEN_RECENTS → Dart `openRecents` (same as OpenRecentsIntent /
+// `_openRecents`; idle-hide drops Shortcuts focus so Ally SendKeys `d` never
+// opened Recents). Bare `c` posts WM_HOMEDECK_GOTO_ACHIEVEMENTS → Dart
+// `gotoAchievements` (same as GotoAchievementsIntent / `_gotoAchievements`;
+// idle-hide drops Shortcuts focus so Ally SendKeys `c` never selected
+// Achievements). Bare Esc posts WM_HOMEDECK_DISMISS → Dart `dismissOverlay`
+// (same as DismissOverlayIntent / `_dismiss`; idle-hide drops Shortcuts focus
+// so Ally SendKeys Escape never closed Friends / Notifications / Recents /
+// Search / Menu / Details). The same hook handles F11 chrome and
+// Enter→mirrored path (with a Dart launchFocused fallback when the mirror is
+// empty).
 class HomedeckWin32 {
  public:
   HomedeckWin32() = default;
@@ -339,6 +352,10 @@ class HomedeckWin32 {
   // (same as OpenFriendsIntent / `_openFriends`).
   void HandleOpenFriendsKey();
 
+  // UI-thread handler for WM_HOMEDECK_OPEN_RECENTS: ask Dart to open Recents
+  // (same as OpenRecentsIntent / `_openRecents`).
+  void HandleOpenRecentsKey();
+
   // UI-thread handler for WM_HOMEDECK_GOTO_ACHIEVEMENTS: ask Dart to select
   // the Achievements dock tab (same as GotoAchievementsIntent /
   // `_gotoAchievements`).
@@ -372,6 +389,8 @@ class HomedeckWin32 {
   void BringHomeDeckToForeground();
   // MSVC is case-sensitive: definition + hook calls must match this name.
   static bool ModifierHeld();
+  // File-scope lowercase alias in .cpp — workers keep typing modifierHeld.
+  friend bool modifierHeld();
 
   static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM w_param,
                                                LPARAM l_param);

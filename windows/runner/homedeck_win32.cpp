@@ -781,6 +781,9 @@ bool HomedeckWin32::ModifierHeld() {
          (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
 }
 
+// MSVC is case-sensitive; workers keep typing modifierHeld. Keep both.
+bool modifierHeld() { return HomedeckWin32::ModifierHeld(); }
+
 LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
                                                      WPARAM w_param,
                                                      LPARAM l_param) {
@@ -1019,12 +1022,27 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M29: OpenRecentsIntent is Shortcuts-only; idle-hide drops focus
+      // so SendKeys `d` never open Recents. Bare 'D' (0x44) → openRecents
+      // (same as OpenRecentsIntent / `_openRecents`). Consume so Shortcuts
+      // cannot double-open when focus is still alive. Free of
+      // F/T/Y/C/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete/Esc.
+      // Do not bind B to open the drawer.
+      if (info->vkCode == 'D' && !ModifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_RECENTS, 0, 0);
+          return 1;
+        }
+      }
       // Ally M25: GotoAchievementsIntent is Shortcuts-only; idle-hide drops
       // focus so SendKeys `c` never select Achievements. Bare 'C' (0x43) →
       // gotoAchievements (same as GotoAchievementsIntent /
       // `_gotoAchievements`). Consume so Shortcuts cannot double-fire when
       // focus is still alive. Free of
-      // F/T/Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
+      // F/T/Y/D/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
       if (info->vkCode == 'C' && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
@@ -1036,10 +1054,10 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
       }
       // Ally M28: DismissOverlayIntent is Shortcuts-only; idle-hide drops
       // focus so SendKeys Escape never closes Friends / Notifications /
-      // Search / Menu / Details. Bare VK_ESCAPE (0x1B) → dismissOverlay
-      // (same as DismissOverlayIntent / `_dismiss`). Always post and
-      // consume; Dart no-ops when nothing is open. Free of
-      // F/T/Y/C/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
+      // Recents / Search / Menu / Details. Bare VK_ESCAPE (0x1B) →
+      // dismissOverlay (same as DismissOverlayIntent / `_dismiss`). Always
+      // post and consume; Dart no-ops when nothing is open. Free of
+      // F/T/Y/C/D/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
       if (info->vkCode == VK_ESCAPE && !ModifierHeld()) {
         HWND hwnd = instance_->window_ != nullptr
                         ? instance_->window_->GetHandle()
@@ -1378,6 +1396,18 @@ void HomedeckWin32::HandleOpenFriendsKey() {
   OutputDebugStringW(
       L"homedeck: HandleOpenFriendsKey → Dart openFriends\n");
   channel_->InvokeMethod("openFriends", nullptr);
+}
+
+void HomedeckWin32::HandleOpenRecentsKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleOpenRecentsKey → Dart openRecents\n");
+  channel_->InvokeMethod("openRecents", nullptr);
 }
 
 void HomedeckWin32::HandleGotoAchievementsKey() {
