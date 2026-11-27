@@ -841,6 +841,91 @@ void main() {
     expect(find.byKey(const Key('search-field')), findsOneWidget);
   });
 
+  testWidgets(
+    'notifications-open-hit Semantics opens Notifications (Ally UIA path)',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final harness = await createHarnessForWidgets(tester);
+      await pumpHomeDeck(tester, harness);
+
+      expect(find.byKey(const Key('notifications-open-hit')), findsOneWidget);
+      expect(find.byKey(const Key('notifications-panel')), findsNothing);
+
+      final semantics = tester.ensureSemantics();
+      try {
+        tester.semantics.tap(find.semantics.byLabel('Open notifications'));
+        await tester.pump();
+        expect(find.byKey(const Key('notifications-panel')), findsOneWidget);
+        expect(find.text('Notifications'), findsWidgets);
+        expect(find.text('No notifications'), findsOneWidget);
+        expect(find.byKey(const Key('notifications-clear')), findsOneWidget);
+        expect(find.byKey(const Key('notifications-close')), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+
+      harness.gamepad.emit(GamepadButton.b);
+      await tester.pump();
+      expect(find.byKey(const Key('notifications-panel')), findsNothing);
+    },
+  );
+
+  testWidgets('native openNotifications callback opens Notifications', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    // Simulate runner MethodChannel `openNotifications` (WH_KEYBOARD_LL path).
+    final open = WindowsNativeBridge.onOpenNotifications;
+    if (open == null) {
+      final semantics = tester.ensureSemantics();
+      try {
+        tester.semantics.tap(find.semantics.byLabel('Open notifications'));
+        await tester.pump();
+        expect(find.byKey(const Key('notifications-panel')), findsOneWidget);
+        expect(find.text('No notifications'), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+      return;
+    }
+    await open();
+    await tester.pump();
+    expect(find.byKey(const Key('notifications-panel')), findsOneWidget);
+    expect(find.text('No notifications'), findsOneWidget);
+  });
+
+  testWidgets('OpenNotificationsIntent (T) opens Notifications', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyT);
+    await tester.pump();
+    expect(find.byKey(const Key('notifications-panel')), findsOneWidget);
+    expect(find.text('No notifications'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('notifications-panel')), findsNothing);
+  });
+
   testWidgets('title pill follows the focused folder and game', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;

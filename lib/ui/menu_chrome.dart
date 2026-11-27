@@ -230,6 +230,7 @@ class HomeTopBar extends StatelessWidget {
     this.pageCount,
     this.page,
     this.onSelectPage,
+    this.onNotifications,
   });
 
   final HomeDeckMetrics metrics;
@@ -242,6 +243,7 @@ class HomeTopBar extends StatelessWidget {
   final int? pageCount;
   final int? page;
   final ValueChanged<int>? onSelectPage;
+  final VoidCallback? onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -277,6 +279,7 @@ class HomeTopBar extends StatelessWidget {
                 now: now,
                 batteryPercent: batteryPercent,
                 fullscreen: fullscreen,
+                onNotifications: onNotifications,
               ),
             ),
           ],
@@ -347,12 +350,14 @@ class StatusCluster extends StatelessWidget {
     required this.now,
     this.batteryPercent,
     this.fullscreen = false,
+    this.onNotifications,
   });
 
   final HomeDeckMetrics metrics;
   final DateTime now;
   final int? batteryPercent;
   final bool fullscreen;
+  final VoidCallback? onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -360,6 +365,11 @@ class StatusCluster extends StatelessWidget {
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final date =
         '${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
+    final bell = Icon(
+      Icons.notifications_none_rounded,
+      color: Colors.white,
+      size: 18 * metrics.scale,
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -376,11 +386,21 @@ class StatusCluster extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.white,
-                size: 18 * metrics.scale,
-              ),
+              if (onNotifications != null)
+                Semantics(
+                  key: const Key('notifications-open-hit'),
+                  button: true,
+                  label: 'Open notifications',
+                  // Ally UIA Invoke needs Semantics.onTap;
+                  // GestureDetector alone is Name-only.
+                  onTap: onNotifications,
+                  child: GestureDetector(
+                    onTap: onNotifications,
+                    child: bell,
+                  ),
+                )
+              else
+                bell,
               SizedBox(width: 10 * metrics.scale),
               Text(
                 time,

@@ -990,6 +990,21 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M23: OpenNotificationsIntent is Shortcuts-only; idle-hide drops
+      // focus so SendKeys `t` never open Notifications. Bare 'T' (0x54) →
+      // openNotifications (same as OpenNotificationsIntent /
+      // `_openNotifications`). Consume so Shortcuts cannot double-open when
+      // focus is still alive. Free of Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/
+      // w/h/a/Delete.
+      if (info->vkCode == 'T' && !modifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_OPEN_NOTIFICATIONS, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1295,6 +1310,18 @@ void HomedeckWin32::HandleOpenSearchKey() {
   OutputDebugStringW(
       L"homedeck: HandleOpenSearchKey → Dart openSearch\n");
   channel_->InvokeMethod("openSearch", nullptr);
+}
+
+void HomedeckWin32::HandleOpenNotificationsKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleOpenNotificationsKey → Dart openNotifications\n");
+  channel_->InvokeMethod("openNotifications", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

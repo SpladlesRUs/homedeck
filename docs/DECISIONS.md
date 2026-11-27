@@ -498,6 +498,33 @@ with Shortcuts.
    Enter / Delete, F11, and bare **`s`** / **`p`** / **`r`** / **`e`** /
    **`g`** / **`u`** / **`o`** / **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M23 Notifications slide-over smoke
+
+RT-style **Notifications** panel (title Notifications, list or empty
+“No notifications”, **Clear notifications**, close with B / Esc). Clock /
+battery stay as today. No Friends panel, no Discord, no system-tray
+integration. Do not invent fake scrape jobs — empty is OK; optional
+in-app scan/status lines only when a real Library scan finishes.
+
+**Ally open:** idle-hide drops Shortcuts focus, so OpenNotificationsIntent
+alone never sees harness `t`. Harness opens via WH_KEYBOARD_LL bare **T**
+(`VK_T` / `0x54`) → `WM_HOMEDECK_OPEN_NOTIFICATIONS` → Dart
+`openNotifications` (same `_openNotifications` guards), or UIA Invoke on
+StatusCluster bell / `notifications-open-hit` (`Semantics.onTap`, label
+**Open notifications**). Consume the key in the LL hook to avoid
+double-open with Shortcuts. Do not steal Y / OEM_PLUS / OEM_MINUS /
+`s` / `p` / `r` / `e` / `g` / `u` / `o` / `n` / `w` / `h` / `a` / Delete.
+Panel keys: `notifications-panel`, `notifications-clear`,
+`notifications-close`.
+
+1. From Home: bare **T** or UIA Invoke bell / `notifications-open-hit` →
+   `notifications-panel` opens; Clear (if present) / B or Esc closes.
+2. From Library: same open still works.
+3. Spot-check Y search, Details OEM_MINUS, Menu OEM_PLUS, title-pill /
+   dock / focus, Enter / Delete, F11, and bare **`s`** / **`p`** /
+   **`r`** / **`e`** / **`g`** / **`u`** / **`o`** / **`n`** / **`w`** /
+   **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
