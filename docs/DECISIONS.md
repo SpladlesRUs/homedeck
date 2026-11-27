@@ -723,6 +723,26 @@ clear `_moveMode` if set. Do not touch `ModifierHeld` /
 2. Library menu: no Refresh Home row.
 3. Spot-check menu Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
 
+### Ally M33 Widgets menu row
+
+iiSU Customize Home lists **Widgets** first; HomeDeck Home `+` menu had
+Refresh / Reorder / Recents / Search but no Widgets. Library menu must not
+show this row. Empty panel chrome only — do not invent music/theme packs or
+scrape widgets.
+
+**Menu path (no new WH_KEYBOARD_LL keys):** `TileMenu` optional
+`onWidgets` → row label **Widgets**, key `menu-widgets`. Wire only when
+`_tab == HomeTab.home`: close menu, set `_widgetsOpen`. Panel keys:
+`widgets-panel`, `widgets-empty`, `widgets-close`. Empty copy
+**No widgets yet** uses M30 Semantics (`label` + `excludeSemantics` +
+`container: true`). Esc / B / Close dismiss via the M28 path. Do not touch
+`ModifierHeld` / `homedeck_win32.cpp`.
+
+1. Home: OEM_PLUS → **Widgets** / `menu-widgets` → `widgets-panel` /
+   empty UIA; Esc closes.
+2. Library menu: no Widgets row.
+3. Spot-check Refresh Home, Recents/D, F/T/Y/C/Esc/OEM_±/Enter/Delete/F11/s/p/r/e/g/u/o/n/w/h/a.
+
 
 Keyboard:
 

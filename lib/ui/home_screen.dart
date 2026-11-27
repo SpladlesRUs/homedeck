@@ -35,6 +35,7 @@ import 'package:homedeck/ui/now_playing_tile.dart';
 import 'package:homedeck/ui/search_sheet.dart';
 import 'package:homedeck/ui/settings_stub.dart';
 import 'package:homedeck/ui/tile_menu.dart';
+import 'package:homedeck/ui/widgets_panel.dart';
 import 'package:material_ui/material_ui.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _notificationsOpen = false;
   bool _friendsOpen = false;
   bool _recentsOpen = false;
+  bool _widgetsOpen = false;
   final List<String> _notificationLines = <String>[];
   bool _dockForced = false;
   bool _dockIdleHidden = false;
@@ -385,6 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -403,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -421,6 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -439,6 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -457,6 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -475,6 +482,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -493,6 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -511,6 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -529,6 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -547,6 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null) {
       return;
     }
@@ -645,6 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationsOpen ||
         _friendsOpen ||
         _recentsOpen ||
+        _widgetsOpen ||
         _failure != null ||
         _pendingRemoveId != null) {
       // Native already armed Delete; disarm so Enter can launch again.
@@ -1096,7 +1109,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchOpen ||
       _notificationsOpen ||
       _friendsOpen ||
-        _recentsOpen ||
+      _recentsOpen ||
+      _widgetsOpen ||
       _pendingRemoveId != null;
 
   bool get _insideFolder => _tab == HomeTab.allApps && _folderTitle != null;
@@ -1752,6 +1766,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_recentsOpen) {
       return;
     }
+    if (_widgetsOpen) {
+      return;
+    }
     if (_menuOpen) {
       setState(() => _menuOpen = false);
       return;
@@ -1840,6 +1857,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _recentsOpen = false);
       return;
     }
+    if (_widgetsOpen) {
+      _click(UiClick.back);
+      setState(() => _widgetsOpen = false);
+      return;
+    }
     if (_menuOpen) {
       _click(UiClick.back);
       setState(() => _menuOpen = false);
@@ -1902,6 +1924,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (_recentsOpen) {
       return 'Recents';
+    }
+    if (_widgetsOpen) {
+      return 'Widgets';
     }
     if (_notificationsOpen) {
       return 'Notifications';
@@ -2553,6 +2578,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           _recentsOpen = true;
                         });
                       },
+                      onWidgets: _tab != HomeTab.home
+                          ? null
+                          : () {
+                              setState(() {
+                                _menuOpen = false;
+                                _widgetsOpen = true;
+                              });
+                            },
                       // Library + menu: Steam / Start Menu / ROM + storefront
                       // rescans (same import paths as Settings / harness).
                       onScanSteam: _tab != HomeTab.allApps
@@ -2749,6 +2782,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     RecentsPanel(
                       scale: metrics.scale,
                       onClose: () => setState(() => _recentsOpen = false),
+                    ),
+                  if (_widgetsOpen)
+                    WidgetsPanel(
+                      scale: metrics.scale,
+                      onClose: () => setState(() => _widgetsOpen = false),
                     ),
                   if (_settingsOpen)
                     SettingsStub(

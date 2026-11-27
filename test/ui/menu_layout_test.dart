@@ -336,6 +336,8 @@ void main() {
     expect(find.byKey(const Key('menu-reorder')), findsOneWidget);
     expect(find.byKey(const Key('menu-refresh-home')), findsOneWidget);
     expect(find.text('Refresh Home'), findsOneWidget);
+    expect(find.byKey(const Key('menu-widgets')), findsOneWidget);
+    expect(find.text('Widgets'), findsOneWidget);
     expect(find.byKey(const Key('menu-new-page')), findsOneWidget);
     expect(find.byKey(const Key('menu-scan-steam')), findsNothing);
     expect(find.byKey(const Key('menu-scan-start-menu')), findsNothing);
@@ -358,6 +360,7 @@ void main() {
     expect(find.text('Customize Home'), findsNothing);
     expect(find.byKey(const Key('menu-reorder')), findsNothing);
     expect(find.byKey(const Key('menu-refresh-home')), findsNothing);
+    expect(find.byKey(const Key('menu-widgets')), findsNothing);
     expect(find.byKey(const Key('menu-new-page')), findsNothing);
     expect(find.byKey(const Key('menu-scan-steam')), findsOneWidget);
     expect(find.byKey(const Key('menu-scan-start-menu')), findsOneWidget);
@@ -477,6 +480,61 @@ void main() {
     expect(find.byKey(const Key('tile-menu')), findsOneWidget);
     expect(find.byKey(const Key('menu-refresh-home')), findsNothing);
     expect(find.text('Refresh Home'), findsNothing);
+  });
+
+  testWidgets('Home + menu Widgets row opens widgets panel', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.byKey(const Key('menu-widgets')), findsOneWidget);
+    expect(find.text('Widgets'), findsOneWidget);
+
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.tap(find.byKey(const Key('menu-widgets')));
+      await tester.pump();
+      expect(find.byKey(const Key('tile-menu')), findsNothing);
+      expect(find.byKey(const Key('widgets-panel')), findsOneWidget);
+      expect(find.byKey(const Key('widgets-empty')), findsOneWidget);
+      expect(find.text('No widgets yet'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byKey(const Key('widgets-empty'))),
+        matchesSemantics(label: 'No widgets yet'),
+      );
+      expect(find.byKey(const Key('widgets-close')), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.byKey(const Key('widgets-panel')), findsNothing);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('Library + menu has no Widgets row', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-allApps')));
+    await tester.pump();
+    harness.gamepad.emit(GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('tile-menu')), findsOneWidget);
+    expect(find.byKey(const Key('menu-widgets')), findsNothing);
+    expect(find.text('Widgets'), findsNothing);
   });
 
   testWidgets('Home + menu Recents row opens recents drawer', (tester) async {

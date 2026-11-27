@@ -17,6 +17,7 @@ class TileMenu extends StatelessWidget {
     this.pinned = false,
     this.onSearch,
     this.onRecents,
+    this.onWidgets,
     this.onScanSteam,
     this.onScanStartMenu,
     this.onScanRoms,
@@ -48,6 +49,8 @@ class TileMenu extends StatelessWidget {
   final VoidCallback? onSearch;
   /// Same path as bare **D** / `_openRecents` (closes menu first).
   final VoidCallback? onRecents;
+  /// Home-only: close menu and open the empty Widgets panel.
+  final VoidCallback? onWidgets;
   /// Library-only: same import path as Settings / harness **S**.
   final VoidCallback? onScanSteam;
   /// Library-only: same import path as Settings / harness **P**.
@@ -127,6 +130,12 @@ class TileMenu extends StatelessWidget {
                             label: 'Add game',
                             onTap: onAddGame,
                           ),
+                          if (onWidgets != null)
+                            _row(
+                              key: const Key('menu-widgets'),
+                              label: 'Widgets',
+                              onTap: onWidgets!,
+                            ),
                           if (onSearch != null)
                             _row(
                               key: const Key('menu-search'),
