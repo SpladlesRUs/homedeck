@@ -25,6 +25,7 @@ import 'package:homedeck/ui/intents.dart';
 import 'package:homedeck/ui/launch_error_view.dart';
 import 'package:homedeck/ui/library_view.dart';
 import 'package:homedeck/ui/menu_chrome.dart';
+import 'package:homedeck/ui/achievements_view.dart';
 import 'package:homedeck/ui/friends_panel.dart';
 import 'package:homedeck/ui/notifications_panel.dart';
 import 'package:homedeck/ui/now_playing_tile.dart';
@@ -148,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       WindowsNativeBridge.onOpenSearch = _openSearchFromNative;
       WindowsNativeBridge.onOpenNotifications = _openNotificationsFromNative;
       WindowsNativeBridge.onOpenFriends = _openFriendsFromNative;
+      WindowsNativeBridge.onGotoAchievements = _gotoAchievementsFromNative;
       WindowsNativeBridge.onConfirmFocused = _confirmFocusedFromNative;
       WindowsNativeBridge.onGameExited = _gameExitedFromNative;
       // Ally Enter ShellExecutes natively — mirror Settings prefs so the
@@ -274,6 +276,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _openFriendsFromNative,
       )) {
         WindowsNativeBridge.onOpenFriends = null;
+      }
+      if (identical(
+        WindowsNativeBridge.onGotoAchievements,
+        _gotoAchievementsFromNative,
+      )) {
+        WindowsNativeBridge.onGotoAchievements = null;
       }
       if (identical(
         WindowsNativeBridge.onConfirmFocused,
@@ -565,6 +573,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     _openFriends();
+  }
+
+  /// Runner WH_KEYBOARD_LL bare `C` / WM_HOMEDECK_GOTO_ACHIEVEMENTS — same as
+  /// GotoAchievementsIntent / `_gotoAchievements`. Ally idle-hide drops
+  /// Shortcuts focus so SendKeys `c` never selected Achievements without this.
+  Future<void> _gotoAchievementsFromNative() async {
+    if (!mounted) {
+      return;
+    }
+    _gotoAchievements();
   }
 
   /// Runner WH_KEYBOARD_LL bare Delete/Backspace / WM_HOMEDECK_REMOVE — same
@@ -1168,6 +1186,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // keyF opens Friends (Ally bare F / ProfileCluster). ToggleFavoriteIntent
     // stays Actions-only — no Shortcuts activator (F was previously favorite).
     const SingleActivator(LogicalKeyboardKey.keyF): const OpenFriendsIntent(),
+    // keyC jumps to Achievements dock tab (Ally bare C / cup).
+    const SingleActivator(LogicalKeyboardKey.keyC):
+        const GotoAchievementsIntent(),
     const SingleActivator(LogicalKeyboardKey.bracketLeft):
         const PrevTabIntent(),
     const SingleActivator(LogicalKeyboardKey.bracketRight):
@@ -1355,6 +1376,12 @@ class _HomeScreenState extends State<HomeScreen> {
       OpenFriendsIntent: CallbackAction<OpenFriendsIntent>(
         onInvoke: (_) {
           _openFriends();
+          return null;
+        },
+      ),
+      GotoAchievementsIntent: CallbackAction<GotoAchievementsIntent>(
+        onInvoke: (_) {
+          _gotoAchievements();
           return null;
         },
       ),
@@ -1546,6 +1573,25 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _friendsOpen = true);
+  }
+
+  /// Select the Achievements dock tab (GotoAchievementsIntent / Ally bare `C`).
+  void _gotoAchievements() {
+    if (_overlayOpen) {
+      return;
+    }
+    _dockShowEpoch++;
+    _cancelDockIdleTimer();
+    _click(UiClick.page);
+    setState(() {
+      _tab = HomeTab.achievements;
+      _folderTitle = null;
+      _chipsFocused = false;
+      _dockForced = true;
+      _dockIdleHidden = false;
+    });
+    _scheduleDockIdleHide();
+    _focusFirstForTab();
   }
 
   void _rememberNotification(String? line) {
@@ -2775,7 +2821,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case HomeTab.games:
         return PlaceholderTab(title: 'Games', metrics: metrics);
       case HomeTab.achievements:
-        return PlaceholderTab(title: 'Achievements', metrics: metrics);
+        return AchievementsView(metrics: metrics);
       case HomeTab.friends:
         return PlaceholderTab(title: 'Friends', metrics: metrics);
       case HomeTab.allApps:

@@ -1007,6 +1007,72 @@ void main() {
     expect(find.byKey(const Key('friends-panel')), findsNothing);
   });
 
+  testWidgets('Achievements dock tab shows empty chrome (not Placeholder)', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.tap(find.byKey(const Key('tab-achievements')));
+    await tester.pump();
+    expect(find.byKey(const Key('achievements-tab')), findsOneWidget);
+    expect(find.byKey(const Key('achievements-empty')), findsOneWidget);
+    expect(find.text('Achievements'), findsWidgets);
+    expect(find.text('No achievements yet'), findsOneWidget);
+    expect(find.text('Placeholder in milestone 1'), findsNothing);
+    expect(find.byKey(const Key('dock-achievements')), findsOneWidget);
+  });
+
+  testWidgets('GotoAchievementsIntent (C) selects Achievements tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.pump();
+    expect(find.byKey(const Key('achievements-tab')), findsOneWidget);
+    expect(find.byKey(const Key('achievements-empty')), findsOneWidget);
+    expect(find.text('No achievements yet'), findsOneWidget);
+    expect(find.byKey(const Key('dock-achievements')), findsOneWidget);
+  });
+
+  testWidgets('native gotoAchievements callback selects Achievements', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final harness = await createHarnessForWidgets(tester);
+    await pumpHomeDeck(tester, harness);
+
+    final goto = WindowsNativeBridge.onGotoAchievements;
+    if (goto == null) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.pump();
+      expect(find.byKey(const Key('achievements-tab')), findsOneWidget);
+      expect(find.text('No achievements yet'), findsOneWidget);
+      return;
+    }
+    await goto();
+    await tester.pump();
+    expect(find.byKey(const Key('achievements-tab')), findsOneWidget);
+    expect(find.byKey(const Key('achievements-empty')), findsOneWidget);
+    expect(find.text('No achievements yet'), findsOneWidget);
+  });
+
   testWidgets('title pill follows the focused folder and game', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;

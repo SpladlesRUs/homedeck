@@ -1019,6 +1019,21 @@ LRESULT CALLBACK HomedeckWin32::LowLevelKeyboardProc(int n_code,
           return 1;
         }
       }
+      // Ally M25: GotoAchievementsIntent is Shortcuts-only; idle-hide drops
+      // focus so SendKeys `c` never select Achievements. Bare 'C' (0x43) →
+      // gotoAchievements (same as GotoAchievementsIntent /
+      // `_gotoAchievements`). Consume so Shortcuts cannot double-fire when
+      // focus is still alive. Free of
+      // F/T/Y/OEM_PLUS/OEM_MINUS/s/p/r/e/g/u/o/n/w/h/a/Delete.
+      if (info->vkCode == 'C' && !modifierHeld()) {
+        HWND hwnd = instance_->window_ != nullptr
+                        ? instance_->window_->GetHandle()
+                        : nullptr;
+        if (hwnd != nullptr) {
+          PostMessageW(hwnd, WM_HOMEDECK_GOTO_ACHIEVEMENTS, 0, 0);
+          return 1;
+        }
+      }
     }
   }
   return CallNextHookEx(nullptr, n_code, w_param, l_param);
@@ -1348,6 +1363,18 @@ void HomedeckWin32::HandleOpenFriendsKey() {
   OutputDebugStringW(
       L"homedeck: HandleOpenFriendsKey → Dart openFriends\n");
   channel_->InvokeMethod("openFriends", nullptr);
+}
+
+void HomedeckWin32::HandleGotoAchievementsKey() {
+  if (picking_file_) {
+    return;
+  }
+  if (channel_ == nullptr) {
+    return;
+  }
+  OutputDebugStringW(
+      L"homedeck: HandleGotoAchievementsKey → Dart gotoAchievements\n");
+  channel_->InvokeMethod("gotoAchievements", nullptr);
 }
 
 void HomedeckWin32::HandleConfirmKey() {

@@ -552,6 +552,30 @@ T / Y / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` / `u` / `o` /
    **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
    **`n`** / **`w`** / **`h`** / **`a`**.
 
+### Ally M25 Achievements dock tab smoke
+
+Dock **Achievements** tab is real empty chrome (title Achievements, copy
+“No achievements yet”) — not Placeholder. No RetroAchievements login,
+scrape, or per-game cards this milestone. Games and Friends dock tabs stay
+placeholders. Keys: `achievements-tab`, `achievements-empty`.
+
+**Ally jump (shipped):** idle-hide drops Shortcuts focus, so
+GotoAchievementsIntent alone never sees harness `c`. Harness jumps via
+WH_KEYBOARD_LL bare **C** (`'C'` / `0x43`) → `WM_HOMEDECK_GOTO_ACHIEVEMENTS`
+→ Dart `gotoAchievements` (same `_gotoAchievements` guards as dock select).
+Consume the key in the LL hook to avoid double-fire with Shortcuts. Do not
+steal F / T / Y / OEM_PLUS / OEM_MINUS / `s` / `p` / `r` / `e` / `g` /
+`u` / `o` / `n` / `w` / `h` / `a` / Delete. LB/RB and PageDown/PageUp still
+reach the tab as today.
+
+1. From Home: LB/RB or PageDown/PageUp to Achievements → `achievements-tab`
+   / empty state visible (not Placeholder). Bare **C** jumps there.
+2. LB/RB away and back still works; dock idle hide still OK.
+3. Spot-check F friends, T notifications, Y search, Details OEM_MINUS, Menu
+   OEM_PLUS, title-pill / dock / focus, Enter / Delete, F11, and bare
+   **`s`** / **`p`** / **`r`** / **`e`** / **`g`** / **`u`** / **`o`** /
+   **`n`** / **`w`** / **`h`** / **`a`**.
+
 Keyboard:
 
 - Arrow keys move focus
@@ -570,6 +594,7 @@ Keyboard:
 - O scans EA App / Origin installs into Library (no Home pins)
 - N scans Battle.net installs into Library (no Home pins)
 - H pins the focused Library record onto Home (same as UI Add to Home)
+- C selects the Achievements dock tab (Ally: `WM_HOMEDECK_GOTO_ACHIEVEMENTS`)
 - F11 toggles fullscreen
 - Enter / launchFocused enters fullscreen when Settings “Fullscreen on launch”
   is ON (default); Esc / F11 still exit
